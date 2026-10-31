@@ -37,7 +37,7 @@ final class KernelReviewsCommand extends Command
             }
             $rows = $query->limit($limit)->get();
         } catch (\Throwable $e) {
-            $this->error('Review store unavailable: '.$e->getMessage());
+            $this->error(\ProofPatch\Support\KernelCli::report('kernel:reviews · store unavailable', $e->getMessage(), 'check the database file is writable, then re-run'));
             return self::FAILURE;
         }
 

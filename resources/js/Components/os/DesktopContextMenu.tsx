@@ -1,19 +1,23 @@
 import React, { useEffect } from 'react';
-import { AppWindow, Expand, Minimize2, TerminalSquare } from 'lucide-react';
+import { AppWindow, Expand, Minimize2, Moon, StickyNote, Sun, TerminalSquare } from 'lucide-react';
 import { useReducedMotion } from './useReducedMotion';
 
 interface DesktopContextMenuProps {
   x: number;
   y: number;
   onOpenApp: (href: string) => void;
+  onOpenNotes: () => void;
+  onToggleTheme: () => void;
   onShowAll: () => void;
   onMinimizeAll: () => void;
   onClose: () => void;
 }
 
 /** The desktop's own right-click menu. Native menus keep working in inputs. */
-export function DesktopContextMenu({ x, y, onOpenApp, onShowAll, onMinimizeAll, onClose }: DesktopContextMenuProps) {
+export function DesktopContextMenu({ x, y, onOpenApp, onOpenNotes, onToggleTheme, onShowAll, onMinimizeAll, onClose }: DesktopContextMenuProps) {
   const reducedMotion = useReducedMotion();
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const ThemeIcon = isDark ? Sun : Moon;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -63,6 +67,30 @@ export function DesktopContextMenu({ x, y, onOpenApp, onShowAll, onMinimizeAll, 
         >
           <AppWindow className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
           Open Issues &amp; Tasks
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className={itemClass}
+          onClick={() => {
+            onOpenNotes();
+            onClose();
+          }}
+        >
+          <StickyNote className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+          Open Notes
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className={itemClass}
+          onClick={() => {
+            onToggleTheme();
+            onClose();
+          }}
+        >
+          <ThemeIcon className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+          {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
         </button>
         <div className="my-1 border-t border-slate-200 dark:border-slate-800" aria-hidden="true" />
         <button

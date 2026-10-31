@@ -39,7 +39,7 @@ final class KernelStatusCommand extends Command
         $worker = $this->worker();
         $stats = $this->stats(array_keys($authorized));
         $enabled = $this->enabledRepositories();
-        $next = $this->nextStep($state['connected'], $authorized, $selected, $enabled, (bool) ($worker['isLive'] ?? false));
+        $next = $this->nextStep($state['connected'], $authorized, $selected, $enabled, (bool) ($worker['isLive'] ?? false), $budget === null || (bool) ($budget['canRequest'] ?? false));
 
         if ((bool) $this->option('json')) {
             $this->line(json_encode([
@@ -220,7 +220,7 @@ final class KernelStatusCommand extends Command
      * @param array<string, string> $enabled lower => display
      * @return array{title: string, command: string}
      */
-    private function nextStep(bool $connected, array $authorized, ?string $selected, array $enabled, bool $workerLive): array
+    private function nextStep(bool $connected, array $authorized, ?string $selected, array $enabled, bool $workerLive, bool $canRequest): array
     {
         if (!$connected) {
             return ['title' => 'Connect GitHub to authorize repositories.', 'command' => 'php artisan github:connect'];
@@ -233,6 +233,9 @@ final class KernelStatusCommand extends Command
         }
         if (!isset($enabled[strtolower($selected)])) {
             return ['title' => "Enable auto-review for {$selected}.", 'command' => "php artisan kernel:select-repo --enable-review {$selected}"];
+        }
+        if (!$canRequest) {
+            return ['title' => 'Local request budget is spent — raise caps to continue.', 'command' => 'Open Settings → Usage & Limits in the web app.'];
         }
         if (!$workerLive) {
             return ['title' => "Start a bounded autopilot run for {$selected}.", 'command' => "php artisan kernel:autopilot --repo={$selected} --minutes=10"];

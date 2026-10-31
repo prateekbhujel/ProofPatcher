@@ -37,7 +37,7 @@ export default function Kernel(props: KernelProps) {
   const { connected, user, nextStep } = props;
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
       <Head title="Kernel · ProofPatcher" />
       <MenuBar
         center={`→ ${nextStep.title} — ${nextStep.detail}`}

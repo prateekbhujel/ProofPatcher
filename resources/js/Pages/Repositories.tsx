@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
+import { copyText as writeToClipboard } from '../Components/ui/copyText';
 import { GitHubConnectionSection } from '../Components/repositories/GitHubConnectionSection';
 import { PrHeaderCard } from '../Components/repositories/PrHeaderCard';
 import { PrTabBar } from '../Components/repositories/PrTabBar';
@@ -183,17 +184,19 @@ export default function Repositories({
   };
 
   const copyText = (text: string, type: 'sha' | 'digest' | 'reviewDigest') => {
-    navigator.clipboard.writeText(text);
-    if (type === 'sha') {
-      setCopiedSha(true);
-      setTimeout(() => setCopiedSha(false), 1500);
-    } else if (type === 'digest') {
-      setCopiedDigest(true);
-      setTimeout(() => setCopiedDigest(false), 1500);
-    } else {
-      setCopiedReviewDigest(true);
-      setTimeout(() => setCopiedReviewDigest(false), 1500);
-    }
+    void writeToClipboard(text).then((ok) => {
+      if (!ok) return;
+      if (type === 'sha') {
+        setCopiedSha(true);
+        setTimeout(() => setCopiedSha(false), 1500);
+      } else if (type === 'digest') {
+        setCopiedDigest(true);
+        setTimeout(() => setCopiedDigest(false), 1500);
+      } else {
+        setCopiedReviewDigest(true);
+        setTimeout(() => setCopiedReviewDigest(false), 1500);
+      }
+    });
   };
 
   const files = pull?.files || [];
@@ -225,9 +228,11 @@ export default function Repositories({
           handleInitiateDeviceFlow={handleInitiateDeviceFlow}
           handlePollDeviceFlow={handlePollDeviceFlow}
           copyDeviceCode={(code: string) => {
-            navigator.clipboard.writeText(code);
-            setCopiedUserCode(true);
-            setTimeout(() => setCopiedUserCode(false), 2000);
+            void writeToClipboard(code).then((ok) => {
+              if (!ok) return;
+              setCopiedUserCode(true);
+              setTimeout(() => setCopiedUserCode(false), 2000);
+            });
           }}
           copiedDeviceCode={copiedUserCode}
           githubConnection={githubConnection as any}
@@ -265,9 +270,11 @@ export default function Repositories({
           handlePollDeviceFlow={handlePollDeviceFlow}
           handleDisconnectDevice={handleDisconnectDevice}
           copyUserCode={(code) => {
-            navigator.clipboard.writeText(code);
-            setCopiedUserCode(true);
-            setTimeout(() => setCopiedUserCode(false), 2000);
+            void writeToClipboard(code).then((ok) => {
+              if (!ok) return;
+              setCopiedUserCode(true);
+              setTimeout(() => setCopiedUserCode(false), 2000);
+            });
           }}
           handleSelectRepository={handleSelectRepository}
           handleCaptureGitHubPull={handleCaptureGitHubPull}

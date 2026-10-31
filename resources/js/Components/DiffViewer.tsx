@@ -18,6 +18,7 @@ import type {
   DiffViewerProps,
 } from './diff/types';
 import { parseDiffLines, parseSplitDiffRows } from './diff/diffParser';
+import { copyText } from './ui/copyText';
 import { UnifiedDiffTable } from './diff/UnifiedDiffTable';
 import { SplitDiffTable } from './diff/SplitDiffTable';
 
@@ -78,9 +79,11 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
 
   const copyFilePath = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(file.name);
-    setCopiedPath(true);
-    setTimeout(() => setCopiedPath(false), 2000);
+    void copyText(file.name).then((ok) => {
+      if (!ok) return;
+      setCopiedPath(true);
+      setTimeout(() => setCopiedPath(false), 2000);
+    });
   };
 
   const openEditorForLine = (lineKey: string, defaultText: string = '') => {
@@ -122,6 +125,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
             type="button"
             onClick={copyFilePath}
             title="Copy path"
+            aria-label={`Copy path ${file.name}`}
             className="p-1 text-slate-400 hover:text-slate-700 rounded transition"
           >
             {copiedPath ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}

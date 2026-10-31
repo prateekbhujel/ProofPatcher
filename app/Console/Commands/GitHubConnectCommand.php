@@ -39,7 +39,7 @@ final class GitHubConnectCommand extends Command
     {
         $clientId = trim((string) ($this->option('client-id') ?: getenv('PROOFPATCH_GITHUB_CLIENT_ID') ?: getenv('GITHUB_APP_CLIENT_ID') ?: ''));
         if ($clientId === '') {
-            $this->error('A GitHub App Client ID is required. Set PROOFPATCH_GITHUB_CLIENT_ID or pass --client-id.');
+            $this->error(KernelCli::report('github:connect · cannot start', 'no GitHub App client ID', 'set PROOFPATCH_GITHUB_CLIENT_ID or pass --client-id'));
             return self::FAILURE;
         }
 
@@ -60,7 +60,7 @@ final class GitHubConnectCommand extends Command
         try {
             $init = $flow->initiate($clientId);
         } catch (\Throwable $e) {
-            $this->error('Device flow failed to start: ' . $e->getMessage());
+            $this->error(KernelCli::report('github:connect · device flow failed to start', $e->getMessage(), 'check network access, then re-run github:connect'));
             return self::FAILURE;
         }
 
@@ -74,7 +74,7 @@ final class GitHubConnectCommand extends Command
             try {
                 $result = $flow->poll($clientId, $init['deviceCode']);
             } catch (\Throwable $e) {
-                $this->error('Authorization poll failed: ' . $e->getMessage());
+                $this->error(KernelCli::report('github:connect · authorization poll failed', $e->getMessage(), 're-run github:connect'));
                 return self::FAILURE;
             }
 
@@ -83,15 +83,15 @@ final class GitHubConnectCommand extends Command
                 return $this->finishConnection((string) $result['accessToken']);
             }
             if ($status === 'denied') {
-                $this->error((string) ($result['error'] ?? 'Authorization was declined on GitHub.'));
+                $this->error(KernelCli::report('github:connect · declined', (string) ($result['error'] ?? 'Authorization was declined on GitHub.'), 're-run github:connect and approve on GitHub'));
                 return self::FAILURE;
             }
             if ($status === 'expired') {
-                $this->error((string) ($result['error'] ?? 'The verification code expired. Run github:connect again.'));
+                $this->error(KernelCli::report('github:connect · expired', (string) ($result['error'] ?? 'The verification code expired.'), 'run github:connect again'));
                 return self::FAILURE;
             }
             if ($status === 'error') {
-                $this->error('GitHub authorization error: ' . (string) ($result['error'] ?? 'unknown error'));
+                $this->error(KernelCli::report('github:connect · authorization error', (string) ($result['error'] ?? 'unknown error'), 're-run github:connect'));
                 return self::FAILURE;
             }
             if ($status === 'slow_down') {
@@ -100,7 +100,7 @@ final class GitHubConnectCommand extends Command
             }
 
             if (time() >= $deadline) {
-                $this->error('Authorization timed out. Run github:connect again for a fresh code.');
+                $this->error(KernelCli::report('github:connect · timed out', 'no approval arrived before the deadline', 'run github:connect again for a fresh code'));
                 return self::FAILURE;
             }
             sleep($interval);
@@ -111,7 +111,7 @@ final class GitHubConnectCommand extends Command
     {
         $token = trim($token);
         if ($token === '') {
-            $this->error('GitHub returned an empty access token.');
+            $this->error(KernelCli::report('github:connect · failed', 'GitHub returned an empty access token', 'run github:connect again'));
             return self::FAILURE;
         }
 
@@ -124,14 +124,14 @@ final class GitHubConnectCommand extends Command
             $reposStatus = [];
             $repos = $client->listSelectedRepositories($token, $reposStatus);
         } catch (\Throwable $e) {
-            $this->error('Connected, but the GitHub identity check failed: ' . $e->getMessage());
+            $this->error(KernelCli::report('github:connect · identity check failed', $e->getMessage(), 're-run github:connect'));
             return self::FAILURE;
         }
 
         try {
             GitHubTokenStore::save($token, $user, $repos, $reposStatus);
         } catch (\Throwable $e) {
-            $this->error('Failed to store the GitHub token: ' . $e->getMessage());
+            $this->error(KernelCli::report('github:connect · failed to store the token', $e->getMessage(), 'check the token store is writable, then re-run github:connect'));
             return self::FAILURE;
         }
 

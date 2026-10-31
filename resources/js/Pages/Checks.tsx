@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
+import { copyText } from '../Components/ui/copyText';
 import { VisualComparisonViewer } from '../Components/VisualComparisonViewer';
 import { ChecksWorkspaceTab } from '../Components/checks/ChecksWorkspaceTab';
 import { ChecksEvidenceTab } from '../Components/checks/ChecksEvidenceTab';
@@ -72,9 +73,11 @@ export default function Checks({
 
   const copyReceipt = () => {
     if (receipt?.sha256) {
-      navigator.clipboard.writeText(receipt.sha256);
-      setCopiedReceipt(true);
-      setTimeout(() => setCopiedReceipt(false), 1500);
+      void copyText(receipt.sha256).then((ok) => {
+        if (!ok) return;
+        setCopiedReceipt(true);
+        setTimeout(() => setCopiedReceipt(false), 1500);
+      });
     }
   };
 

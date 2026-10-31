@@ -100,8 +100,34 @@ export function PrFilesTab({
 
       <div className="space-y-3">
         {filteredFiles.length === 0 ? (
-          <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
-            No matching files found.
+          <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-slate-200 space-y-2 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
+            {fileQuery.trim() ? (
+              <>
+                <p className="font-medium text-slate-700 dark:text-slate-300">
+                  No files match “{fileQuery.trim()}”.
+                </p>
+                <p>
+                  <button
+                    type="button"
+                    onClick={() => setFileQuery('')}
+                    className="font-semibold text-accent-700 dark:text-accent-300 hover:underline"
+                  >
+                    Clear the filter to see every changed file
+                  </button>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-slate-700 dark:text-slate-300">
+                  No changed files are listed for this pull request.
+                </p>
+                <p>
+                  Changed files appear here once the pull request snapshot
+                  loads. Empty pull requests and snapshots that are still
+                  loading both land here.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           filteredFiles.map((f) => {

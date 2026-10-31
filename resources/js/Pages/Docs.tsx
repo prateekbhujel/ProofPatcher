@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
+import { copyText } from '../Components/ui/copyText';
 import {
   Shield,
   FileCode,
@@ -22,9 +23,11 @@ export default function Docs() {
   const [copiedCmd, setCopiedCmd] = useState(false);
 
   const copyCommand = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCmd(true);
-    setTimeout(() => setCopiedCmd(false), 2000);
+    void copyText(text).then((ok) => {
+      if (!ok) return;
+      setCopiedCmd(true);
+      setTimeout(() => setCopiedCmd(false), 2000);
+    });
   };
 
   return (

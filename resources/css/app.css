@@ -171,8 +171,14 @@ html.dark {
     transition: opacity 280ms ease;
   }
 
-  /* OS desktop: deep machine-room wallpaper plus a faint grid. */
+  /* OS desktop: machine-room wallpaper plus a faint grid, both themes. */
   .os-wallpaper {
+    background:
+      radial-gradient(1100px 520px at 18% -8%, rgb(59 110 220 / 0.1) 0%, transparent 60%),
+      radial-gradient(900px 480px at 88% 108%, rgb(16 120 100 / 0.08) 0%, transparent 55%),
+      #edf0f5;
+  }
+  html.dark .os-wallpaper {
     background:
       radial-gradient(1100px 520px at 18% -8%, rgb(38 68 120 / 0.55) 0%, transparent 60%),
       radial-gradient(900px 480px at 88% 108%, rgb(16 92 78 / 0.4) 0%, transparent 55%),
@@ -180,11 +186,16 @@ html.dark {
   }
   .os-grid-overlay {
     background-image:
-      linear-gradient(rgb(148 163 184 / 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(148 163 184 / 0.05) 1px, transparent 1px);
+      linear-gradient(rgb(15 30 60 / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(15 30 60 / 0.07) 1px, transparent 1px);
     background-size: 28px 28px;
     mask-image: radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 75%);
     -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 75%);
+  }
+  html.dark .os-grid-overlay {
+    background-image:
+      linear-gradient(rgb(148 163 184 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(148 163 184 / 0.05) 1px, transparent 1px);
   }
 
   /* OS desktop: window open fade (opacity only — drag owns geometry). */

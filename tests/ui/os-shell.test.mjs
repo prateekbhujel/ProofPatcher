@@ -77,6 +77,7 @@ test('the taskbar shows worker state, counts, and budget', () => {
   assert.match(html, /4 findings/);
   assert.match(html, /\$0\.42 left/);
   assert.match(html, /autopilot running/);
+  assert.match(html, /href="\/settings"[^>]*aria-label="Open Settings"/);
 });
 
 test('the taskbar is honest when disconnected and offline', () => {

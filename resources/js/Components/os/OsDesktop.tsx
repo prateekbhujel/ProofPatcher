@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppWindow as AppWindowIcon, ArrowRight } from 'lucide-react';
+import { applyThemePreference } from '../ThemeToggle';
 import { APP_FOLDERS, RAIL_APPS } from './apps';
 import { BootScreen } from './BootScreen';
 import { DesktopContextMenu } from './DesktopContextMenu';
@@ -17,16 +18,58 @@ import {
   KernelStage,
   KernelVerification,
   MissionContent,
+  NotesContent,
 } from './DesktopWindows';
 
-export type DesktopWindowId = 'mission' | 'console' | 'findings' | 'engine';
+export type DesktopWindowId = 'mission' | 'console' | 'findings' | 'engine' | 'notes';
 
 const WINDOW_DEFS: { id: DesktopWindowId; title: string; offset: { x: number; y: number } }[] = [
   { id: 'mission', title: 'mission', offset: { x: 8, y: 0 } },
   { id: 'console', title: 'console', offset: { x: 48, y: 48 } },
   { id: 'findings', title: 'findings', offset: { x: 88, y: 96 } },
   { id: 'engine', title: 'engine', offset: { x: 128, y: 144 } },
+  { id: 'notes', title: 'notes', offset: { x: 168, y: 192 } },
 ];
+
+const DESKTOP_KEY = 'proofpatch.desktop.v1';
+
+interface DesktopSnapshot {
+  open?: Record<string, boolean>;
+  minimized?: Record<string, boolean>;
+  maximized?: Record<string, boolean>;
+  order?: string[];
+  apps?: string[];
+}
+
+function readSnapshot(): DesktopSnapshot {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(DESKTOP_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as DesktopSnapshot;
+    if (!parsed || typeof parsed !== 'object') return {};
+    const clean: DesktopSnapshot = {};
+    for (const key of ['open', 'minimized', 'maximized'] as const) {
+      const record = parsed[key];
+      if (record && typeof record === 'object') {
+        clean[key] = Object.fromEntries(
+          Object.entries(record).filter(([k, v]) => typeof k === 'string' && typeof v === 'boolean'),
+        );
+      }
+    }
+    if (Array.isArray(parsed.order)) {
+      clean.order = parsed.order.filter((id): id is string => typeof id === 'string').slice(0, 24);
+    }
+    if (Array.isArray(parsed.apps)) {
+      clean.apps = parsed.apps
+        .filter((href): href is string => typeof href === 'string' && /^\/[A-Za-z0-9/_.\-?=&%]*$/.test(href))
+        .slice(0, 12);
+    }
+    return clean;
+  } catch {
+    return {};
+  }
+}
 
 const NATIVE_IDS = WINDOW_DEFS.map((w) => w.id);
 
@@ -91,16 +134,62 @@ function terminalLinesFor(props: OsDesktopProps): TerminalLine[] {
   ];
 }
 
+export interface AppFrameHooks {
+  onOpenApp: (href: string) => void;
+  onContextMenu: (x: number, y: number) => void;
+}
+
 /** An app window body: the page embedded chromeless so windows never nest. */
-export function AppFrame({ href, title }: { href: string; title: string }) {
+export function AppFrame({ href, title, hooks }: { href: string; title: string; hooks?: AppFrameHooks }) {
+  const src = href.includes('?') ? `${href}&embed=1` : `${href}?embed=1`;
   return (
     <iframe
-      src={`${href}?embed=1`}
+      src={src}
       title={`${title} app`}
       loading="lazy"
+      onLoad={hooks ? (event) => wireFrame(event.currentTarget, hooks) : undefined}
       className="block h-full w-full border-0 bg-[var(--bg)]"
     />
   );
+}
+
+/**
+ * Wire a same-origin app frame into the desktop: internal link clicks open
+ * app windows instead of navigating inside the frame, and right-clicks
+ * surface the desktop menu. Cross-origin frames keep native behavior.
+ */
+function wireFrame(
+  frame: HTMLIFrameElement | null,
+  hooks: { onOpenApp: (href: string) => void; onContextMenu: (x: number, y: number) => void },
+) {
+  if (!frame) return;
+  let source: Document | null = null;
+  try {
+    source = frame.contentDocument;
+  } catch {
+    return;
+  }
+  if (!source || (source as Document & { __proofpatchWired?: boolean }).__proofpatchWired) return;
+  try {
+    (source as Document & { __proofpatchWired?: boolean }).__proofpatchWired = true;
+    source.addEventListener('click', (event) => {
+      const anchor = (event.target as HTMLElement).closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute('href') ?? '';
+      if (anchor.target === '_blank' || !href.startsWith('/') || href.startsWith('//')) return;
+      event.preventDefault();
+      hooks.onOpenApp(href);
+    });
+    source.addEventListener('contextmenu', (event) => {
+      const target = event.target as HTMLElement;
+      if (target.closest?.('input, textarea, select, [contenteditable="true"], a[href]')) return;
+      event.preventDefault();
+      const rect = frame.getBoundingClientRect();
+      hooks.onContextMenu(rect.left + event.clientX, rect.top + event.clientY);
+    });
+  } catch {
+    // Cross-origin frame: leave native behavior alone.
+  }
 }
 
 /**
@@ -110,21 +199,35 @@ export function AppFrame({ href, title }: { href: string; title: string }) {
  * desktop clients get the floating window manager.
  */
 export function OsDesktop(props: OsDesktopProps) {
-  // Mission + console greet; findings + engine are one click away in the
-  // rail, taskbar, or start menu. Two windows read; four windows crowd.
-  const [open, setOpen] = useState<Record<string, boolean>>({
+  // Mission + console greet; findings + engine + notes are one click away in
+  // the rail, taskbar, start menu, or right-click menu. Two windows read.
+  const [snapshot] = useState<DesktopSnapshot>(readSnapshot);
+  const [open, setOpen] = useState<Record<string, boolean>>(() => ({
     mission: true,
     console: true,
     findings: false,
     engine: false,
-  });
-  const [minimized, setMinimized] = useState<Record<string, boolean>>({});
-  const [maximized, setMaximized] = useState<Record<string, boolean>>({});
+    notes: false,
+    ...snapshot.open,
+  }));
+  const [minimized, setMinimized] = useState<Record<string, boolean>>(() => ({ ...snapshot.minimized }));
+  const [maximized, setMaximized] = useState<Record<string, boolean>>(() => ({ ...snapshot.maximized }));
   const [closing, setClosing] = useState<Record<string, boolean>>({});
-  const [order, setOrder] = useState<string[]>(['console', 'findings', 'engine', 'mission']);
-  const [apps, setApps] = useState<string[]>([]);
+  const [order, setOrder] = useState<string[]>(() =>
+    snapshot.order && snapshot.order.length > 0 ? snapshot.order : ['console', 'findings', 'engine', 'mission'],
+  );
+  const [apps, setApps] = useState<string[]>(() => snapshot.apps ?? []);
   const [startOpen, setStartOpen] = useState(false);
   const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null);
+  const [themeNonce, setThemeNonce] = useState(0);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DESKTOP_KEY, JSON.stringify({ open, minimized, maximized, order, apps }));
+    } catch {
+      // Private mode: the desktop still works, it just won't remember.
+    }
+  }, [open, minimized, maximized, order, apps]);
 
   const focus = (id: string) => setOrder((prev) => [...prev.filter((w) => w !== id), id]);
   const close = (id: string) => {
@@ -174,6 +277,24 @@ export function OsDesktop(props: OsDesktopProps) {
   const minimizeAll = () => {
     const ids = [...NATIVE_IDS.filter((id) => open[id] && !minimized[id]), ...apps.filter((href) => open[appId(href)] && !minimized[appId(href)]).map(appId)];
     ids.forEach((id) => minimize(id));
+  };
+  const toggleTheme = () => {
+    const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+    try {
+      window.localStorage.setItem('proofpatch-theme', next);
+    } catch {
+      // Private mode: theme still flips for this session.
+    }
+    applyThemePreference(next);
+    // Reload open app frames so embedded pages pick up the new theme.
+    setThemeNonce((n) => n + 1);
+  };
+  const openNotes = () => {
+    setOpen((prev) => ({ ...prev, notes: true }));
+    setMinimized((prev) => ({ ...prev, notes: false }));
+    focus('notes');
+    setStartOpen(false);
+    setCtx(null);
   };
 
   const budgetText = props.budget
@@ -233,7 +354,9 @@ export function OsDesktop(props: OsDesktopProps) {
     if (!def) return null;
     const content =
       id === 'mission' ? (
-        <MissionContent nextStep={props.nextStep} stages={props.stages} />
+        <MissionContent nextStep={props.nextStep} stages={props.stages} onOpenApp={openApp} />
+      ) : id === 'notes' ? (
+        <NotesContent onSendToIssues={() => openApp('/issues')} />
       ) : id === 'console' ? (
         <div className="space-y-2">
           <ConsoleContent lines={terminalLinesFor(props)} />
@@ -277,7 +400,12 @@ export function OsDesktop(props: OsDesktopProps) {
       id,
       appTitle(href),
       { x: 120 + (index % 4) * 44, y: 56 + (index % 4) * 44 },
-      <AppFrame href={href} title={appTitle(href)} />,
+      <AppFrame
+        key={`${href}:${themeNonce}`}
+        href={href}
+        title={appTitle(href)}
+        hooks={{ onOpenApp: openApp, onContextMenu: (x, y) => setCtx({ x, y }) }}
+      />,
       { flush: true, wide: true },
     );
   };
@@ -297,7 +425,7 @@ export function OsDesktop(props: OsDesktopProps) {
       <div className="relative flex flex-col gap-3 p-3 pb-16 sm:flex-row sm:p-4 sm:pb-16">
         <aside aria-label="Desktop rail" className="flex shrink-0 gap-2 overflow-x-auto sm:flex-col sm:overflow-visible">
           <DesktopIcons layout="rail" onOpenApp={openApp} />
-          <div className="hidden border-t border-white/10 pt-2 sm:block" aria-hidden="true" />
+          <div className="hidden border-t border-[var(--border)] pt-2 sm:block" aria-hidden="true" />
           <ul className="flex gap-1 sm:flex-col" aria-label="Window toggles">
             {WINDOW_DEFS.map((w) => {
               const active = open[w.id] && !minimized[w.id];
@@ -310,12 +438,12 @@ export function OsDesktop(props: OsDesktopProps) {
                     aria-label={`Toggle ${w.title} window`}
                     className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition ${
                       active
-                        ? 'bg-white/10 text-white'
-                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                        ? 'bg-[var(--bg-active)] text-[var(--fg)]'
+                        : 'text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]'
                     }`}
                   >
                     <span
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${active ? 'bg-emerald-400' : 'bg-slate-600'}`}
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${active ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'}`}
                       aria-hidden="true"
                     />
                     <AppWindowIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -350,6 +478,8 @@ export function OsDesktop(props: OsDesktopProps) {
           x={ctx.x}
           y={ctx.y}
           onOpenApp={openApp}
+          onOpenNotes={openNotes}
+          onToggleTheme={toggleTheme}
           onShowAll={showAll}
           onMinimizeAll={minimizeAll}
           onClose={() => setCtx(null)}
@@ -369,6 +499,7 @@ export function OsDesktop(props: OsDesktopProps) {
         onStart={() => setStartOpen((v) => !v)}
         windows={taskbarWindows}
         onToggleWindow={toggle}
+        onOpenApp={openApp}
       />
     </div>
   );

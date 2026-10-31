@@ -211,11 +211,13 @@ test('the shared app catalog links every app and hides internal pages', () => {
 
 test('the desktop context menu offers apps and window actions', () => {
   const html = renderToStaticMarkup(React.createElement(ctxMenu.DesktopContextMenu, {
-    x: 120, y: 80, onOpenApp: noop, onShowAll: noop, onMinimizeAll: noop, onClose: noop,
+    x: 120, y: 80, onOpenApp: noop, onOpenNotes: noop, onToggleTheme: noop, onShowAll: noop, onMinimizeAll: noop, onClose: noop,
   }));
   assert.match(html, /Desktop menu/);
   assert.match(html, /Open Terminal/);
   assert.match(html, /Open Issues &amp; Tasks/);
+  assert.match(html, /Open Notes/);
+  assert.match(html, /Switch to (light|dark) mode/);
   assert.match(html, /Show all windows/);
   assert.match(html, /Minimize all windows/);
   assert.match(html, /Close context menu/);

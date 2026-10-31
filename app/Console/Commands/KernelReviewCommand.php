@@ -20,7 +20,7 @@ use Symfony\Component\HttpClient\HttpClient;
 final class KernelReviewCommand extends Command
 {
     protected $signature = 'kernel:review
-                            {target : Pull request as owner/repo#123 or a github.com pull URL}';
+                            {target? : Pull request as owner/repo#123 or a github.com pull URL}';
 
     protected $description = 'Review one pull request revision in the terminal';
 
@@ -39,13 +39,18 @@ final class KernelReviewCommand extends Command
     {
         $token = GitHubTokenStore::getToken();
         if ($token === null || $token === '') {
-            $this->error('No GitHub token found. Run php artisan github:connect first.');
+            $this->error(KernelCli::report('kernel:review · cannot start', 'no GitHub token stored', 'php artisan github:connect'));
             return self::FAILURE;
         }
 
-        $parsed = KernelCli::parsePrTarget((string) $this->argument('target'));
+        $target = $this->argument('target');
+        if (!is_string($target) || trim($target) === '') {
+            $this->error(KernelCli::report('kernel:review · cannot start', 'no pull request target given', 'kernel:review owner/repo#123'));
+            return self::FAILURE;
+        }
+        $parsed = KernelCli::parsePrTarget($target);
         if ($parsed === null) {
-            $this->error('Expected a target like owner/repo#123 or https://github.com/owner/repo/pull/123.');
+            $this->error(KernelCli::report('kernel:review · cannot start', 'expected a target like owner/repo#123 or https://github.com/owner/repo/pull/123', 'kernel:review owner/repo#123'));
             return self::FAILURE;
         }
 
@@ -55,26 +60,26 @@ final class KernelReviewCommand extends Command
             $authorized[strtolower($row['fullName'])] = $row['fullName'];
         }
         if (!isset($authorized[strtolower($parsed['repo'])])) {
-            $this->error("{$parsed['repo']} is not in the current GitHub grant.");
+            $this->error(KernelCli::report('kernel:review · cannot start', "{$parsed['repo']} is not in the current GitHub grant", 'php artisan kernel:select-repo --list'));
             return self::FAILURE;
         }
         $repo = $authorized[strtolower($parsed['repo'])];
         $number = $parsed['number'];
 
         if (!RepositoryAutoReviewSetting::isRepoEnabled($repo)) {
-            $this->error("Auto-review is off for {$repo}. Enable it: php artisan kernel:select-repo --enable-review {$repo}");
+            $this->error(KernelCli::report('kernel:review · cannot start', "auto-review is off for {$repo}", "php artisan kernel:select-repo --enable-review {$repo}"));
             return self::FAILURE;
         }
 
         try {
             $patch = $this->github->fetchPullRequestPatch($token, $repo, $number);
         } catch (\Throwable $e) {
-            $this->error("Could not load {$repo}#{$number}: " . $e->getMessage());
+            $this->error(KernelCli::report("kernel:review · cannot load {$repo}#{$number}", $e->getMessage(), 'check the PR exists and re-run'));
             return self::FAILURE;
         }
 
         if (($patch['isPrivate'] ?? true) === true) {
-            $this->error("{$repo}#{$number} is private or its visibility is uncertain. Only public diffs are reviewed.");
+            $this->error(KernelCli::report("kernel:review · cannot start", "{$repo}#{$number} is private or its visibility is uncertain. Only public diffs are reviewed.", 'review a public pull request'));
             return self::FAILURE;
         }
 
@@ -89,7 +94,7 @@ final class KernelReviewCommand extends Command
                 (string) $patch['title']
             );
         } catch (\Throwable $e) {
-            $this->error('Review failed: ' . $e->getMessage());
+            $this->error(KernelCli::report('kernel:review · failed', $e->getMessage(), 'fix the cause above, then re-run kernel:review'));
             return self::FAILURE;
         }
 
@@ -104,7 +109,7 @@ final class KernelReviewCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->error("{$repo}#{$number}: review failed — " . (string) ($outcome['error'] ?? 'unknown error'));
+        $this->error(KernelCli::report("kernel:review · {$repo}#{$number} failed", (string) ($outcome['error'] ?? 'unknown error'), 'fix the cause above, then re-run kernel:review'));
         return self::FAILURE;
     }
 

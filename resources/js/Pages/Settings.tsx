@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
+import { copyText } from '../Components/ui/copyText';
 import { ThemeToggle } from '../Components/ThemeToggle';
 import {
   Shield,
@@ -83,9 +84,11 @@ export default function Settings({
 
   const copyUserCode = () => {
     if (githubConnection.deviceFlow?.userCode) {
-      navigator.clipboard.writeText(githubConnection.deviceFlow.userCode);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
+      void copyText(githubConnection.deviceFlow.userCode).then((ok) => {
+        if (!ok) return;
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2000);
+      });
     }
   };
 
@@ -267,6 +270,7 @@ export default function Settings({
                     <input
                       type="text"
                       placeholder="Search repositories"
+                      aria-label="Search repositories"
                       value={repoSearchQuery}
                       onChange={(e) => setRepoSearchQuery(e.target.value)}
                       className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent-600 shadow-2xs"

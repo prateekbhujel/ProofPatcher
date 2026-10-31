@@ -132,7 +132,9 @@ test('the repository sidebar shows tasks only for the selected repository', () =
   assert.doesNotMatch(html, /Other task/);
   assert.match(html, /Issues \(0\)/);
   assert.match(html, /Pull Requests \(0\)/);
-  assert.match(html, /href="\/settings"/);
+  // Account controls moved to the start menu; the sidebar stays task-focused.
+  assert.doesNotMatch(html, /href="\/settings"/);
+  assert.doesNotMatch(html, /Log out/);
 });
 
 test('the dedicated test issue opens without a file path while other issues still need one', () => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, Settings } from 'lucide-react';
 
 export interface TaskbarWindow {
   id: string;
@@ -26,6 +26,8 @@ interface KernelTaskbarProps {
   onToggleWindow?: (id: string) => void;
   /** While status loads, counts show placeholders instead of claiming offline. */
   loading?: boolean;
+  /** On the desktop, the settings gear opens a window instead of navigating. */
+  onOpenApp?: (href: string) => void;
 }
 
 function clockNow(): string {
@@ -51,6 +53,7 @@ export function KernelTaskbar({
   windows = [],
   onToggleWindow,
   loading = false,
+  onOpenApp,
 }: KernelTaskbarProps) {
   const [clock, setClock] = useState('--:--');
 
@@ -123,7 +126,25 @@ export function KernelTaskbar({
             </>
           )}
         </div>
-        <span className="shrink-0 font-mono text-[var(--fg-muted)] tabular-nums">{clock}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <a
+            href="/settings"
+            aria-label="Open Settings"
+            title="Settings"
+            onClick={
+              onOpenApp
+                ? (event: React.MouseEvent) => {
+                    event.preventDefault();
+                    onOpenApp('/settings');
+                  }
+                : undefined
+            }
+            className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition"
+          >
+            <Settings className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+          <span className="font-mono text-[var(--fg-muted)] tabular-nums">{clock}</span>
+        </span>
       </div>
     </div>
   );

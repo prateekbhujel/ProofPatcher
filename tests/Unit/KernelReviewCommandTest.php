@@ -199,6 +199,17 @@ final class KernelReviewCommandTest extends TestCase
         $this->assertStringContainsString('owner/repo#123', $result['display']);
     }
 
+    public function testMissingTargetExplainsItself(): void
+    {
+        $this->connect();
+
+        $result = $this->runCommand($this->github(), $this->service(false), []);
+
+        $this->assertSame(1, $result['exit']);
+        $this->assertStringContainsString('no pull request target given', $result['display']);
+        $this->assertStringContainsString('kernel:review owner/repo#123', $result['display']);
+    }
+
     public function testUnauthorizedRepoFailsClosed(): void
     {
         $this->connect();

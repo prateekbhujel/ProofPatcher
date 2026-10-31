@@ -11,6 +11,9 @@ import {
   Clock,
 } from 'lucide-react';
 import { VoiceDictationButton } from './VoiceDictationButton';
+import { RepoCombobox } from './workbench/RepoCombobox';
+import { COMPOSER_DRAFT_KEY, ComposerDraft } from './os/DesktopWindows';
+import { Bold, Italic, Code, Quote, List, Link2 } from 'lucide-react';
 
 export interface LocalTaskCard {
   id: string | number;
@@ -528,6 +531,11 @@ export function NewTaskComposer({
     description: '',
     repository: defaultRepo,
   });
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!data.repository && defaultRepo) {
@@ -535,9 +543,89 @@ export function NewTaskComposer({
     }
   }, [defaultRepo]);
 
+  // One-shot: a note sent from the desktop scratchpad prefills this composer.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(COMPOSER_DRAFT_KEY);
+      if (!raw) return;
+      window.localStorage.removeItem(COMPOSER_DRAFT_KEY);
+      const draft = JSON.parse(raw) as Partial<ComposerDraft>;
+      if (typeof draft.title === 'string' && draft.title.trim()) {
+        setData('title', draft.title.trim().slice(0, 180));
+      }
+      if (typeof draft.description === 'string' && draft.description.trim()) {
+        setData('description', draft.description.trim().slice(0, 10000));
+      }
+    } catch {
+      // No usable draft: start blank.
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function reselect(start: number, end: number) {
+    const el = descriptionRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start, end);
+    });
+  }
+
+  function wrapSelection(before: string, after: string, placeholder: string) {
+    const el = descriptionRef.current;
+    const cur = data.description;
+    const s = el?.selectionStart ?? cur.length;
+    const e = el?.selectionEnd ?? cur.length;
+    const sel = cur.slice(s, e) || placeholder;
+    setData('description', cur.slice(0, s) + before + sel + after + cur.slice(e));
+    reselect(s + before.length, s + before.length + sel.length);
+  }
+
+  function prefixSelection(prefix: string, placeholder: string) {
+    const el = descriptionRef.current;
+    const cur = data.description;
+    const s = el?.selectionStart ?? cur.length;
+    const e = el?.selectionEnd ?? cur.length;
+    const sel = cur.slice(s, e) || placeholder;
+    const prefixed = sel.split('\n').map((line) => `${prefix}${line}`).join('\n');
+    setData('description', cur.slice(0, s) + prefixed + cur.slice(e));
+    reselect(s, s + prefixed.length);
+  }
+
+  function pickImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+    if (!file) return;
+    if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
+      setUploadError(`“${file.name}” can't attach: use a PNG or JPEG image.`);
+      return;
+    }
+    if (file.size < 1 || file.size > 2_000_000) {
+      setUploadError(`“${file.name}” can't attach: keep it under 2 MB.`);
+      return;
+    }
+    setUploadError(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function clearImage() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setImageFile(null);
+    setPreviewUrl(null);
+    setUploadError(null);
+  }
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canCreate) return;
+    if (!canCreate || !data.repository) return;
+    setUploadError(null);
     post('/issues/tasks', {
       preserveScroll: true,
       onSuccess: (page) => {
@@ -546,8 +634,20 @@ export function NewTaskComposer({
         if (!props.error && !flash?.error) {
           const cards = Array.isArray(props.localTasks) ? props.localTasks as LocalTaskCard[] : [];
           const saved = cards.find((card) => card.title === data.title.trim() && card.repository.toLowerCase() === data.repository.toLowerCase());
+          const savedId = saved ? Number(saved.id) : null;
           reset('title', 'description');
-          onCreated?.(saved ? Number(saved.id) : null);
+          if (savedId && imageFile) {
+            const file = imageFile;
+            clearImage();
+            router.post(`/issues/tasks/${savedId}/image`, { image: file }, {
+              forceFormData: true,
+              preserveScroll: true,
+              onError: () => setUploadError(`“${file.name}” didn't upload: the task was saved, re-attach it from the task card.`),
+            });
+          } else {
+            clearImage();
+          }
+          onCreated?.(savedId);
         }
       },
     });
@@ -590,23 +690,13 @@ export function NewTaskComposer({
           <label htmlFor="local-task-repository" className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
             Repository
           </label>
-          <select
+          <RepoCombobox
             id="local-task-repository"
-            name="repository"
-            required
-            disabled={!canCreate}
+            repos={repositories}
             value={data.repository}
-            onChange={(e) => setData('repository', e.target.value)}
-            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 disabled:opacity-60 transition shadow-2xs"
-          >
-            {repositories.length === 0 ? (
-              <option value="">No connected repo</option>
-            ) : (
-              repositories.map((r) => (
-                <option key={r.fullName} value={r.fullName}>{r.fullName}{r.isPrivate ? ' (private)' : ''}</option>
-              ))
-            )}
-          </select>
+            onChange={(fullName) => setData('repository', fullName)}
+            disabled={!canCreate}
+          />
         </div>
       </div>
 
@@ -617,8 +707,53 @@ export function NewTaskComposer({
           </label>
           <span id="local-task-description-hint" className="text-[11px] text-slate-400 font-mono">Markdown supported</span>
         </div>
+        <div
+          role="toolbar"
+          aria-label="Formatting"
+          className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2 py-1.5"
+        >
+          {[
+            { label: 'Bold', icon: <Bold className="h-3.5 w-3.5" />, run: () => wrapSelection('**', '**', 'bold text') },
+            { label: 'Italic', icon: <Italic className="h-3.5 w-3.5" />, run: () => wrapSelection('*', '*', 'italic text') },
+            { label: 'Code', icon: <Code className="h-3.5 w-3.5" />, run: () => wrapSelection('`', '`', 'code') },
+            { label: 'Quote', icon: <Quote className="h-3.5 w-3.5" />, run: () => prefixSelection('> ', 'quoted text') },
+            { label: 'Bulleted list', icon: <List className="h-3.5 w-3.5" />, run: () => prefixSelection('- ', 'list item') },
+            { label: 'Link', icon: <Link2 className="h-3.5 w-3.5" />, run: () => wrapSelection('[', '](https://)', 'link text') },
+          ].map((tool) => (
+            <button
+              key={tool.label}
+              type="button"
+              title={tool.label}
+              aria-label={tool.label}
+              onClick={tool.run}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+            >
+              {tool.icon}
+            </button>
+          ))}
+          <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
+          <button
+            type="button"
+            title="Attach a screenshot (PNG/JPEG, under 2 MB)"
+            aria-label="Attach a screenshot"
+            onClick={() => attachRef.current?.click()}
+            className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-xs font-medium"
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            <span>Image</span>
+          </button>
+          <input
+            ref={attachRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            onChange={pickImage}
+            className="sr-only"
+            aria-label="Choose a screenshot to attach"
+          />
+        </div>
         <textarea
           id="local-task-description"
+          ref={descriptionRef}
           name="description"
           aria-describedby="local-task-description-hint"
           rows={6}
@@ -629,6 +764,27 @@ export function NewTaskComposer({
           placeholder="Describe the expected behavior, reproduction steps, or context in detail…"
           className="w-full h-auto min-h-[150px] max-h-[24rem] [field-sizing:content] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3.5 text-sm leading-relaxed text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 transition shadow-2xs resize-y"
         />
+        {previewUrl && imageFile && (
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-2.5">
+            <img src={previewUrl} alt="Screenshot preview" className="h-12 w-12 rounded-lg border border-slate-200 dark:border-slate-700 object-cover" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-slate-800 dark:text-slate-200">{imageFile.name}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Saved privately with the task · never sent to a model</p>
+            </div>
+            <button
+              type="button"
+              onClick={clearImage}
+              className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+            >
+              Remove
+            </button>
+          </div>
+        )}
+        {uploadError && (
+          <p role="alert" className="text-xs font-medium text-rose-700 dark:text-rose-300">
+            {uploadError}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">

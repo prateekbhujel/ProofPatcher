@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
+import { copyText } from '../Components/ui/copyText';
 import {
   LocalTaskCard,
   CardPreview,
@@ -28,6 +29,7 @@ import { IssueHeaderCard } from '../Components/workbench/IssueHeaderCard';
 import { ProposalDiffCard } from '../Components/workbench/ProposalDiffCard';
 import { VerificationPipelineCard } from '../Components/workbench/VerificationPipelineCard';
 import { TaskComposerFooter } from '../Components/workbench/TaskComposerFooter';
+import { COMPOSER_DRAFT_KEY } from '../Components/os/DesktopWindows';
 
 export type { IssueTriage } from '../Components/workbench/types';
 
@@ -161,6 +163,14 @@ export default function Issues({
   });
   const [viewMode, setViewMode] = useState<'workbench' | 'local-card' | 'new'>(() => {
     if (cardPreview?.context?.cardId) return 'local-card';
+    if (typeof window !== 'undefined') {
+      try {
+        // A note just sent from the desktop scratchpad opens the composer.
+        if (window.localStorage.getItem(COMPOSER_DRAFT_KEY)) return 'new';
+      } catch {
+        // Storage blocked: fall through to the default mode.
+      }
+    }
     if (context) return 'workbench';
     if (localTasks.length > 0) return 'local-card';
     return 'new';
@@ -258,11 +268,11 @@ export default function Issues({
   }
 
   function copyDeviceCode(code: string) {
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(code);
-    }
-    setCopiedDeviceCode(true);
-    setTimeout(() => setCopiedDeviceCode(false), 2000);
+    void copyText(code).then((ok) => {
+      if (!ok) return;
+      setCopiedDeviceCode(true);
+      setTimeout(() => setCopiedDeviceCode(false), 2000);
+    });
   }
 
   function captureIssue(event: React.FormEvent) {
@@ -338,19 +348,19 @@ export default function Issues({
   }
 
   function copyReceipt(sha: string) {
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(sha);
-    }
-    setCopiedReceipt(true);
-    setTimeout(() => setCopiedReceipt(false), 2000);
+    void copyText(sha).then((ok) => {
+      if (!ok) return;
+      setCopiedReceipt(true);
+      setTimeout(() => setCopiedReceipt(false), 2000);
+    });
   }
 
   function copyCandidateHash(sha: string) {
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(sha);
-    }
-    setCopiedCandidateSha(true);
-    setTimeout(() => setCopiedCandidateSha(false), 2000);
+    void copyText(sha).then((ok) => {
+      if (!ok) return;
+      setCopiedCandidateSha(true);
+      setTimeout(() => setCopiedCandidateSha(false), 2000);
+    });
   }
 
   const selectedLocalCard = useMemo(() => {
@@ -632,18 +642,9 @@ export default function Issues({
               </div>
 
               <div className="flex items-center gap-2 text-xs shrink-0">
-                <Link
-                  href="/repositories"
-                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium transition"
-                >
-                  Pull Requests ({githubConnection?.repoPulls?.length ?? 0})
-                </Link>
-                <Link
-                  href="/settings"
-                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium transition"
-                >
-                  Settings
-                </Link>
+                <span className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium">
+                  {githubConnection?.repoPulls?.length ?? 0} open pull {(githubConnection?.repoPulls?.length ?? 0) === 1 ? 'request' : 'requests'}
+                </span>
               </div>
             </div>
 

@@ -35,11 +35,29 @@ const inertiaMock = {
   },
 };
 
+const { exports: kernelTerminalModule } = loadTsxModule('../../resources/js/Components/os/KernelTerminal.tsx');
+const { exports: alertBannerModule } = loadTsxModule(
+  '../../resources/js/Components/ui/AlertBanner.tsx',
+  (id) => (id === '@inertiajs/react' ? inertiaMock : require(id)),
+);
+const { exports: desktopWindowsModule } = loadTsxModule(
+  '../../resources/js/Components/os/DesktopWindows.tsx',
+  (id) => {
+    if (id === '@inertiajs/react') return inertiaMock;
+    if (id === './KernelTerminal') return kernelTerminalModule;
+    if (id === '../ui/AlertBanner') return alertBannerModule;
+    return require(id);
+  },
+);
+const { exports: repoComboboxModule } = loadTsxModule('../../resources/js/Components/workbench/RepoCombobox.tsx');
+
 const { exports: taskCardModule, source: taskCardSource } = loadTsxModule(
   '../../resources/js/Components/TaskCardSection.tsx',
   (id) => {
     if (id === '@inertiajs/react') return inertiaMock;
     if (id === './VoiceDictationButton') return voiceModule;
+    if (id === './workbench/RepoCombobox') return repoComboboxModule;
+    if (id === './os/DesktopWindows') return desktopWindowsModule;
     return require(id);
   }
 );
@@ -290,4 +308,59 @@ test('FocusedLocalTaskView renders actual task preview, single-use approval step
   assert.match(stage3Html, /Allowed once · meta-models\/muse-spark-open-1026 \(225 tokens\)/);
   assert.match(stage3Html, /not written to disk/);
   assert.doesNotMatch(stage3Html, />Allow once</);
+});
+
+test('the task composer offers a searchable repo picker, formatting toolbar, and image attach', () => {
+  const html = renderToStaticMarkup(React.createElement(taskCardModule.NewTaskComposer, {
+    githubConnection: {
+      isConnected: true,
+      repositories: [{ fullName: 'owner/one' }, { fullName: 'owner/two', isPrivate: true }],
+      selectedRepo: 'owner/one',
+    },
+  }));
+  assert.match(html, /role="combobox"/);
+  assert.match(html, /Search repositories/);
+  assert.match(html, /aria-label="Formatting"/);
+  for (const tool of ['Bold', 'Italic', 'Code', 'Quote', 'Bulleted list', 'Link']) {
+    assert.match(html, new RegExp(`aria-label="${tool}"`));
+  }
+  assert.match(html, /Attach a screenshot/);
+  assert.match(html, /accept="image\/png,image\/jpeg"/);
+});
+
+test('the repo combobox lists options with private badges once opened', () => {
+  // Closed by default; the input still advertises search.
+  const html = renderToStaticMarkup(React.createElement(repoComboboxModule.RepoCombobox, {
+    id: 'repo-pick',
+    repos: [{ fullName: 'owner/one' }],
+    value: 'owner/one',
+    onChange: () => {},
+  }));
+  assert.match(html, /role="combobox"/);
+  assert.match(html, /aria-expanded="false"/);
+  assert.doesNotMatch(html, /role="listbox"/);
+});
+
+test('the notes scratchpad offers a draft handoff to issues', () => {
+  const html = renderToStaticMarkup(React.createElement(desktopWindowsModule.NotesContent, {
+    onSendToIssues: () => {},
+  }));
+  assert.match(html, /Scratchpad/);
+  assert.match(html, /Send to Issues as draft/);
+  assert.match(html, /aria-label="Scratchpad notes"/);
+});
+
+test('mission stages open app windows on the desktop and plain links off it', () => {
+  const props = {
+    nextStep: { key: 'intake', title: 'Pick a repo', detail: 'Choose one.', href: '/repositories', cta: 'Open repositories' },
+    stages: [{ key: 'intake', title: 'Intake', detail: 'Pick.', href: '/repositories', state: 'active' }],
+  };
+  const windowed = renderToStaticMarkup(React.createElement(desktopWindowsModule.MissionContent, {
+    ...props,
+    onOpenApp: () => {},
+  }));
+  assert.doesNotMatch(windowed, /<a /);
+  assert.match(windowed, /<button /);
+  const plain = renderToStaticMarkup(React.createElement(desktopWindowsModule.MissionContent, props));
+  assert.match(plain, /<a /);
 });

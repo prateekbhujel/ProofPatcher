@@ -27,7 +27,7 @@ final class KernelSelectRepoCommand extends Command
     {
         $state = KernelCli::connectState();
         if (!$state['connected']) {
-            $this->error('Not connected. Run php artisan github:connect first.');
+            $this->error(KernelCli::report('kernel:select-repo · cannot start', 'not connected', 'php artisan github:connect'));
             return self::FAILURE;
         }
 
@@ -36,7 +36,7 @@ final class KernelSelectRepoCommand extends Command
             $authorized[strtolower($repo['fullName'])] = $repo['fullName'];
         }
         if ($authorized === []) {
-            $this->error('No repositories in the current GitHub grant. Install the GitHub App on a repository, then re-run github:connect.');
+            $this->error(KernelCli::report('kernel:select-repo · cannot start', 'no repositories in the current GitHub grant', 'install the GitHub App on a repository, then re-run github:connect'));
             return self::FAILURE;
         }
 
@@ -52,11 +52,11 @@ final class KernelSelectRepoCommand extends Command
         $repo = trim((string) $repo);
 
         if (!KernelCli::isValidRepo($repo)) {
-            $this->error('Expected a repository handle in owner/repo form.');
+            $this->error(KernelCli::report('kernel:select-repo · cannot start', "expected a repository handle in owner/repo form, got '{$repo}'", 'php artisan kernel:select-repo --list'));
             return self::FAILURE;
         }
         if (!isset($authorized[strtolower($repo)])) {
-            $this->error("{$repo} is not in the current GitHub grant. Authorized: " . implode(', ', array_values($authorized)) . '.');
+            $this->error(KernelCli::report('kernel:select-repo · cannot start', "{$repo} is not in the current GitHub grant. Authorized: " . implode(', ', array_values($authorized)) . '.', 'php artisan kernel:select-repo --list'));
             return self::FAILURE;
         }
         $repo = $authorized[strtolower($repo)];
@@ -65,7 +65,7 @@ final class KernelSelectRepoCommand extends Command
 
         $reviewNote = '';
         if ((bool) $this->option('enable-review') && (bool) $this->option('disable-review')) {
-            $this->error('Pass only one of --enable-review and --disable-review.');
+            $this->error(KernelCli::report('kernel:select-repo · cannot start', 'pass only one of --enable-review and --disable-review', 're-run with a single flag'));
             return self::FAILURE;
         }
         if ((bool) $this->option('enable-review')) {

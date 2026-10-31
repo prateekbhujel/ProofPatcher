@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import {
   FolderGit2,
   RefreshCw,
   Search,
   Plus,
-  Settings as SettingsIcon,
-  LogOut,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -103,6 +101,7 @@ export function WorkbenchSidebar({
                 onClick={() => handleSelectRepo(githubConnection.selectedRepo!)}
                 disabled={loadingRepo}
                 title="Refresh repository issues and pull requests"
+                aria-label="Refresh repository issues and pull requests"
                 className="p-1 rounded text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 dark:text-slate-400"
               >
                 <RefreshCw className={`w-3 h-3 ${loadingRepo ? 'animate-spin' : ''}`} />
@@ -478,64 +477,14 @@ export function WorkbenchSidebar({
 
       {/* Pinned Bottom Account, New Task & Navigation Bar (Never scrolls off-screen) */}
       <div className="shrink-0 p-3 border-t border-slate-200/80 dark:border-slate-800 bg-[#e9e6dc] dark:bg-[#11141c] space-y-2 text-[11px] text-slate-700 dark:text-slate-300">
-        <div className="grid grid-cols-2 gap-1.5">
+        <div>
           <button
             type="button"
             onClick={() => setViewMode('new')}
-            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-800"
+            className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-800"
           >
             <Plus className="mr-1 inline h-3.5 w-3.5" /> New task
           </button>
-          <Link
-            href="/repositories"
-            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-center text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-800"
-          >
-            PR Dashboard
-          </Link>
-        </div>
-        <div className="flex items-center justify-between gap-2 pt-0.5">
-          <div className="flex items-center gap-2 min-w-0">
-            {githubConnection?.user?.avatarUrl ? (
-              <img
-                src={githubConnection.user.avatarUrl}
-                alt={`@${githubConnection.user.login}`}
-                className="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-700 aspect-square shrink-0"
-              />
-            ) : (
-              <span className="w-6 h-6 rounded-full bg-accent-100 dark:bg-accent-950/80 text-accent-800 dark:text-accent-300 border border-accent-200 dark:border-accent-800 flex items-center justify-center font-bold text-[10px] shrink-0">
-                {githubConnection?.user?.login?.slice(0, 2).toUpperCase() || 'PF'}
-              </span>
-            )}
-            <div className="min-w-0">
-              <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
-                {githubConnection?.user?.login ? `@${githubConnection.user.login}` : 'GitHub'}
-              </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                {githubConnection?.selectedRepo || 'GitHub connected'}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Link
-              href="/settings"
-              aria-label="Account and GitHub settings"
-              title="Account & GitHub settings"
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-300/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-900 text-[11px] font-medium shrink-0 dark:hover:text-slate-100"
-            >
-              <SettingsIcon className="w-3.5 h-3.5" />
-              <span>Settings</span>
-            </Link>
-            <button
-              type="button"
-              onClick={() => router.post('/github/device/disconnect', { redirect_to: '/issues' })}
-              aria-label="Log out and disconnect GitHub"
-              title="Log out / Disconnect GitHub session"
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-rose-200 dark:border-rose-900/70 bg-rose-50/80 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 text-[11px] font-medium shrink-0 transition"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Log out</span>
-            </button>
-          </div>
         </div>
       </div>
     </aside>

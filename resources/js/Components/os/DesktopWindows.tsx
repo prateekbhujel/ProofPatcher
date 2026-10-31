@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, StickyNote } from 'lucide-react';
 import { KernelTerminal, TerminalLine } from './KernelTerminal';
 import { AlertBanner, EmptyState } from '../ui/AlertBanner';
 
@@ -53,7 +53,7 @@ function stageDot(state: KernelStage['state']) {
   return <span className="inline-block h-2.5 w-2.5 rounded-full border border-slate-300 dark:border-slate-600" aria-label="upcoming stage" />;
 }
 
-function NextCta({ step }: { step: KernelNextStep }) {
+function NextCta({ step, onOpenApp }: { step: KernelNextStep; onOpenApp?: (href: string) => void }) {
   const external = step.href.startsWith('http');
   const className =
     'inline-flex shrink-0 items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold hover:bg-slate-800 transition';
@@ -70,6 +70,13 @@ function NextCta({ step }: { step: KernelNextStep }) {
       </a>
     );
   }
+  if (onOpenApp) {
+    return (
+      <button type="button" onClick={() => onOpenApp(step.href)} className={className}>
+        {body}
+      </button>
+    );
+  }
   return (
     <Link href={step.href} className={className}>
       {body}
@@ -78,32 +85,52 @@ function NextCta({ step }: { step: KernelNextStep }) {
 }
 
 /** Mission window: the one next step plus the four pipeline stages. */
-export function MissionContent({ nextStep, stages }: { nextStep: KernelNextStep; stages: KernelStage[] }) {
+export function MissionContent({
+  nextStep,
+  stages,
+  onOpenApp,
+}: {
+  nextStep: KernelNextStep;
+  stages: KernelStage[];
+  onOpenApp?: (href: string) => void;
+}) {
   return (
     <div className="space-y-3">
       <div>
         <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Start here: {nextStep.title}</h2>
         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{nextStep.detail}</p>
         <p className="mt-2">
-          <NextCta step={nextStep} />
+          <NextCta step={nextStep} onOpenApp={onOpenApp} />
         </p>
       </div>
       <ol className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-        {stages.map((stage, index) => (
-          <li key={stage.key}>
-            <Link
-              href={stage.href}
-              className="flex h-full items-start gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 px-2.5 py-2 hover:border-slate-300 dark:hover:border-slate-700 transition"
-            >
+        {stages.map((stage, index) => {
+          const cardBody = (
+            <>
               <span className="mt-0.5 text-[11px] font-mono text-slate-400">{index + 1}</span>
               <span className="mt-1">{stageDot(stage.state)}</span>
               <span className="min-w-0">
                 <span className="block text-xs font-semibold text-slate-900 dark:text-slate-100">{stage.title}</span>
                 <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{stage.detail}</span>
               </span>
-            </Link>
-          </li>
-        ))}
+            </>
+          );
+          const cardClass =
+            'flex h-full w-full items-start gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 px-2.5 py-2 text-left hover:border-slate-300 dark:hover:border-slate-700 transition';
+          return (
+            <li key={stage.key}>
+              {onOpenApp ? (
+                <button type="button" onClick={() => onOpenApp(stage.href)} className={cardClass}>
+                  {cardBody}
+                </button>
+              ) : (
+                <Link href={stage.href} className={cardClass}>
+                  {cardBody}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );
@@ -352,6 +379,98 @@ export function EngineContent({
           <code className="select-all font-mono text-[11px]">php artisan review:poll --daemon</code>
         </p>
       )}
+    </div>
+  );
+}
+
+const NOTES_KEY = 'proofpatch.notes.v1';
+export const COMPOSER_DRAFT_KEY = 'proofpatch.composerDraft.v1';
+
+export interface ComposerDraft {
+  title: string;
+  description: string;
+}
+
+function readNotes(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.localStorage.getItem(NOTES_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Notes window: scratchpad that survives reloads and can seed a task draft. */
+export function NotesContent({ onSendToIssues }: { onSendToIssues: () => void }) {
+  const [text, setText] = useState<string>(readNotes);
+  const trimmed = text.trim();
+  const words = trimmed ? trimmed.split(/\s+/).length : 0;
+
+  function update(next: string) {
+    setText(next);
+    try {
+      window.localStorage.setItem(NOTES_KEY, next);
+    } catch {
+      // Private mode: the note still works for this session.
+    }
+  }
+
+  function sendToIssues() {
+    if (!trimmed) return;
+    const firstLine = trimmed.split('\n').map((line) => line.trim()).find((line) => line.length > 0) ?? '';
+    const draft: ComposerDraft = {
+      title: firstLine.slice(0, 180),
+      description: trimmed.slice(0, 10000),
+    };
+    try {
+      window.localStorage.setItem(COMPOSER_DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Storage blocked: Issues still opens, the draft just won't prefill.
+    }
+    onSendToIssues();
+  }
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
+          <StickyNote className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+          Scratchpad
+        </p>
+        <p className="font-mono text-[11px] text-slate-400" aria-live="polite">
+          {words} {words === 1 ? 'word' : 'words'}
+        </p>
+      </div>
+      <textarea
+        value={text}
+        onChange={(e) => update(e.target.value)}
+        rows={8}
+        placeholder="Rough is fine — jot the symptom, the file, the guess. Send it to Issues and shape it into a task there."
+        aria-label="Scratchpad notes"
+        className="w-full min-h-[12rem] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-3 text-sm leading-relaxed text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 transition resize-y"
+      />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">Saved on this machine · never sent anywhere</p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => update('')}
+            disabled={!trimmed}
+            className="rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 transition"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={sendToIssues}
+            disabled={!trimmed}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 px-3.5 py-1.5 text-xs font-semibold text-white dark:text-slate-900 hover:bg-slate-800 disabled:opacity-40 transition"
+          >
+            Send to Issues as draft
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

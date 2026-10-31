@@ -18,14 +18,14 @@ final class VerifyPatchCommand extends Command
     {
         $path = (string) $this->argument('patch');
         if (!is_file($path) || filesize($path) > 16384) {
-            $this->error('Patch file must exist and be at most 16 KB.');
+            $this->error(\ProofPatch\Support\KernelCli::report('review:verify · cannot start', "patch file '{$path}' must exist and be at most 16 KB", 'pass the path to a JSON patch file'));
             return self::FAILURE;
         }
 
         try {
             $input = json_decode((string) file_get_contents($path), true, 32, JSON_THROW_ON_ERROR);
             if (!is_array($input)) {
-                $this->error('Expected a JSON patch object.');
+                $this->error(\ProofPatch\Support\KernelCli::report('review:verify · cannot start', 'expected a JSON patch object', 'pass the path to a JSON patch file'));
                 return self::FAILURE;
             }
 
@@ -41,7 +41,7 @@ final class VerifyPatchCommand extends Command
                 default => 78,
             };
         } catch (\Throwable $e) {
-            $this->error('Verification error: '.$e->getMessage());
+            $this->error(\ProofPatch\Support\KernelCli::report('review:verify · error', $e->getMessage(), 'fix the cause above, then re-run'));
             return self::FAILURE;
         }
     }
