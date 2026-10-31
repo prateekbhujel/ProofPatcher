@@ -120,7 +120,7 @@ export function UnifiedDiffTable({
                         }
                         className={`w-5 h-5 rounded inline-flex items-center justify-center transition ${
                           matchingDraft
-                            ? 'bg-violet-600 text-white shadow-2xs'
+                            ? 'bg-accent-600 text-white shadow-2xs'
                             : matchingFinding
                             ? 'bg-[#0969da] text-white shadow-2xs'
                             : 'text-slate-400 opacity-50 group-hover:opacity-100 hover:bg-[#0969da] hover:text-white focus:opacity-100 focus:bg-[#0969da] focus:text-white'
@@ -158,7 +158,7 @@ export function UnifiedDiffTable({
                         {/* Bot Header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-violet-700 text-white flex items-center justify-center text-xs font-bold">
+                            <div className="w-6 h-6 rounded-full bg-accent-700 text-white flex items-center justify-center text-xs font-bold">
                               <Sparkles className="w-3.5 h-3.5" />
                             </div>
                             <span className="text-xs font-semibold text-[#1f2328]">Muse suggestion</span>
@@ -189,7 +189,7 @@ export function UnifiedDiffTable({
                                       matchingDraft?.comment || matchingFinding.comment
                                     )
                               }
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:text-violet-900 underline"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-accent-700 hover:text-accent-900 underline"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                               <span>
@@ -247,7 +247,7 @@ export function UnifiedDiffTable({
                 {/* Saved Local Draft Banner */}
                 {matchingDraft && (
                   <tr>
-                    <td colSpan={5} className="p-3 bg-violet-50/70 border-y border-violet-200">
+                    <td colSpan={5} className="p-3 bg-accent-50/70 border-y border-accent-200">
                       <InlineDraft draft={matchingDraft} onEdit={() => openEditorForLine(lineKey, matchingDraft.comment)} onDelete={onDeleteDraft} />
                     </td>
                   </tr>

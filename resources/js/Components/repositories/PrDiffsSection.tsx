@@ -91,7 +91,7 @@ export function PrDiffsSection({
         {snapshotId && (
           <Link
             href={`/repositories?snapshot=${encodeURIComponent(snapshotId)}&preview=1`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-md text-white bg-violet-700 hover:bg-violet-800 shadow-xs transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-md text-white bg-accent-700 hover:bg-accent-800 shadow-xs transition"
           >
             <span>Load Public Patch Preview</span>
           </Link>

@@ -107,7 +107,7 @@ export default function Checks({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                <span className="px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 font-mono text-[10px] font-bold uppercase tracking-wider">
+                <span className="px-1.5 py-0.5 rounded bg-accent-100 text-accent-800 font-mono text-[10px] font-bold uppercase tracking-wider">
                   Kernel Module · Chromium Sandbox
                 </span>
                 <span>/</span>
@@ -118,7 +118,7 @@ export default function Checks({
               <h1 className="text-xl font-bold tracking-tight text-slate-900">Visual &amp; CSS Sandbox Verification</h1>
               <p className="text-xs text-slate-600 max-w-2xl">
                 4-gate headless Chromium visual verifier for UI/CSS patches (Baseline Reproduction, Protected E2E Tests, Outside-Mask Pixel Guard, and Test Authority Integrity). For backend PHP/AST 5-Gate repository issue verification, use{' '}
-                <Link href="/issues" className="font-semibold text-violet-700 hover:underline">
+                <Link href="/issues" className="font-semibold text-accent-700 hover:underline">
                   Issues &amp; Tasks
                 </Link>
                 .
@@ -251,7 +251,7 @@ export default function Checks({
               />
             ) : (
               <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-8 text-center space-y-4">
-                <div className="w-12 h-12 rounded-full bg-violet-50 text-violet-700 flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-full bg-accent-50 text-accent-700 flex items-center justify-center mx-auto">
                   <ImageIcon className="w-6 h-6" />
                 </div>
                 <div className="max-w-md mx-auto space-y-1.5">
@@ -271,7 +271,7 @@ export default function Checks({
                   <div className="pt-2">
                     <Link
                       href={`/checks?run=${encodeURIComponent(latestVisualRunId)}&tab=visual`}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg text-white bg-violet-700 hover:bg-violet-800 transition shadow-xs"
+                      className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg text-white bg-accent-700 hover:bg-accent-800 transition shadow-xs"
                     >
                       <ImageIcon className="w-4 h-4" />
                       <span>Inspect Latest Visual Checkout Check ({latestVisualRunId.slice(0, 15)}...)</span>

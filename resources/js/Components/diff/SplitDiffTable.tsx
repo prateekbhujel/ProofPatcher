@@ -92,7 +92,7 @@ export function SplitDiffTable({
                       {row.left?.lineNum != null && (
                         <button type="button" aria-label={`Add comment on line ${row.left.lineNum} (base)`}
                           onClick={() => isLeftEditorOpen ? closeEditor() : openEditorForLine(leftLineKey, leftDraft?.comment)}
-                          className="w-4 h-4 rounded inline-flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 bg-violet-600 text-white transition hover:bg-violet-700">
+                          className="w-4 h-4 rounded inline-flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 bg-accent-600 text-white transition hover:bg-accent-700">
                           <Plus className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -133,7 +133,7 @@ export function SplitDiffTable({
                           onClick={() =>
                             isRightEditorOpen ? closeEditor() : openEditorForLine(rightLineKey, rightDraft?.comment)
                           }
-                          className="w-4 h-4 rounded inline-flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 bg-violet-600 text-white transition hover:bg-violet-700"
+                          className="w-4 h-4 rounded inline-flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 bg-accent-600 text-white transition hover:bg-accent-700"
                         >
                           <Plus className="w-3.5 h-3.5" />
                         </button>
@@ -168,7 +168,7 @@ export function SplitDiffTable({
                 )}
                 {[leftDraft, rightDraft].filter((draft): draft is CommentDraft => Boolean(draft)).map((draft) => (
                   <tr key={draft.id}>
-                    <td colSpan={6} className="p-3 bg-violet-50/70 border-y border-violet-200">
+                    <td colSpan={6} className="p-3 bg-accent-50/70 border-y border-accent-200">
                       <InlineDraft draft={draft} onEdit={() => openEditorForLine(draft.side === 'LEFT' ? leftLineKey : rightLineKey, draft.comment)} onDelete={onDeleteDraft} />
                     </td>
                   </tr>

@@ -60,7 +60,7 @@ export function TaskComposerFooter({
                     onClick={() => onExecutePrompt('create draft pr')}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300 transition"
                   >
-                    <GitPullRequest className="w-3 h-3 text-violet-600" />
+                    <GitPullRequest className="w-3 h-3 text-accent-600" />
                     <span>Open PR</span>
                   </button>
                   {activeOpenPull && (
@@ -90,11 +90,11 @@ export function TaskComposerFooter({
             onChange={(e) => onDraftChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a command (e.g. &quot;merge pr #10&quot;, &quot;verify checks&quot;, &quot;create draft pr&quot;, or a new automation task prompt) or save maintainer review notes…"
-            className="w-full h-auto min-h-[76px] max-h-[16rem] [field-sizing:content] rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 px-3 py-2 text-sm leading-relaxed text-slate-900 placeholder-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 dark:text-slate-100 resize-y transition"
+            className="w-full h-auto min-h-[76px] max-h-[16rem] [field-sizing:content] rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 px-3 py-2 text-sm leading-relaxed text-slate-900 placeholder-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 dark:text-slate-100 resize-y transition"
           />
 
           {commandFeedback && (
-            <div className="text-xs font-medium text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/70 rounded-lg px-3 py-1.5">
+            <div className="text-xs font-medium text-accent-700 dark:text-accent-300 bg-accent-50 dark:bg-accent-950/40 border border-accent-200 dark:border-accent-800/70 rounded-lg px-3 py-1.5">
               {commandFeedback}
             </div>
           )}
@@ -131,7 +131,7 @@ export function TaskComposerFooter({
                   type="button"
                   disabled={!draftValue.trim()}
                   onClick={() => onExecutePrompt(draftValue.trim())}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-violet-700 text-white hover:bg-violet-800 text-xs font-semibold disabled:opacity-40 transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-accent-700 text-white hover:bg-accent-800 text-xs font-semibold disabled:opacity-40 transition"
                 >
                   <Play className="w-3 h-3" />
                   <span>Run Prompt</span>

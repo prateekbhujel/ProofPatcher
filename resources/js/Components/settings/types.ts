@@ -69,16 +69,46 @@ export interface ProviderConfig {
   modalNote: string;
 }
 
+export interface AutoReviewStats {
+  totalReviews: number;
+  completed: number;
+  failed: number;
+  skippedPrivate: number;
+  skippedBudget: number;
+}
+
+export interface AutoReviewRecentResult {
+  id: number;
+  repository: string;
+  pull_number: number;
+  status: string;
+  summary: string | null;
+  risk_level: string | null;
+  recommendation: string | null;
+  model: string | null;
+  published_status: string | null;
+  reviewed_at: string | null;
+  created_at: string | null;
+}
+
+export interface AutopilotBudgetCaps {
+  maxAttempts: number | null;
+  maxReservedDollars: number | null;
+}
+
 export interface SettingsProps {
   githubConnection: GitHubConnection;
   budget: BudgetStatus | null;
   policy: SettingsPolicy;
   providerConfig?: ProviderConfig | null;
+  autopilotBudget?: AutopilotBudgetCaps | null;
   statusMessage?: string | null;
   errorMessage?: string | null;
   autoReview?: {
     worker: { isLive: boolean; status: string; message?: string };
     settings: Record<string, { repository: string; enabled: boolean }> | [];
+    stats?: AutoReviewStats;
+    recentResults?: AutoReviewRecentResult[];
     publicOnly: boolean;
   } | null;
 }

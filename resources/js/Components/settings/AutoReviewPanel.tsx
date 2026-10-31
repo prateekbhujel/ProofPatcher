@@ -11,19 +11,42 @@ interface Props {
   onRefresh: () => void;
 }
 
+function statusLabel(status: string): string {
+  switch (status) {
+    case 'completed':
+      return 'Reviewed';
+    case 'failed':
+      return 'Failed';
+    case 'skipped_private':
+      return 'Skipped (private)';
+    case 'skipped_budget':
+      return 'Skipped (budget)';
+    case 'skipped_opted_out':
+      return 'Skipped (opted out)';
+    case 'in_progress':
+      return 'In progress';
+    case 'unknown':
+      return 'Unknown';
+    default:
+      return status.replace(/_/g, ' ');
+  }
+}
+
 export function AutoReviewPanel({ connected, repositories, autoReview, pendingRepo, error, onToggle, onRefresh }: Props) {
   const settings = autoReview?.settings || {};
+  const stats = autoReview?.stats;
+  const recentResults = autoReview?.recentResults || [];
 
   return (
     <section className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs" aria-labelledby="auto-review-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="auto-review-title" className="text-sm font-semibold text-slate-900 dark:text-slate-100">Automatic reviews</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Muse reviews open and updated public pull requests while the local worker is running.</p>
+          <h2 id="auto-review-title" className="text-sm font-semibold text-slate-900 dark:text-slate-100">Autopilot reviews</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Muse reviews open and updated public pull requests while autopilot is running.</p>
         </div>
         {autoReview && (
-          <button type="button" onClick={onRefresh} className="text-xs text-violet-700 dark:text-violet-300 hover:underline" aria-label="Refresh worker status">
-            {autoReview.worker.isLive ? 'Worker running' : 'Worker offline'} · Refresh
+          <button type="button" onClick={onRefresh} className="text-xs text-accent-700 dark:text-accent-300 hover:underline" aria-label="Refresh autopilot status">
+            {autoReview.worker.isLive ? 'Autopilot running' : 'Autopilot offline'} · Refresh
           </button>
         )}
       </div>
@@ -58,7 +81,7 @@ export function AutoReviewPanel({ connected, repositories, autoReview, pendingRe
                   <input type="checkbox" aria-label={`Automatic review for ${repo.fullName}`} checked={enabled}
                     disabled={pendingRepo !== null || repo.isPrivate}
                     onChange={(event) => onToggle(repo.fullName, event.currentTarget.checked)}
-                    className="accent-violet-600 disabled:opacity-50" />
+                    className="accent-600 disabled:opacity-50" />
                 </label>
               </div>
             );
@@ -69,7 +92,58 @@ export function AutoReviewPanel({ connected, repositories, autoReview, pendingRe
       {autoReview && (
         <div className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
           <p>Reviews use credits and appear in ProofPatcher. They are not posted to GitHub automatically.</p>
-          {!autoReview.worker.isLive && <p>Start the local worker: <code className="select-all">php artisan review:poll --daemon</code></p>}
+          {!autoReview.worker.isLive && <p>Start autopilot: <code className="select-all">php artisan review:poll --daemon</code></p>}
+        </div>
+      )}
+
+      {autoReview && connected && stats && (
+        <div className="text-xs text-slate-500 dark:text-slate-400" aria-label="Automatic review totals">
+          {stats.completed} reviewed · {stats.failed} failed · {stats.skippedPrivate} skipped (private) · {stats.skippedBudget} skipped (budget)
+        </div>
+      )}
+
+      {autoReview && connected && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100">Recent findings</h3>
+          {recentResults.length === 0 ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              No automatic reviews yet. Enable a public repository above and start autopilot; new findings will appear here and stay in ProofPatcher.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg">
+              {recentResults.map((result) => (
+                <li key={result.id} className="px-3 py-2.5 text-xs space-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-slate-900 dark:text-slate-100 break-all">
+                      {result.repository}#{result.pull_number}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      result.status === 'completed'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                        : result.status === 'failed'
+                        ? 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800'
+                        : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                    }`}>
+                      {statusLabel(result.status)}
+                    </span>
+                  </div>
+                  {result.status === 'completed' && (
+                    <div className="text-slate-600 dark:text-slate-300 space-y-0.5">
+                      <div>
+                        {result.recommendation ? result.recommendation.replace(/_/g, ' ') : 'No recommendation'}
+                        {result.risk_level ? ` · ${result.risk_level} risk` : ''}
+                      </div>
+                      {result.summary && <p className="text-slate-500 dark:text-slate-400 line-clamp-2">{result.summary}</p>}
+                    </div>
+                  )}
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Stored locally · Not posted to GitHub
+                    {result.reviewed_at ? ` · ${new Date(result.reviewed_at).toLocaleString()}` : ''}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
       {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}

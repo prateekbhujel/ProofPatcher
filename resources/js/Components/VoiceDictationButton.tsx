@@ -224,11 +224,11 @@ export function VoiceDictationButton({
         disabled={disabled || isTranscribing}
         aria-pressed={isListening}
         aria-label={isListening ? 'Stop voice dictation' : 'Start voice dictation'}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 disabled:opacity-40 ${
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 disabled:opacity-40 ${
           isListening
             ? 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/70 dark:text-rose-200 dark:border-rose-800'
             : isTranscribing
-              ? 'bg-violet-50 text-violet-800 border-violet-300 dark:bg-violet-950/70 dark:text-violet-200 dark:border-violet-800'
+              ? 'bg-accent-50 text-accent-800 border-accent-300 dark:bg-accent-950/70 dark:text-accent-200 dark:border-accent-800'
               : state === 'unsupported' || state === 'error'
                 ? 'bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/70 dark:text-amber-200 dark:border-amber-800'
                 : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'

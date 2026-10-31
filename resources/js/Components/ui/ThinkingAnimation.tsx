@@ -46,7 +46,7 @@ export function ThinkingAnimation({
     >
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-2.5">
         <div className="flex items-center gap-2.5">
-          <Loader2 className="w-4 h-4 text-violet-700 dark:text-violet-400 animate-spin shrink-0" />
+          <Loader2 className="w-4 h-4 text-accent-700 dark:text-accent-400 animate-spin shrink-0" />
           <div>
             <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">{subtitle}</p>
@@ -69,14 +69,14 @@ export function ThinkingAnimation({
                   isDone
                     ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
                     : isCurrent
-                    ? 'border-violet-300 bg-violet-50/60 text-violet-950 font-medium'
+                    ? 'border-accent-300 bg-accent-50/60 text-accent-950 font-medium'
                     : 'border-slate-200 bg-slate-50 text-slate-500'
                 }`}
               >
                 {isDone ? (
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 ) : isCurrent ? (
-                  <Loader2 className="w-3.5 h-3.5 text-violet-600 animate-spin shrink-0" />
+                  <Loader2 className="w-3.5 h-3.5 text-accent-600 animate-spin shrink-0" />
                 ) : (
                   <span className="w-3.5 h-3.5 rounded-full border border-slate-300 flex items-center justify-center text-[9px] font-mono text-slate-400 shrink-0">
                     {idx + 1}

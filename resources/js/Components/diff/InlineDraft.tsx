@@ -8,10 +8,10 @@ export function InlineDraft({ draft, onEdit, onDelete }: {
   onDelete?: (id: string) => void;
 }) {
   return (
-    <div className="p-3 rounded-lg bg-white border border-violet-200 shadow-2xs space-y-2 font-sans">
+    <div className="p-3 rounded-lg bg-white border border-accent-200 shadow-2xs space-y-2 font-sans">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-2xs font-bold font-mono px-2 py-0.5 rounded bg-violet-100 text-violet-900 border border-violet-300">
+          <span className="text-2xs font-bold font-mono px-2 py-0.5 rounded bg-accent-100 text-accent-900 border border-accent-300">
             Saved Local Draft · Line {draft.line} ({draft.side})
           </span>
           {draft.updatedAt && <span className="text-2xs text-slate-500 font-mono">{new Date(draft.updatedAt).toLocaleTimeString()}</span>}

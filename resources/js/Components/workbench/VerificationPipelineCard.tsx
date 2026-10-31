@@ -83,7 +83,7 @@ export function VerificationPipelineCard({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-violet-700 dark:text-violet-400" />
+                <Shield className="w-3.5 h-3.5 text-accent-700 dark:text-accent-400" />
                 <span>Check this change</span>
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -170,10 +170,10 @@ export function VerificationPipelineCard({
 
               {/* GitHub Co-Maintainer Attribution & 1-Click Response Preview */}
               {verificationReport.decision === 'VERIFIED' && (
-                <div className="rounded-xl border border-violet-200 dark:border-violet-800/80 bg-violet-50/35 dark:bg-violet-950/20 p-3.5 space-y-2 text-xs mt-3">
+                <div className="rounded-xl border border-accent-200 dark:border-accent-800/80 bg-accent-50/35 dark:bg-accent-950/20 p-3.5 space-y-2 text-xs mt-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
-                      <Bot className="w-3.5 h-3.5 text-violet-700 dark:text-violet-400" />
+                      <Bot className="w-3.5 h-3.5 text-accent-700 dark:text-accent-400" />
                       <span>Check summary</span>
                     </div>
                     <span className="text-[10px] text-slate-500">Not posted to GitHub</span>
@@ -190,7 +190,7 @@ export function VerificationPipelineCard({
                         setCopiedBotComment(true);
                         setTimeout(() => setCopiedBotComment(false), 2000);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-violet-700 hover:bg-violet-800 text-white font-semibold text-[11px] transition"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-accent-700 hover:bg-accent-800 text-white font-semibold text-[11px] transition"
                     >
                       {copiedBotComment ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedBotComment ? 'Copied' : 'Copy summary'}</span>
@@ -203,6 +203,34 @@ export function VerificationPipelineCard({
           )}
         </div>
       )}
+
+      {suggestion && !(isOwnedFixture || isDedicatedTestRepo) && (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#141821] p-5 space-y-2 shadow-2xs">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+            <span>Checks unavailable for this repository</span>
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Automated checks run only on the pinned OrderTotal fixture and the dedicated test repository.
+            This suggestion is advisory and unverified: ProofPatcher has not executed it, and no draft PR can be created from it here.
+          </p>
+        </div>
+      )}
+
+      {verificationReport?.decision === 'VERIFIED' &&
+        verificationReport.isSimulated !== false &&
+        isDedicatedTestRepo && (
+          <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/20 p-5 space-y-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Draft PR unavailable for this run</span>
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              This run used host or simulated execution, so it cannot authorize publication.
+              Creating a draft PR requires a verified run from the isolated sandbox. The receipt above remains local evidence only.
+            </p>
+          </div>
+        )}
 
       {/* Pull Request & Merge Controls */}
       {verificationReport?.decision === 'VERIFIED' &&
@@ -227,7 +255,7 @@ export function VerificationPipelineCard({
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {mergedPull && (
-                  <span className="text-[10px] font-mono text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-950 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                  <span className="text-[10px] font-mono text-accent-800 dark:text-accent-300 bg-accent-100 dark:bg-accent-950 px-2 py-0.5 rounded border border-accent-200 dark:border-accent-800">
                     PR #{mergedPull.number} MERGED
                   </span>
                 )}
@@ -305,7 +333,7 @@ export function VerificationPipelineCard({
                     href={publishedPr.prUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 dark:text-violet-400 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-accent-700 dark:text-accent-400 hover:underline"
                   >
                     <span>Open on GitHub</span>
                     <ExternalLink className="w-3 h-3" />

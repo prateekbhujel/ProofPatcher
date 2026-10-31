@@ -132,7 +132,7 @@ export function ProposalDiffCard({
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#141821] overflow-hidden shadow-2xs">
           <div className="px-4 py-3 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 font-mono text-xs font-semibold text-slate-900 dark:text-slate-100">
-              <FileCode className="w-4 h-4 text-violet-700 dark:text-violet-400" />
+              <FileCode className="w-4 h-4 text-accent-700 dark:text-accent-400" />
               <span>{suggestion.path}</span>
             </div>
             <div className="flex items-center gap-2">

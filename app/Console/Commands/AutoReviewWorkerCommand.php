@@ -68,9 +68,16 @@ final class AutoReviewWorkerCommand extends Command
                 AutoReviewWorkerHeartbeat::updateBeat($workerId, $cycle);
 
                 $this->line("<comment>[Cycle #{$cycle}]</comment> Polling authorized repositories at ".date('Y-m-d H:i:s').'...');
+                $cycleStarted = microtime(true);
                 $result = $service->poll(onlyRepo: $repo);
+                $elapsed = round(microtime(true) - $cycleStarted, 1);
 
-                $this->line("  Status: {$result['status']}");
+                $statusTag = match ($result['status'] ?? 'unknown') {
+                    'ok' => 'info',
+                    'no_token', 'no_repositories_enabled' => 'comment',
+                    default => 'error',
+                };
+                $this->line("  Status: <{$statusTag}>{$result['status']}</{$statusTag}> ({$elapsed}s)");
                 $this->line("  Repositories checked: {$result['reposChecked']}");
                 $this->line("  Pull requests inspected: {$result['pullsInspected']}");
                 $this->line("  Reviews completed: {$result['reviewsCompleted']}");
@@ -87,6 +94,7 @@ final class AutoReviewWorkerCommand extends Command
                     break;
                 }
 
+                $this->line("  <comment>Next cycle in {$interval}s…</comment>");
                 sleep($interval);
             } while ($this->running);
         } finally {

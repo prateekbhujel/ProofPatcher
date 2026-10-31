@@ -68,7 +68,7 @@ export function PrDashboardView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="p-1 rounded bg-violet-50 text-violet-700">
+              <span className="p-1 rounded bg-accent-50 text-accent-700">
                 <GitPullRequest className="w-4 h-4" />
               </span>
               <h1 className="text-lg font-bold text-slate-900 tracking-tight">Pull Request Reviews</h1>
@@ -84,7 +84,7 @@ export function PrDashboardView({
               <select
                 value={selectedRepo || ''}
                 onChange={(e) => handleSelectRepository(e.target.value)}
-                className="appearance-none pl-8 pr-8 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-600 shadow-2xs transition cursor-pointer text-slate-800"
+                className="appearance-none pl-8 pr-8 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-accent-600 shadow-2xs transition cursor-pointer text-slate-800"
               >
                 {repositories.map((repo) => (
                   <option key={repo.fullName} value={repo.fullName}>
@@ -115,7 +115,7 @@ export function PrDashboardView({
               onClick={() => setStatusFilter('all')}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
                 statusFilter === 'all'
-                  ? 'bg-violet-700 text-white font-semibold shadow-xs'
+                  ? 'bg-accent-700 text-white font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70'
               }`}
             >
@@ -126,7 +126,7 @@ export function PrDashboardView({
               onClick={() => setStatusFilter('open')}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
                 statusFilter === 'open'
-                  ? 'bg-violet-700 text-white font-semibold shadow-xs'
+                  ? 'bg-accent-700 text-white font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70'
               }`}
             >
@@ -137,7 +137,7 @@ export function PrDashboardView({
               onClick={() => setStatusFilter('merged')}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
                 statusFilter === 'merged'
-                  ? 'bg-violet-700 text-white font-semibold shadow-xs'
+                  ? 'bg-accent-700 text-white font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70'
               }`}
             >
@@ -148,7 +148,7 @@ export function PrDashboardView({
               onClick={() => setStatusFilter('closed')}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
                 statusFilter === 'closed'
-                  ? 'bg-violet-700 text-white font-semibold shadow-xs'
+                  ? 'bg-accent-700 text-white font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70'
               }`}
             >
@@ -163,7 +163,7 @@ export function PrDashboardView({
               placeholder="Search pull requests..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-600 shadow-2xs"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-accent-600 shadow-2xs"
             />
           </div>
         </div>
@@ -194,7 +194,7 @@ export function PrDashboardView({
             return (
               <div
                 key={pr.number}
-                className="bg-white rounded-xl border border-slate-200/90 hover:border-violet-300 hover:shadow-xs p-4 sm:p-5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="bg-white rounded-xl border border-slate-200/90 hover:border-accent-300 hover:shadow-xs p-4 sm:p-5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="space-y-1.5 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -202,7 +202,7 @@ export function PrDashboardView({
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
                         isMerged
-                          ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                          ? 'bg-accent-50 text-accent-700 border border-accent-200'
                           : isClosed
                           ? 'bg-rose-50 text-rose-700 border border-rose-200'
                           : isDraft
@@ -242,7 +242,7 @@ export function PrDashboardView({
                   <button
                     type="button"
                     onClick={() => handleCaptureGitHubPull(pr)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-white bg-violet-700 hover:bg-violet-800 shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-white bg-accent-700 hover:bg-accent-800 shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600"
                   >
                     <span>Inspect &amp; Review</span>
                     <ArrowRight className="w-3.5 h-3.5" />

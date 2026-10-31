@@ -30,7 +30,7 @@ export function PrTabBar({
           onClick={() => setActiveTab('overview')}
           className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
             activeTab === 'overview'
-              ? 'border-violet-700 text-violet-900 font-semibold'
+              ? 'border-accent-700 text-accent-900 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
           }`}
         >
@@ -43,7 +43,7 @@ export function PrTabBar({
           onClick={() => setActiveTab('triage')}
           className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
             activeTab === 'triage'
-              ? 'border-violet-700 text-violet-900 font-semibold'
+              ? 'border-accent-700 text-accent-900 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
           }`}
         >
@@ -61,7 +61,7 @@ export function PrTabBar({
           onClick={() => setActiveTab('files')}
           className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
             activeTab === 'files'
-              ? 'border-violet-700 text-violet-900 font-semibold'
+              ? 'border-accent-700 text-accent-900 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
           }`}
         >
@@ -77,7 +77,7 @@ export function PrTabBar({
           onClick={() => setActiveTab('review')}
           className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
             activeTab === 'review'
-              ? 'border-violet-700 text-violet-900 font-semibold'
+              ? 'border-accent-700 text-accent-900 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
           }`}
         >
@@ -108,7 +108,7 @@ export function PrTabBar({
           onClick={() => setActiveTab('checks')}
           className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
             activeTab === 'checks'
-              ? 'border-violet-700 text-violet-900 font-semibold'
+              ? 'border-accent-700 text-accent-900 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
           }`}
         >
@@ -124,7 +124,7 @@ export function PrTabBar({
           onClick={() => setActiveTab('receipt')}
           className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
             activeTab === 'receipt'
-              ? 'border-violet-700 text-violet-900 font-semibold'
+              ? 'border-accent-700 text-accent-900 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
           }`}
         >
@@ -137,7 +137,7 @@ export function PrTabBar({
           onClick={() => setActiveTab('new')}
           className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
             activeTab === 'new'
-              ? 'border-violet-700 text-violet-900 font-semibold'
+              ? 'border-accent-700 text-accent-900 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
           }`}
         >

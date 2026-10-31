@@ -56,14 +56,14 @@ export function PrFilesTab({
             placeholder="Filter files..."
             value={fileQuery}
             onChange={(e) => setFileQuery(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500 shadow-2xs"
+            className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-accent-500 shadow-2xs"
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-between p-3 rounded-lg bg-violet-50/70 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 text-xs text-violet-900 dark:text-violet-200">
+      <div className="flex items-center justify-between p-3 rounded-lg bg-accent-50/70 dark:bg-accent-950/40 border border-accent-200 dark:border-accent-800 text-xs text-accent-900 dark:text-accent-200">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-violet-700 dark:text-violet-400 shrink-0" />
+          <MessageSquare className="w-4 h-4 text-accent-700 dark:text-accent-400 shrink-0" />
           <span><strong>Inline Comments:</strong> Click the <strong>+</strong> button on any diff line to add maintainer review comments. Drafts stay local until published.</span>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function PrFilesTab({
           </div>
           <Link
             href={`/repositories?snapshot=${encodeURIComponent(snapshot.id)}&preview=1`}
-            className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md text-white bg-violet-700 hover:bg-violet-800 shadow-xs transition"
+            className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md text-white bg-accent-700 hover:bg-accent-800 shadow-xs transition"
           >
             Load Public Patch Preview
           </Link>

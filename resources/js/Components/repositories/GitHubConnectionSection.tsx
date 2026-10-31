@@ -57,7 +57,7 @@ export function GitHubConnectionSection({
         className="w-full p-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between text-left cursor-pointer select-none hover:bg-slate-100/60 transition"
       >
         <div className="flex items-center gap-2.5">
-          <FolderGit2 className="w-4 h-4 text-violet-700" />
+          <FolderGit2 className="w-4 h-4 text-accent-700" />
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-900">GitHub Connection</span>
           </div>
@@ -109,7 +109,7 @@ export function GitHubConnectionSection({
                       className="w-8 h-8 rounded-full border border-slate-300"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-accent-100 text-accent-700 flex items-center justify-center font-bold text-xs">
                       {githubConnection.user?.login.slice(0, 2).toUpperCase()}
                     </div>
                   )}
@@ -182,7 +182,7 @@ export function GitHubConnectionSection({
                           onClick={() => handleSelectRepository(repo.fullName)}
                           className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between gap-2 ${
                             isCurrent
-                              ? 'bg-violet-50/70 border-violet-300 ring-1 ring-violet-400'
+                              ? 'bg-accent-50/70 border-accent-300 ring-1 ring-accent-400'
                               : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
                           }`}
                         >
@@ -198,7 +198,7 @@ export function GitHubConnectionSection({
                           </div>
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                              isCurrent ? 'bg-violet-700 text-white' : 'bg-slate-100 text-slate-600'
+                              isCurrent ? 'bg-accent-700 text-white' : 'bg-slate-100 text-slate-600'
                             }`}
                           >
                             {isCurrent ? 'Selected' : 'Select'}
@@ -215,7 +215,7 @@ export function GitHubConnectionSection({
                 <div className="space-y-2 pt-2 border-t border-slate-100">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-semibold text-slate-800">
-                      Pull Requests in <span className="font-mono text-violet-900">{githubConnection.selectedRepo}</span>
+                      Pull Requests in <span className="font-mono text-accent-900">{githubConnection.selectedRepo}</span>
                     </h4>
                     <span className="text-[11px] text-slate-500 font-mono">
                       {githubConnection.repoPulls.length} total
@@ -261,7 +261,7 @@ export function GitHubConnectionSection({
                               <span
                                 className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase border ${
                                   (pr as any).state === 'merged'
-                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    ? 'bg-accent-50 text-accent-700 border-accent-200'
                                     : (pr as any).state === 'closed'
                                     ? 'bg-rose-50 text-rose-700 border-rose-200'
                                     : (pr as any).isDraft
@@ -294,7 +294,7 @@ export function GitHubConnectionSection({
                             <button
                               type="button"
                               onClick={() => handleCaptureGitHubPull(pr)}
-                              className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md text-white bg-violet-700 hover:bg-violet-800 shadow-2xs motion-safe:transition motion-reduce:transition-none shrink-0"
+                              className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md text-white bg-accent-700 hover:bg-accent-800 shadow-2xs motion-safe:transition motion-reduce:transition-none shrink-0"
                             >
                               <Sparkles className="w-3.5 h-3.5" />
                               <span>Review PR</span>
@@ -321,7 +321,7 @@ export function GitHubConnectionSection({
                 <div className="flex-1">
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">One-Time User Code</span>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <code className="text-lg font-mono font-bold text-violet-700 tracking-widest">
+                    <code className="text-lg font-mono font-bold text-accent-700 tracking-widest">
                       {githubConnection.deviceFlow.userCode}
                     </code>
                     <button
@@ -340,7 +340,7 @@ export function GitHubConnectionSection({
                     href={githubConnection.deviceFlow.verificationUri || 'https://github.com/login/device'}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-violet-700 text-white text-xs font-semibold hover:bg-violet-800 shadow-2xs transition"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accent-700 text-white text-xs font-semibold hover:bg-accent-800 shadow-2xs transition"
                   >
                     <span>Open GitHub Device Page</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -371,7 +371,7 @@ export function GitHubConnectionSection({
                   value={clientIdInput}
                   onChange={(e) => setClientIdInput(e.target.value)}
                   placeholder="e.g., Ov23li... (configured in Settings)"
-                  className="w-full text-xs font-mono rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                  className="w-full text-xs font-mono rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 />
                 <p className="text-[11px] text-slate-500">
                   Connect via GitHub OAuth Device Flow (RFC 8628) with user-code authorization.
@@ -381,7 +381,7 @@ export function GitHubConnectionSection({
               <button
                 type="submit"
                 disabled={isSubmittingDevice}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-violet-700 text-white text-xs font-semibold hover:bg-violet-800 transition shadow-2xs disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-accent-700 text-white text-xs font-semibold hover:bg-accent-800 transition shadow-2xs disabled:opacity-50"
               >
                 <Key className="w-3.5 h-3.5" />
                 <span>{isSubmittingDevice ? 'Starting…' : 'Initiate Device Connection'}</span>

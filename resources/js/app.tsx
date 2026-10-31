@@ -1,3 +1,6 @@
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/newsreader';
 import '../css/app.css';
 
 import { createInertiaApp } from '@inertiajs/react';
@@ -14,6 +17,6 @@ createInertiaApp({
         root.render(<App {...props} />);
     },
     progress: {
-        color: '#7c3aed',
+        color: '#2f6bf0',
     },
 });

@@ -356,6 +356,8 @@ final class GitHubDeviceFlowIntegrationTest extends TestCase
         }
 
         $appHttp = new \Symfony\Component\HttpClient\MockHttpClient([
+            // Issues are refreshed first on every repository selection.
+            new \Symfony\Component\HttpClient\Response\MockResponse(json_encode([])),
             // Page 1: returns 100 pulls
             new \Symfony\Component\HttpClient\Response\MockResponse(json_encode($page1Pulls)),
             // Page 2: returns 500 server error

@@ -59,7 +59,7 @@ export function ChecksWorkspaceTab({
                     setData((d: any) => ({ ...d, fixture: fix, find: 'pointer-events: auto;', replace: 'pointer-events: none;' }));
                   }
                 }}
-                className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 pr-10 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-transparent shadow-2xs transition cursor-pointer"
+                className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 pr-10 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-accent-600 focus:border-transparent shadow-2xs transition cursor-pointer"
               >
                 <option value="public/fixtures/checkout.html">Northline Checkout (Stacking Context Trap)</option>
                 <option value="public/fixtures/occlusion-b.html">Lumen Checkout (Pseudo-element Occlusion)</option>
@@ -130,7 +130,7 @@ export function ChecksWorkspaceTab({
             <button
               type="submit"
               disabled={processing}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md text-white bg-violet-700 hover:bg-violet-800 shadow-xs transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md text-white bg-accent-700 hover:bg-accent-800 shadow-xs transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2"
             >
               <Play className="w-3.5 h-3.5" />
               <span>{processing ? 'Evaluating...' : 'Run Verification'}</span>

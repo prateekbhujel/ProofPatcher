@@ -87,6 +87,21 @@ export interface IssueContext {
   sourceSha256: string;
 }
 
+export interface CompletenessCheck {
+  key: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface IssueCompleteness {
+  score: number;
+  verdict: 'complete' | 'needs_info' | 'empty';
+  checks: CompletenessCheck[];
+  missing: string[];
+  questions: string[];
+}
+
 export interface Preview {
   destination: string;
   body: Record<string, unknown>;

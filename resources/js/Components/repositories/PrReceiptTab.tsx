@@ -31,7 +31,7 @@ export function PrReceiptTab({ snapshot, copiedDigest, copyText }: PrReceiptTabP
               <span>{copiedDigest ? 'Copied' : 'Copy Hash'}</span>
             </button>
           </div>
-          <div className="font-mono text-xs text-violet-900 bg-white p-3 rounded-lg border border-slate-200 break-all select-all">
+          <div className="font-mono text-xs text-accent-900 bg-white p-3 rounded-lg border border-slate-200 break-all select-all">
             {snapshot.sha256}
           </div>
           <div className="text-xs text-slate-500">Captured: {snapshot.capturedAt}</div>

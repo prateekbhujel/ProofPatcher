@@ -285,7 +285,7 @@ final class DashboardController
                     (string) $pull['baseSha']
                 );
                 if ($savedAuto !== null && $savedAuto->status === 'completed' && is_array($savedAuto->raw_review)) {
-                    $review = $savedAuto->raw_review;
+                    $review = array_merge($savedAuto->raw_review, ['source' => 'automatic']);
                 }
             } catch (\Throwable) {}
         }
@@ -362,24 +362,7 @@ final class DashboardController
             }
         }
 
-        $autoReview = [
-            'worker' => [
-                'isLive' => false,
-                'status' => 'offline',
-                'workerPid' => null,
-                'lastHeartbeatAt' => null,
-                'cycleCount' => 0,
-                'publicOnly' => true,
-                'message' => 'Review worker is offline.',
-            ],
-            'settings' => [],
-            'publicOnly' => true,
-        ];
-        try {
-            $workerStatusService = new \ProofPatch\Support\WorkerStatusService();
-            $autoReview['worker'] = $workerStatusService->getStatus();
-            $autoReview['settings'] = \ProofPatch\Models\RepositoryAutoReviewSetting::all(['repository', 'enabled', 'public_only'])->keyBy('repository')->all();
-        } catch (\Throwable) {}
+        $autoReview = $this->scopedAutoReviewProps($request);
 
         return Inertia::render('Repositories', [
             'pull' => $pull,
@@ -628,6 +611,7 @@ final class DashboardController
             $privateConsent = (bool) $request->input('private_consent', false);
 
             $result = $reviewAgent->review($pull, $patchPreview, $digest, $key, $privateConsent);
+            $result['source'] = 'manual';
             $this->putSession($request, 'pr_review', $result);
 
             return redirect('/repositories?preview=1');
@@ -993,9 +977,28 @@ final class DashboardController
 
         try {
             $client = $this->getGitHubAppClient();
+            $issueStatus = [];
+            $issues = $client->listOpenIssues((string) $auth['token'], $repoName, $issueStatus, 'all');
             $pullsStatus = [];
             $pulls = $client->listOpenPullRequests((string) $auth['token'], $repoName, $pullsStatus, 'all');
+
+            $previousRepo = $this->getSession($request, 'selected_github_repo');
+            if (is_string($previousRepo) && strcasecmp($previousRepo, $repoName) !== 0) {
+                $this->forgetSession(
+                    $request,
+                    'pullRequest',
+                    'pullRequestSnapshot',
+                    'patch_preview',
+                    'pr_review',
+                    'pr_review_preview',
+                    'review_drafts',
+                    'review_approval_token',
+                    'proposal',
+                    'private_pull_owner'
+                );
+            }
             $this->putSession($request, 'selected_github_repo', $repoName);
+            $this->putSession($request, 'github_repo_issues', $issues);
             $this->putSession($request, 'github_repo_pulls', $pulls);
             $this->putSession($request, 'github_repo_pulls_status', $pullsStatus);
 
@@ -1006,11 +1009,11 @@ final class DashboardController
                 $this->addNotification($request, 'warning', 'Pull Requests Incomplete', $warn);
             }
 
-            $this->addNotification($request, 'info', 'Repository Selected', 'Loaded open pull requests for '.$repoName.'.');
+            $this->addNotification($request, 'info', 'Repository Selected', 'Loaded '.count($issues).' issues and '.count($pulls).' pull requests for '.$repoName.'.');
 
-            return redirect('/repositories')->with('github_status', 'Loaded open pull requests for '.$repoName.'.');
+            return redirect('/repositories')->with('github_status', 'Loaded '.count($issues).' issues and '.count($pulls).' pull requests for '.$repoName.'.');
         } catch (\Throwable $e) {
-            return redirect('/repositories')->with('github_error', 'Failed to list pull requests: '.$e->getMessage());
+            return redirect('/repositories')->with('github_error', 'Failed to list issues and pull requests: '.$e->getMessage());
         }
     }
 
@@ -1150,34 +1153,30 @@ final class DashboardController
         $policyFile = $this->project.'/.proofpatchrc.json';
         $policy = is_file($policyFile) ? json_decode((string) file_get_contents($policyFile), true) ?? [] : [];
 
-        $autoReview = [
-            'worker' => [
-                'isLive' => false,
-                'status' => 'offline',
-                'workerPid' => null,
-                'lastHeartbeatAt' => null,
-                'cycleCount' => 0,
-                'publicOnly' => true,
-                'message' => 'Review worker is offline.',
-            ],
-            'settings' => [],
-            'publicOnly' => true,
-        ];
         try {
-            $workerStatusService = new \ProofPatch\Support\WorkerStatusService();
-            $autoReview['worker'] = $workerStatusService->getStatus();
             foreach (($githubConnection['repositories'] ?? []) as $r) {
                 if (is_array($r) && is_string($r['fullName'] ?? null) && ($r['isPrivate'] ?? null) === true) {
                     \ProofPatch\Models\RepositoryAutoReviewSetting::disableForRepository($r['fullName']);
                 }
             }
-            $autoReview['settings'] = \ProofPatch\Models\RepositoryAutoReviewSetting::all(['repository', 'enabled', 'public_only'])->keyBy('repository')->all();
         } catch (\Throwable) {}
+        $autoReview = $this->scopedAutoReviewProps($request);
 
         $providerConfig = \ProofPatch\Agent\ProviderConfigStore::status();
         $statusMessage = session('status') ?? $this->getSession($request, 'status');
         $errorMessage = session('error') ?? $this->getSession($request, 'error');
         $this->forgetSession($request, 'status', 'error');
+
+        $autopilotCaps = null;
+        try {
+            $row = \ProofPatch\Models\AutopilotBudget::current();
+            $autopilotCaps = $row === null ? null : [
+                'maxAttempts' => $row->max_attempts,
+                'maxReservedDollars' => $row->max_reserved_micros === null
+                    ? null
+                    : round($row->max_reserved_micros / 1000000, 2),
+            ];
+        } catch (\Throwable) {}
 
         return Inertia::render('Settings', [
             'githubConnection' => $githubConnection,
@@ -1185,9 +1184,58 @@ final class DashboardController
             'policy' => $policy,
             'autoReview' => $autoReview,
             'providerConfig' => $providerConfig,
+            'autopilotBudget' => $autopilotCaps,
             'statusMessage' => $statusMessage,
             'errorMessage' => $errorMessage,
         ]);
+    }
+
+    public function saveAutopilotBudget(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        try {
+            $rawAttempts = $request->input('maxAttempts');
+            $rawDollars = $request->input('maxDollars');
+
+            $maxAttempts = null;
+            if ($rawAttempts !== null && trim((string) $rawAttempts) !== '') {
+                if (!preg_match('/\A[1-9][0-9]{0,5}\z/D', trim((string) $rawAttempts))) {
+                    throw new \InvalidArgumentException('Attempt cap must be a whole number of at least 1.');
+                }
+                $maxAttempts = min((int) trim((string) $rawAttempts), \ProofPatch\Models\AutopilotBudget::MAX_ATTEMPTS_CEILING);
+            }
+
+            $maxMicros = null;
+            if ($rawDollars !== null && trim((string) $rawDollars) !== '') {
+                if (!is_numeric(trim((string) $rawDollars)) || (float) trim((string) $rawDollars) <= 0) {
+                    throw new \InvalidArgumentException('Spend cap must be a positive dollar amount.');
+                }
+                $maxMicros = (int) min(
+                    round((float) trim((string) $rawDollars) * 1000000),
+                    \ProofPatch\Models\AutopilotBudget::MAX_MICROS_CEILING
+                );
+            }
+
+            if ($maxAttempts === null && $maxMicros === null) {
+                \ProofPatch\Models\AutopilotBudget::clearCaps();
+                $msg = 'Autopilot caps cleared. Automatic reviews are bounded only by the local request budget.';
+            } else {
+                \ProofPatch\Models\AutopilotBudget::saveCaps($maxAttempts, $maxMicros);
+                $parts = [];
+                if ($maxAttempts !== null) {
+                    $parts[] = "{$maxAttempts} attempts";
+                }
+                if ($maxMicros !== null) {
+                    $parts[] = '$'.number_format($maxMicros / 1000000, 2);
+                }
+                $msg = 'Autopilot cap set: '.implode(' and ', $parts).' of spend. Autopilot reviews stop there.';
+            }
+            $this->putSession($request, 'status', $msg);
+
+            return redirect('/settings')->with('status', $msg);
+        } catch (\Throwable $e) {
+            $this->putSession($request, 'error', $e->getMessage());
+            return redirect('/settings')->with('error', $e->getMessage());
+        }
     }
 
     public function selectProvider(Request $request): \Illuminate\Http\RedirectResponse
@@ -1274,6 +1322,11 @@ final class DashboardController
     private function budget(): RequestBudget
     {
         return RequestBudget::forRuntime();
+    }
+
+    private function scopedAutoReviewProps(Request $request): array
+    {
+        return \ProofPatch\Support\AutoReviewPanelProps::forRequest($request);
     }
 
     /** Backend evidence may contain private repository names and is not yet bound to a user. */

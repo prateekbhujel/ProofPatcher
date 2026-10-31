@@ -63,8 +63,11 @@ export function PrReviewTab({
         <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-violet-700" />
+              <Sparkles className="w-4 h-4 text-accent-700" />
               <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Muse suggestions</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                {review.source === 'automatic' ? '· Automatic review' : '· Manual review'}
+              </span>
             </div>
             <span
               className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
@@ -88,6 +91,9 @@ export function PrReviewTab({
             <span>Tokens: {review.usage.prompt_tokens} in / {review.usage.completion_tokens} out</span>
             <span>Reviewed: {new Date(review.reviewedAt).toLocaleString()}</span>
           </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Advisory only · Stored in ProofPatcher · Not posted to GitHub. External repository tests were not run here.
+          </p>
         </div>
       )}
 
@@ -180,7 +186,7 @@ export function PrReviewTab({
               <button
                 type="submit"
                 disabled={reviewProcessing || !reviewApproved || isPrivate || !budget?.canRequest || !modelKeyAvailable}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-violet-700 text-white text-xs font-semibold hover:bg-violet-800 disabled:opacity-40 transition shadow-xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-700 text-white text-xs font-semibold hover:bg-accent-800 disabled:opacity-40 transition shadow-xs"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{reviewProcessing ? 'Reviewing…' : 'Run Muse review'}</span>

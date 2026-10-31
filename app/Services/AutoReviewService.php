@@ -364,6 +364,30 @@ final class AutoReviewService
                     'reason' => 'Local request budget is exhausted.',
                 ];
             }
+
+            // User-assigned autopilot caps stop automatic spend even when the
+            // underlying request budget still has room.
+            $spentMicros = max(0, $budgetStatus['limitMicros'] - $budgetStatus['remainingMicros']);
+            $capReason = \ProofPatch\Models\AutopilotBudget::blockingReason(
+                $budgetStatus['attempts'],
+                $spentMicros,
+                $preview['estimatedMicros']
+            );
+            if ($capReason !== null) {
+                $record->update([
+                    'status' => 'skipped_budget',
+                    'error_message' => $capReason,
+                ]);
+
+                return [
+                    'repository' => $repository,
+                    'number' => $pullNumber,
+                    'headSha' => $headSha,
+                    'baseSha' => $baseSha,
+                    'status' => 'skipped_budget',
+                    'reason' => $capReason,
+                ];
+            }
         } catch (\Throwable $e) {
             $record->update([
                 'status' => 'skipped_budget',

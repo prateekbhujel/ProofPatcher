@@ -20,7 +20,7 @@ export function PrInspectForm({
     return (
       <div className="bg-white rounded-lg border border-slate-200 shadow-xs p-6 max-w-xl mx-auto space-y-5">
         <div className="space-y-1.5 text-center">
-          <div className="w-10 h-10 mx-auto rounded-lg bg-violet-50 text-violet-700 flex items-center justify-center">
+          <div className="w-10 h-10 mx-auto rounded-lg bg-accent-50 text-accent-700 flex items-center justify-center">
             <FileText className="w-5 h-5" />
           </div>
           <h1 className="text-lg font-bold tracking-tight text-slate-900">Inspect Pull Request</h1>
@@ -37,12 +37,12 @@ export function PrInspectForm({
               placeholder="owner/repo#123 or https://github.com/owner/repo/pull/123"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-violet-600 shadow-2xs"
+              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-600 focus:border-accent-600 shadow-2xs"
             />
             <button
               type="submit"
               disabled={processing}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-medium rounded-md text-white bg-violet-700 hover:bg-violet-800 shadow-xs transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-medium rounded-md text-white bg-accent-700 hover:bg-accent-800 shadow-xs transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2"
             >
               <span>{processing ? 'Loading...' : 'Inspect PR'}</span>
             </button>
@@ -67,12 +67,12 @@ export function PrInspectForm({
             placeholder="owner/repo#123 or https://github.com/owner/repo/pull/123"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-violet-600 shadow-2xs"
+            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-600 focus:border-accent-600 shadow-2xs"
           />
           <button
             type="submit"
             disabled={processing}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-medium rounded-md text-white bg-violet-700 hover:bg-violet-800 shadow-xs transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-medium rounded-md text-white bg-accent-700 hover:bg-accent-800 shadow-xs transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2"
           >
             <span>{processing ? 'Loading...' : 'Inspect PR'}</span>
           </button>

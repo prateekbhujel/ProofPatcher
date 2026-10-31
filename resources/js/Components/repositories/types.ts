@@ -177,6 +177,7 @@ export interface ReviewResult {
     prompt_tokens: number;
     completion_tokens: number;
   };
+  source?: 'automatic' | 'manual';
 }
 
 export interface ReviewPreviewData {

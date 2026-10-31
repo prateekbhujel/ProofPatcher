@@ -192,7 +192,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
               type="checkbox"
               checked={isViewed}
               onChange={(e) => setIsViewed(e.target.checked)}
-              className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 w-3.5 h-3.5"
+              className="rounded border-slate-300 text-accent-600 focus:ring-accent-500 w-3.5 h-3.5"
             />
             <span className="font-medium text-[11px]">Viewed</span>
           </label>

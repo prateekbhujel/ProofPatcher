@@ -11,6 +11,7 @@ import {
 } from '../Components/TaskCardSection';
 import {
   GitHubConnectionData,
+  IssueCompleteness,
   IssueContext,
   Preview,
   Suggestion,
@@ -32,6 +33,7 @@ export type { IssueTriage } from '../Components/workbench/types';
 
 interface Props {
   context: IssueContext | null;
+  completeness?: IssueCompleteness | null;
   preview: Preview | null;
   suggestion: Suggestion | null;
   draft: Draft | null;
@@ -64,6 +66,7 @@ interface Props {
 
 export default function Issues({
   context: suppliedContext,
+  completeness,
   preview,
   suggestion,
   draft,
@@ -636,12 +639,6 @@ export default function Issues({
                   Pull Requests ({githubConnection?.repoPulls?.length ?? 0})
                 </Link>
                 <Link
-                  href="/checks"
-                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium transition"
-                >
-                  Checks
-                </Link>
-                <Link
                   href="/settings"
                   className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium transition"
                 >
@@ -703,6 +700,7 @@ export default function Issues({
                     isDedicatedTestRepo={isDedicatedTestRepo}
                     isOwnedFixture={isOwnedFixture}
                     detectedIssueMedia={detectedIssueMedia}
+                    completeness={completeness}
                   />
 
                   {/* Proposal & Inline Diff */}

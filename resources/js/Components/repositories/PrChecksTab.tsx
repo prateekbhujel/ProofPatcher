@@ -31,7 +31,7 @@ export function PrChecksTab({
             placeholder="Filter checks..."
             value={checkQuery}
             onChange={(e) => setCheckQuery(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500 shadow-2xs"
+            className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-accent-500 shadow-2xs"
           />
         </div>
       </div>

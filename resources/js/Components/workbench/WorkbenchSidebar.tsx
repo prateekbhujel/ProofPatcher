@@ -88,7 +88,7 @@ export function WorkbenchSidebar({
   const closedPullsCount = filteredPulls.filter((p) => (p.state || 'open').toLowerCase() === 'closed').length;
 
   return (
-    <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:overflow-hidden bg-[#f6f6f4] dark:bg-[#0e1117] border-b lg:border-b-0 lg:border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
+    <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:overflow-hidden bg-[var(--bg-sidebar)] border-b lg:border-b-0 lg:border-r border-[var(--border)] flex flex-col justify-between">
       <div className="p-3 pb-2 space-y-2.5 shrink-0">
         {/* Repository Selector Dropdown */}
         <div className="space-y-1.5">
@@ -130,14 +130,14 @@ export function WorkbenchSidebar({
         </div>
 
         {/* Filter Tabs: Issues vs Pull Requests */}
-        <div className="flex rounded-lg bg-slate-200/70 dark:bg-slate-800/80 p-0.5 text-xs">
+        <div className="flex rounded-lg bg-[var(--bg-active)] p-0.5 text-xs">
           <button
             type="button"
             onClick={() => setSidebarTab('issues')}
             className={`flex-1 py-1 px-2 rounded-md font-medium text-center transition ${
               sidebarTab === 'issues'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs font-semibold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                ? 'bg-[var(--bg-raised)] text-[var(--fg)] font-semibold shadow-2xs'
+                : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
             }`}
           >
             Issues ({githubConnection?.repoIssues?.length ?? 0})
@@ -147,8 +147,8 @@ export function WorkbenchSidebar({
             onClick={() => setSidebarTab('pulls')}
             className={`flex-1 py-1 px-2 rounded-md font-medium text-center transition ${
               sidebarTab === 'pulls'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs font-semibold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                ? 'bg-[var(--bg-raised)] text-[var(--fg)] font-semibold shadow-2xs'
+                : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
             }`}
           >
             Pull Requests ({githubConnection?.repoPulls?.length ?? 0})
@@ -280,7 +280,7 @@ export function WorkbenchSidebar({
                         <span
                           className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 border ${
                             issueState === 'closed'
-                              ? 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800'
+                              ? 'bg-accent-50 text-accent-800 border-accent-200 dark:bg-accent-950/60 dark:text-accent-300 dark:border-accent-800'
                               : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
                           }`}
                         >
@@ -316,7 +316,7 @@ export function WorkbenchSidebar({
                         </span>
                       )}
                       {isScreenshotIssue && (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-accent-100 text-accent-800 dark:bg-accent-950 dark:text-accent-300">
                           Screenshot · Needs text steps
                         </span>
                       )}
@@ -415,7 +415,7 @@ export function WorkbenchSidebar({
                     <span
                       className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 border ${
                         pull.state === 'merged'
-                          ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                          ? 'bg-accent-50 dark:bg-accent-950/60 text-accent-800 dark:text-accent-300 border-accent-200 dark:border-accent-800'
                           : pull.state === 'closed'
                             ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800'
                             : (pull as any).isDraft
@@ -502,7 +502,7 @@ export function WorkbenchSidebar({
                 className="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-700 aspect-square shrink-0"
               />
             ) : (
-              <span className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-950/80 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800 flex items-center justify-center font-bold text-[10px] shrink-0">
+              <span className="w-6 h-6 rounded-full bg-accent-100 dark:bg-accent-950/80 text-accent-800 dark:text-accent-300 border border-accent-200 dark:border-accent-800 flex items-center justify-center font-bold text-[10px] shrink-0">
                 {githubConnection?.user?.login?.slice(0, 2).toUpperCase() || 'PF'}
               </span>
             )}

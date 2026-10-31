@@ -35,7 +35,7 @@ export default function Docs() {
         {/* Docs Header */}
         <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300">
+            <span className="p-1 rounded bg-accent-100 dark:bg-accent-950 text-accent-700 dark:text-accent-300">
               <BookOpen className="w-4 h-4" />
             </span>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Documentation</h1>
@@ -53,7 +53,7 @@ export default function Docs() {
               onClick={() => setActiveTab('workflow')}
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'workflow'
-                  ? 'border-violet-700 text-violet-900 dark:text-violet-400'
+                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -66,7 +66,7 @@ export default function Docs() {
               onClick={() => setActiveTab('verification')}
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'verification'
-                  ? 'border-violet-700 text-violet-900 dark:text-violet-400'
+                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -79,7 +79,7 @@ export default function Docs() {
               onClick={() => setActiveTab('receipts')}
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'receipts'
-                  ? 'border-violet-700 text-violet-900 dark:text-violet-400'
+                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -92,7 +92,7 @@ export default function Docs() {
               onClick={() => setActiveTab('security')}
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'security'
-                  ? 'border-violet-700 text-violet-900 dark:text-violet-400'
+                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -114,7 +114,7 @@ export default function Docs() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1.5">
                   <div className="flex items-center gap-2 font-semibold text-xs text-slate-900 dark:text-slate-100">
-                    <span className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300 flex items-center justify-center text-[11px] font-bold">1</span>
+                    <span className="w-5 h-5 rounded-full bg-accent-100 dark:bg-accent-900/60 text-accent-700 dark:text-accent-300 flex items-center justify-center text-[11px] font-bold">1</span>
                     <span>Ticket Intake</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -124,7 +124,7 @@ export default function Docs() {
 
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1.5">
                   <div className="flex items-center gap-2 font-semibold text-xs text-slate-900 dark:text-slate-100">
-                    <span className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300 flex items-center justify-center text-[11px] font-bold">2</span>
+                    <span className="w-5 h-5 rounded-full bg-accent-100 dark:bg-accent-900/60 text-accent-700 dark:text-accent-300 flex items-center justify-center text-[11px] font-bold">2</span>
                     <span>Single-Use Maintainer Approval</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -134,7 +134,7 @@ export default function Docs() {
 
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1.5">
                   <div className="flex items-center gap-2 font-semibold text-xs text-slate-900 dark:text-slate-100">
-                    <span className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300 flex items-center justify-center text-[11px] font-bold">3</span>
+                    <span className="w-5 h-5 rounded-full bg-accent-100 dark:bg-accent-900/60 text-accent-700 dark:text-accent-300 flex items-center justify-center text-[11px] font-bold">3</span>
                     <span>In-Memory Diff Preview</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -144,7 +144,7 @@ export default function Docs() {
 
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1.5">
                   <div className="flex items-center gap-2 font-semibold text-xs text-slate-900 dark:text-slate-100">
-                    <span className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300 flex items-center justify-center text-[11px] font-bold">4</span>
+                    <span className="w-5 h-5 rounded-full bg-accent-100 dark:bg-accent-900/60 text-accent-700 dark:text-accent-300 flex items-center justify-center text-[11px] font-bold">4</span>
                     <span>5-Gate Execution &amp; Receipt</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -191,7 +191,7 @@ export default function Docs() {
                     <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Pre-Execution</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Statically parses PHP tokens using <code className="font-mono text-violet-700 dark:text-violet-400">token_get_all(..., TOKEN_PARSE)</code>. Disallows dangerous constructs (<code className="font-mono">exec</code>, <code className="font-mono">system</code>, <code className="font-mono">eval</code>, backticks, variable functions, sockets) before any candidate code can run.
+                    Statically parses PHP tokens using <code className="font-mono text-accent-700 dark:text-accent-400">token_get_all(..., TOKEN_PARSE)</code>. Disallows dangerous constructs (<code className="font-mono">exec</code>, <code className="font-mono">system</code>, <code className="font-mono">eval</code>, backticks, variable functions, sockets) before any candidate code can run.
                   </p>
                 </div>
 
@@ -228,7 +228,7 @@ export default function Docs() {
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-xs text-slate-900 dark:text-slate-100">Gate 5: Allowlist &amp; Hash Integrity</span>
-                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">SHA-256 Match</span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-accent-50 text-accent-700 border border-accent-200">SHA-256 Match</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                     Verifies that authoritative test suites and protected repository files were not altered during the candidate execution run.
@@ -315,7 +315,7 @@ export default function Docs() {
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1.5">
                   <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 block">Modal gVisor MicroVM Sandbox</span>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Arbitrary repository pull requests run inside ephemeral microVM sandboxes with <code className="font-mono text-violet-700 dark:text-violet-400">block_network=True</code>, preventing untrusted code from exfiltrating credentials or reaching local network services.
+                    Arbitrary repository pull requests run inside ephemeral microVM sandboxes with <code className="font-mono text-accent-700 dark:text-accent-400">block_network=True</code>, preventing untrusted code from exfiltrating credentials or reaching local network services.
                   </p>
                 </div>
               </div>

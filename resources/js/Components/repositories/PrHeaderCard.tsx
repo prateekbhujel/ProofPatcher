@@ -41,11 +41,11 @@ export function PrHeaderCard({ pull, triage, onViewTriage }: PrHeaderCardProps) 
                 pull.state.toLowerCase() === 'open'
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : pull.state.toLowerCase() === 'merged'
-                  ? 'bg-purple-50 text-purple-800 border border-purple-200'
+                  ? 'bg-accent-50 text-accent-800 border border-accent-200'
                   : 'bg-slate-100 text-slate-700 border border-slate-200'
               }`}
             >
-              {pull.state.toLowerCase() === 'merged' && <Check className="w-3 h-3 text-purple-700" />}
+              {pull.state.toLowerCase() === 'merged' && <Check className="w-3 h-3 text-accent-700" />}
               <span>{pull.state.toUpperCase()}</span>
             </span>
             {pull.state.toLowerCase() === 'merged' && (
@@ -150,7 +150,7 @@ export function PrHeaderCard({ pull, triage, onViewTriage }: PrHeaderCardProps) 
             href={pull.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600"
           >
             <span>View on GitHub</span>
             <ExternalLink className="w-3.5 h-3.5 text-slate-400" />

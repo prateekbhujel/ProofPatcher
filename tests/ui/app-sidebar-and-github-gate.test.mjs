@@ -20,7 +20,11 @@ const inertia = {
   router: { post() {} },
 };
 const logo = loadTsx('../../resources/js/Components/ui/BrandMark.tsx');
-const layout = loadTsx('../../resources/js/Components/AppLayout.tsx', (id) => id === '@inertiajs/react' ? inertia : require(id));
+const layout = loadTsx('../../resources/js/Components/AppLayout.tsx', (id) => {
+  if (id === '@inertiajs/react') return inertia;
+  if (id === './ui/BrandMark') return logo;
+  return require(id);
+});
 const onboarding = loadTsx('../../resources/js/Components/workbench/DisconnectedOnboardingView.tsx', (id) => {
   if (id === '@inertiajs/react') return inertia;
   if (id === '../AppLayout') return layout;
@@ -33,13 +37,18 @@ const baseProps = {
   handleInitiateDeviceFlow() {}, handlePollDeviceFlow() {}, copyDeviceCode() {}, copiedDeviceCode: false,
 };
 
-test('the workspace has no duplicate global sidebar; other pages have a way back', () => {
+test('the workspace has no duplicate global sidebar; other pages link the Kernel home', () => {
   const body = React.createElement('p', {}, 'Page content');
   const workspace = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'issues' }, body));
   assert.match(workspace, /Page content/);
-  assert.doesNotMatch(workspace, /<aside|Back to workspace/);
+  assert.doesNotMatch(workspace, /<aside|ProofPatcher Kernel home/);
   const settings = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'settings' }, body));
-  assert.match(settings, /href="\/issues"[^>]*>.*Back to workspace/s);
+  assert.match(settings, /href="\/"[^>]*aria-label="ProofPatcher Kernel home"/);
+  assert.match(settings, /href="\/issues"/);
+  assert.match(settings, /href="\/repositories"/);
+  assert.doesNotMatch(settings, /href="\/checks"/);
+  assert.match(settings, /href="\/telemetry"/);
+  assert.match(settings, /href="\/settings"/);
 });
 
 test('an unconfigured installation explains the missing GitHub App ID', () => {

@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Illuminate\Foundation\Application;
 use ProofPatch\Console\Commands\AutoReviewWorkerCommand;
 use ProofPatch\Console\Commands\CheckReceiptCommand;
+use ProofPatch\Console\Commands\KernelReviewsCommand;
+use ProofPatch\Console\Commands\KernelTelemetryCommand;
 use ProofPatch\Console\Commands\InspectPullRequestCommand;
 use ProofPatch\Console\Commands\RecordPullRequestSnapshotCommand;
 use ProofPatch\Console\Commands\TriagePullRequestCommand;
@@ -26,6 +28,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
     })
     ->withCommands([
         AutoReviewWorkerCommand::class,
+        KernelReviewsCommand::class,
+        KernelTelemetryCommand::class,
         RecordPullRequestSnapshotCommand::class,
         InspectPullRequestCommand::class,
         TriagePullRequestCommand::class,

@@ -92,9 +92,9 @@ function TaskImage({ task }: { task: LocalTaskCard }) {
           href={`/issues/tasks/${task.id}/image`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-violet-50 text-xs text-violet-800 hover:bg-violet-100 font-medium border border-violet-200 transition"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent-50 text-xs text-accent-800 hover:bg-accent-100 font-medium border border-accent-200 transition"
         >
-          <ImageIcon className="w-3.5 h-3.5 text-violet-700" />
+          <ImageIcon className="w-3.5 h-3.5 text-accent-700" />
           <span>Open attached screenshot</span>
         </a>
         <span className="text-[11px] text-slate-500">
@@ -138,7 +138,7 @@ function TaskImage({ task }: { task: LocalTaskCard }) {
         onClick={() => input.current?.click()}
         className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 transition disabled:opacity-50"
       >
-        <Plus className="w-3.5 h-3.5 text-violet-700" />
+        <Plus className="w-3.5 h-3.5 text-accent-700" />
         <span>{uploading ? 'Saving screenshot…' : 'Attach screenshot'}</span>
       </button>
       <span className="text-[11px] text-slate-500">
@@ -193,7 +193,7 @@ export function FocusedLocalTaskView({
   return (
     <div className="space-y-5">
       {/* Task Header Card */}
-      <div className="rounded-xl border border-slate-200 border-t-2 border-t-violet-600/80 bg-white p-5 space-y-3">
+      <div className="rounded-xl border border-slate-200 border-t-2 border-t-accent-600/80 bg-white p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
@@ -279,7 +279,7 @@ export function FocusedLocalTaskView({
               value={data.path}
               onChange={(event) => setData('path', event.target.value)}
               placeholder="src/OrderTotal.php"
-              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-600"
+              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-accent-600"
             />
           </div>
           <div className="sm:col-span-5">
@@ -297,7 +297,7 @@ export function FocusedLocalTaskView({
               value={data.commit}
               onChange={(event) => setData('commit', event.target.value)}
               placeholder="e.g. 676e73d674aca9ba711aa10877ffd7287e1f25b3"
-              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-600"
+              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-accent-600"
             />
           </div>
           <div className="sm:col-span-2">
@@ -354,7 +354,7 @@ export function FocusedLocalTaskView({
               type="checkbox"
               checked={publicTextConfirmed}
               onChange={(e) => setPublicTextConfirmed(e.target.checked)}
-              className="mt-0.5 rounded border-slate-300 text-violet-700 focus:ring-violet-600"
+              className="mt-0.5 rounded border-slate-300 text-accent-700 focus:ring-accent-600"
             />
             <span>
               I confirm this task title and description contain only <strong>public, non-confidential text</strong> safe to send to Baseten (<code className="font-mono text-[11px]">meta-models/muse-spark-open-1026</code>). Local screenshots are never included.
@@ -450,7 +450,7 @@ export function FocusedLocalTaskView({
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
           <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 font-mono text-xs text-slate-900 font-medium">
-              <FileCode className="w-3.5 h-3.5 text-violet-700" />
+              <FileCode className="w-3.5 h-3.5 text-accent-700" />
               <span>{currentProposalResult.path}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -556,7 +556,7 @@ export function NewTaskComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-slate-200 dark:border-slate-800 border-t-4 border-t-violet-600 bg-white dark:bg-[#141821] shadow-sm p-6 space-y-4"
+      className="rounded-2xl border border-slate-200 dark:border-slate-800 border-t-4 border-t-accent-600 bg-white dark:bg-[#141821] shadow-sm p-6 space-y-4"
     >
       {!canCreate && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:bg-amber-950/40 dark:border-amber-900/60 p-3.5 text-xs text-amber-900 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2">
@@ -583,7 +583,7 @@ export function NewTaskComposer({
             value={data.title}
             onChange={(e) => setData('title', e.target.value)}
             placeholder="e.g. Fix zero-quantity order total calculation"
-            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 transition shadow-2xs"
+            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 transition shadow-2xs"
           />
         </div>
         <div className="space-y-1.5">
@@ -597,7 +597,7 @@ export function NewTaskComposer({
             disabled={!canCreate}
             value={data.repository}
             onChange={(e) => setData('repository', e.target.value)}
-            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 disabled:opacity-60 transition shadow-2xs"
+            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 disabled:opacity-60 transition shadow-2xs"
           >
             {repositories.length === 0 ? (
               <option value="">No connected repo</option>
@@ -627,14 +627,14 @@ export function NewTaskComposer({
           value={data.description}
           onChange={(e) => setData('description', e.target.value)}
           placeholder="Describe the expected behavior, reproduction steps, or context in detail…"
-          className="w-full h-auto min-h-[150px] max-h-[24rem] [field-sizing:content] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3.5 text-sm leading-relaxed text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 transition shadow-2xs resize-y"
+          className="w-full h-auto min-h-[150px] max-h-[24rem] [field-sizing:content] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3.5 text-sm leading-relaxed text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 transition shadow-2xs resize-y"
         />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-            <Sparkles className="w-3.5 h-3.5 text-violet-700 dark:text-violet-400" />
+            <Sparkles className="w-3.5 h-3.5 text-accent-700 dark:text-accent-400" />
             <span>muse-spark-open-1026</span>
           </span>
           <VoiceDictationButton label="Voice Input" onTranscript={(t) => {
@@ -645,7 +645,7 @@ export function NewTaskComposer({
         <button
           type="submit"
           disabled={!canCreate || processing || !data.title.trim() || !data.description.trim() || !data.repository}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-xl text-white bg-violet-700 hover:bg-violet-800 disabled:opacity-40 transition shadow-xs"
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-xl text-white bg-accent-700 hover:bg-accent-800 disabled:opacity-40 transition shadow-xs"
         >
           <span>{processing ? 'Saving…' : 'Save Task Card'}</span>
         </button>

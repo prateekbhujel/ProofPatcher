@@ -76,7 +76,7 @@ export function ChecksHistoryTab({
                           {(item.proposal?.file || item.targetFile || 'checkout.html').split('/').pop()}
                         </span>
                         {item.hasVisual ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-200">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-accent-700 bg-accent-50 px-1.5 py-0.5 rounded border border-accent-200">
                             <ImageIcon className="w-2.5 h-2.5" />
                             <span>Visual UI</span>
                           </span>

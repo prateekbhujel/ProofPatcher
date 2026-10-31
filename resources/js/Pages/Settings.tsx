@@ -17,11 +17,13 @@ import {
 } from 'lucide-react';
 import { SettingsProps } from '../Components/settings/types';
 import { AutoReviewPanel } from '../Components/settings/AutoReviewPanel';
+import { AutopilotBudgetCard } from '../Components/settings/AutopilotBudgetCard';
 
 export default function Settings({
   githubConnection,
   budget,
   providerConfig,
+  autopilotBudget,
   statusMessage,
   errorMessage,
   autoReview,
@@ -115,6 +117,14 @@ export default function Settings({
     router.post('/github/repositories/select', { repository: repoName });
   };
 
+  const [savingBudget, setSavingBudget] = useState(false);
+  const handleSaveAutopilotBudget = (maxAttempts: string, maxDollars: string) => {
+    setSavingBudget(true);
+    router.post('/settings/autopilot-budget', { maxAttempts, maxDollars }, {
+      onFinish: () => setSavingBudget(false),
+    });
+  };
+
   const handleAutoReview = async (repository: string, enabled: boolean) => {
     setPendingReviewRepo(repository);
     setAutoReviewError(null);
@@ -181,7 +191,7 @@ export default function Settings({
               onClick={() => setActiveTab('code-review')}
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'code-review'
-                  ? 'border-violet-700 text-violet-900 dark:text-violet-400'
+                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -194,7 +204,7 @@ export default function Settings({
               onClick={() => setActiveTab('usage')}
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'usage'
-                  ? 'border-violet-700 text-violet-900 dark:text-violet-400'
+                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -207,7 +217,7 @@ export default function Settings({
               onClick={() => setActiveTab('github')}
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'github'
-                  ? 'border-violet-700 text-violet-900 dark:text-violet-400'
+                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -223,7 +233,7 @@ export default function Settings({
               onClick={() => setActiveTab('general')}
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'general'
-                  ? 'border-violet-700 text-violet-900 dark:text-violet-400'
+                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -259,7 +269,7 @@ export default function Settings({
                       placeholder="Search repositories"
                       value={repoSearchQuery}
                       onChange={(e) => setRepoSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-600 shadow-2xs"
+                      className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent-600 shadow-2xs"
                     />
                   </div>
 
@@ -272,7 +282,7 @@ export default function Settings({
                           onClick={() => handleSelectRepo(repo.fullName)}
                           className={`p-3 text-xs flex items-center justify-between cursor-pointer transition ${
                             isSelected
-                              ? 'bg-violet-50/70 dark:bg-violet-950/40 text-violet-900 dark:text-violet-300 font-semibold'
+                              ? 'bg-accent-50/70 dark:bg-accent-950/40 text-accent-900 dark:text-accent-300 font-semibold'
                               : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300'
                           }`}
                         >
@@ -285,7 +295,7 @@ export default function Settings({
                               </span>
                             )}
                           </div>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-violet-700 dark:text-violet-400" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-accent-700 dark:text-accent-400" />}
                         </div>
                       );
                     })}
@@ -430,7 +440,7 @@ export default function Settings({
                             type="button"
                             disabled={savingProvider || keyVal.trim().length < 16}
                             onClick={() => handleSaveKey(provId, keyVal, () => setKeyVal(''))}
-                            className="px-3 py-1.5 rounded-md bg-violet-700 hover:bg-violet-800 text-white font-semibold text-xs transition disabled:opacity-50 shrink-0"
+                            className="px-3 py-1.5 rounded-md bg-accent-700 hover:bg-accent-800 text-white font-semibold text-xs transition disabled:opacity-50 shrink-0"
                           >
                             {info.configured ? 'Replace Key' : 'Save Key'}
                           </button>
@@ -495,11 +505,20 @@ export default function Settings({
                   <h2 className="text-sm font-semibold">Provider balances</h2>
                   <p className="mt-2 text-sm text-slate-500">Unavailable here. Check your provider dashboard for balances and billing.</p>
                   {budget && (
+                    <>
                     <div className="mt-5 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">
                       <h3 className="font-medium">Local request budget</h3>
                       <p className="mt-1 text-slate-500">{budget.attempts} of {budget.maxAttempts} attempts · ${(budget.remainingMicros / 1000000).toFixed(2)} estimated remaining</p>
                       <p className="mt-1 text-xs text-slate-500">Local estimates are not provider balances or billing limits.</p>
                     </div>
+                    <AutopilotBudgetCard
+                      caps={autopilotBudget ?? null}
+                      spentAttempts={budget.attempts}
+                      spentDollars={(budget.limitMicros - budget.remainingMicros) / 1000000}
+                      onSave={handleSaveAutopilotBudget}
+                      saving={savingBudget}
+                    />
+                    </>
                   )}
                 </div>
               </div>
@@ -518,7 +537,7 @@ export default function Settings({
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <Key className="w-4 h-4 text-violet-700 dark:text-violet-400" />
+                  <Key className="w-4 h-4 text-accent-700 dark:text-accent-400" />
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">GitHub OAuth Device Flow (RFC 8628)</h2>
                 </div>
                 {githubConnection.isConnected && (
@@ -539,7 +558,7 @@ export default function Settings({
                           className="w-10 h-10 rounded-full border border-slate-300"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-violet-600 text-white font-bold flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-accent-600 text-white font-bold flex items-center justify-center">
                           {githubConnection.user.login.slice(0, 2).toUpperCase()}
                         </div>
                       )}
@@ -576,7 +595,7 @@ export default function Settings({
                           href="https://github.com/settings/developers"
                           target="_blank"
                           rel="noreferrer"
-                          className="text-violet-600 underline font-medium"
+                          className="text-accent-600 underline font-medium"
                         >
                           GitHub &gt; Settings &gt; Developer settings &gt; OAuth Apps
                         </a>
@@ -603,7 +622,7 @@ export default function Settings({
                   {githubConnection.deviceFlow && (
                     <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
                       <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Verification Code: <span className="font-mono text-violet-700 font-bold">{githubConnection.deviceFlow.userCode}</span>
+                        Verification Code: <span className="font-mono text-accent-700 font-bold">{githubConnection.deviceFlow.userCode}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -617,7 +636,7 @@ export default function Settings({
                           href={githubConnection.deviceFlow.verificationUri}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-3 py-1 text-xs font-semibold rounded text-white bg-violet-700"
+                          className="px-3 py-1 text-xs font-semibold rounded text-white bg-accent-700"
                         >
                           Authorize on GitHub →
                         </a>

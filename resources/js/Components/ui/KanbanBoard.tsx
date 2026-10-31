@@ -80,7 +80,7 @@ function statusBadge(task: KanbanTask) {
   }
   if (task.publishedPrNumber) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-800 border border-violet-200">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-accent-50 text-accent-800 border border-accent-200">
         PR #{task.publishedPrNumber}
       </span>
     );
@@ -122,9 +122,9 @@ function TaskCard({
           onClick={() => onSelect?.(task)}
           className={`group relative rounded-xl border p-3 space-y-2 transition-all duration-200 cursor-grab active:cursor-grabbing select-none ${
             snapshot.isDragging
-              ? 'shadow-2xl shadow-violet-500/20 ring-2 ring-violet-500 border-violet-400 bg-white scale-[1.03] rotate-[1.5deg] z-50'
+              ? 'shadow-2xl shadow-accent-500/20 ring-2 ring-accent-500 border-accent-400 bg-white scale-[1.03] rotate-[1.5deg] z-50'
               : isActive
-              ? 'border-violet-400 bg-violet-50/40 ring-1 ring-violet-400 shadow-sm'
+              ? 'border-accent-400 bg-accent-50/40 ring-1 ring-accent-400 shadow-sm'
               : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md shadow-2xs'
           }`}
         >
@@ -144,7 +144,7 @@ function TaskCard({
             </div>
 
             {isActive ? (
-              <span className="text-[9px] font-bold uppercase tracking-wider text-violet-800 bg-violet-100 px-1.5 py-0.5 rounded shrink-0">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-accent-800 bg-accent-100 px-1.5 py-0.5 rounded shrink-0">
                 Active
               </span>
             ) : (
@@ -154,7 +154,7 @@ function TaskCard({
                   e.stopPropagation();
                   onSelect?.(task);
                 }}
-                className="text-[10px] font-semibold text-slate-500 hover:text-violet-700 underline shrink-0"
+                className="text-[10px] font-semibold text-slate-500 hover:text-accent-700 underline shrink-0"
               >
                 Select
               </button>
@@ -180,7 +180,7 @@ function TaskCard({
               </span>
             )}
             {task.model && (
-              <span className="text-[9px] font-medium text-violet-800 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-200">
+              <span className="text-[9px] font-medium text-accent-800 bg-accent-50 px-1.5 py-0.5 rounded border border-accent-200">
                 {task.model}
               </span>
             )}
@@ -199,7 +199,7 @@ function TaskCard({
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-700 hover:text-violet-900 hover:underline pt-0.5"
+              className="inline-flex items-center gap-1 text-[10px] font-semibold text-accent-700 hover:text-accent-900 hover:underline pt-0.5"
             >
               <span>View GitHub Draft PR</span>
               <ExternalLink className="w-2.5 h-2.5" />
@@ -234,13 +234,13 @@ export function KanbanBoard({ tasks, activeTaskId, onSelectTask }: KanbanBoardPr
     {
       id: 'in_progress',
       title: 'In Progress',
-      icon: <Sparkles className="w-3.5 h-3.5 text-violet-600" />,
-      color: 'text-violet-900',
-      badgeBg: 'bg-violet-100',
-      badgeText: 'text-violet-800',
-      bgColor: 'bg-violet-50/30',
-      borderColor: 'border-violet-200/80',
-      dotColor: 'bg-violet-500',
+      icon: <Sparkles className="w-3.5 h-3.5 text-accent-600" />,
+      color: 'text-accent-900',
+      badgeBg: 'bg-accent-100',
+      badgeText: 'text-accent-800',
+      bgColor: 'bg-accent-50/30',
+      borderColor: 'border-accent-200/80',
+      dotColor: 'bg-accent-500',
       tasks: localTasks.filter((t) => t.status === 'in_progress' || t.status === 'publishing'),
     },
     {
@@ -320,7 +320,7 @@ export function KanbanBoard({ tasks, activeTaskId, onSelectTask }: KanbanBoardPr
                     {...provided.droppableProps}
                     className={`flex-1 space-y-2.5 rounded-lg p-1 transition-all duration-200 ${
                       snapshot.isDraggingOver
-                        ? 'bg-violet-100/60 ring-2 ring-violet-400 ring-dashed'
+                        ? 'bg-accent-100/60 ring-2 ring-accent-400 ring-dashed'
                         : ''
                     }`}
                   >

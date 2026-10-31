@@ -8,21 +8,24 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
+        sans: ['Inter Variable', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['JetBrains Mono Variable', 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
+        display: ['Newsreader Variable', 'Newsreader', 'Iowan Old Style', 'Georgia', 'serif'],
       },
       colors: {
-        brand: {
-          50: '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
+        // Single blue accent ramp in the Helicon family (hue 257).
+        accent: {
+          50: 'oklch(0.95 0.03 257)',
+          100: 'oklch(0.90 0.06 257)',
+          200: 'oklch(0.82 0.10 257)',
+          300: 'oklch(0.74 0.13 257)',
+          400: 'oklch(0.66 0.16 257)',
+          500: 'oklch(0.60 0.18 257)',
+          600: 'oklch(0.55 0.19 257)',
+          700: 'oklch(0.48 0.18 257)',
+          800: 'oklch(0.42 0.16 257)',
+          900: 'oklch(0.36 0.14 257)',
+          950: 'oklch(0.28 0.12 257)',
         },
       },
     },

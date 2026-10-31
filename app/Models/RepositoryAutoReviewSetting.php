@@ -50,4 +50,12 @@ final class RepositoryAutoReviewSetting extends Model
     {
         return self::where('enabled', true)->pluck('repository')->all();
     }
+
+    public static function disableForRepository(string $repository): void
+    {
+        $setting = self::where('repository', trim($repository))->first();
+        if ($setting !== null && $setting->enabled) {
+            $setting->update(['enabled' => false]);
+        }
+    }
 }

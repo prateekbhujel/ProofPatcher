@@ -37,7 +37,7 @@ export function DisconnectedOnboardingView({ error, deviceClientIdInput, setDevi
               </div>
               {copiedDeviceCode && <p className="text-xs text-slate-500">Copied</p>}
               <a href={device.verificationUri || 'https://github.com/login/device'} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium dark:border-slate-700">Open GitHub <ExternalLink className="h-4 w-4" /></a>
-              <button type="button" disabled={isSubmittingDevice} onClick={() => handlePollDeviceFlow()} className="w-full rounded-lg bg-violet-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-800 disabled:opacity-50">{isSubmittingDevice ? 'Checking…' : 'Check connection'}</button>
+              <button type="button" disabled={isSubmittingDevice} onClick={() => handlePollDeviceFlow()} className="w-full rounded-lg bg-accent-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-800 disabled:opacity-50">{isSubmittingDevice ? 'Checking…' : 'Check connection'}</button>
             </div>
           ) : (
             <form onSubmit={handleInitiateDeviceFlow} className="mt-6 space-y-4">
@@ -48,14 +48,14 @@ export function DisconnectedOnboardingView({ error, deviceClientIdInput, setDevi
                   <input id="onboarding-client-id" value={deviceClientIdInput} onChange={(e) => setDeviceClientIdInput(e.target.value)} placeholder="Enter client ID" autoComplete="off" className="w-full rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-sm dark:border-slate-700" />
                 </div>
               )}
-              <button type="submit" disabled={isSubmittingDevice || (!githubConnection?.isConfigured && !deviceClientIdInput.trim())} className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-800 disabled:opacity-50">
+              <button type="submit" disabled={isSubmittingDevice || (!githubConnection?.isConfigured && !deviceClientIdInput.trim())} className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-800 disabled:opacity-50">
                 <GitBranch className="h-4 w-4" />
                 {isSubmittingDevice ? 'Connecting…' : 'Continue with GitHub'}
               </button>
               <p className="text-xs text-slate-500">You’ll enter a short code on GitHub.</p>
             </form>
           )}
-          <Link href="/settings" className="mt-5 inline-block text-sm text-slate-500 hover:text-violet-700 dark:hover:text-violet-300">Settings</Link>
+          <Link href="/settings" className="mt-5 inline-block text-sm text-slate-500 hover:text-accent-700 dark:hover:text-accent-300">Settings</Link>
         </div>
       </div>
     </AppLayout>

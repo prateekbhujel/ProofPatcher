@@ -148,7 +148,7 @@ export function ThemeToggle({ compact = true }: ThemeToggleProps) {
             tabIndex={isChecked ? 0 : -1}
             onClick={() => selectPreference(opt.value)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
+            className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 ${
               compact ? '' : 'flex-1'
             } ${
               isChecked

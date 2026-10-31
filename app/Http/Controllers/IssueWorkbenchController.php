@@ -228,8 +228,14 @@ final class IssueWorkbenchController
             ] : null,
         ];
 
+        $hasLoadedContext = is_array($context) && $preview !== null;
+        $completeness = ($hasLoadedContext && is_string($context['title'] ?? null) && is_string($context['body'] ?? null))
+            ? \ProofPatch\Support\IssueCompleteness::analyze($context['title'], $context['body'])
+            : null;
+
         return Inertia::render('Issues', [
-            'context' => is_array($context) && $preview !== null ? $context : null,
+            'context' => $hasLoadedContext ? $context : null,
+            'completeness' => $completeness,
             'preview' => $preview,
             'suggestion' => $request->session()->get('issue_suggestion'),
             'draft' => $request->session()->get('issue_draft'),

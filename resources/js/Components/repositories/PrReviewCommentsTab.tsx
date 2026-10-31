@@ -91,7 +91,7 @@ export function PrReviewCommentsTab({
                   }
                 );
               }}
-              className="px-3 py-1.5 rounded-md bg-violet-700 text-white font-semibold disabled:opacity-40"
+              className="px-3 py-1.5 rounded-md bg-accent-700 text-white font-semibold disabled:opacity-40"
             >
               {postingComment && commentToPost === commentApprovals[draft.id]
                 ? 'Posting…'

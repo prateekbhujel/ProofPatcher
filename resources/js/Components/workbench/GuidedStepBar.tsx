@@ -26,9 +26,9 @@ export function GuidedStepBar({ context, suggestion, verificationReport, hasPubl
             {index > 0 && <ChevronRight aria-hidden="true" className="h-3 w-3 text-slate-300 dark:text-slate-700" />}
             <span
               aria-current={current === index ? 'step' : undefined}
-              className={`inline-flex items-center gap-1.5 ${complete[index] ? 'text-slate-700 dark:text-slate-300' : current === index ? 'font-semibold text-violet-700 dark:text-violet-300' : 'text-slate-400 dark:text-slate-500'}`}
+              className={`inline-flex items-center gap-1.5 ${complete[index] ? 'text-slate-700 dark:text-slate-300' : current === index ? 'font-semibold text-accent-700 dark:text-accent-300' : 'text-slate-400 dark:text-slate-500'}`}
             >
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${complete[index] ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : current === index ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300' : 'bg-slate-100 dark:bg-slate-800'}`}>
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${complete[index] ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : current === index ? 'bg-accent-100 text-accent-700 dark:bg-accent-950 dark:text-accent-300' : 'bg-slate-100 dark:bg-slate-800'}`}>
                 {complete[index] ? <Check aria-label="Done" className="h-3 w-3" /> : index + 1}
               </span>
               {label}
