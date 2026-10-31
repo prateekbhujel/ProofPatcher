@@ -412,7 +412,7 @@ export function OsDesktop(props: OsDesktopProps) {
 
   return (
     <div
-      className="os-wallpaper relative"
+      className="os-wallpaper relative min-h-[100dvh]"
       onContextMenu={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('input, textarea, select, [contenteditable="true"], a[href]')) return;
