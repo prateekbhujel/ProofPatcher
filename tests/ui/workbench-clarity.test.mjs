@@ -129,3 +129,91 @@ test('TaskComposerFooter renders spacious multi-line textarea with visible label
   assert.match(html, /\[field-sizing:content\]/);
   assert.match(html, /Maintainer Review Note/);
 });
+
+const { ThinkingAnimation } = component('../../resources/js/Components/ui/ThinkingAnimation.tsx');
+const { VerificationPipeline } = component('../../resources/js/Components/ui/VerificationPipeline.tsx');
+const { VerificationPipelineCard } = component('../../resources/js/Components/workbench/VerificationPipelineCard.tsx',
+  (id) => {
+    if (id === '@inertiajs/react') return { router: { post() {} } };
+    if (id === '../ui/ThinkingAnimation') return { ThinkingAnimation };
+    if (id === '../ui/VerificationPipeline') return { VerificationPipeline };
+    return require(id);
+  });
+const { PrReviewTab } = component('../../resources/js/Components/repositories/PrReviewTab.tsx');
+
+test('automatic reviews list recent findings with local-only provenance', () => {
+  const repositories = [{ fullName: 'owner/public', isPrivate: false }];
+  const base = { connected: true, repositories, pendingRepo: null, error: null, onToggle() {}, onRefresh() {},
+    autoReview: { worker: { isLive: true, status: 'running' }, settings: {}, publicOnly: true } };
+  const empty = render(AutoReviewPanel, base);
+  assert.match(empty, /Recent findings/);
+  assert.match(empty, /No automatic reviews yet/);
+
+  const disconnected = render(AutoReviewPanel, { ...base, connected: false });
+  assert.match(disconnected, /Connect GitHub to choose repositories/);
+  assert.doesNotMatch(disconnected, /Recent findings/);
+  assert.doesNotMatch(disconnected, /reviewed ·/);
+
+  const filled = render(AutoReviewPanel, { ...base,
+    autoReview: { ...base.autoReview,
+      stats: { totalReviews: 2, completed: 1, failed: 0, skippedPrivate: 1, skippedBudget: 0 },
+      recentResults: [
+        { id: 7, repository: 'owner/public', pull_number: 42, status: 'completed', summary: 'Rounding fix looks correct.',
+          risk_level: 'low', recommendation: 'approve', model: 'meta-models/muse-spark-open-1026',
+          published_status: 'local_only', reviewed_at: '2026-10-31T10:00:00+00:00', created_at: '2026-10-31T10:00:00+00:00' },
+        { id: 6, repository: 'owner/public', pull_number: 41, status: 'skipped_private', summary: null,
+          risk_level: null, recommendation: null, model: null, published_status: 'local_only',
+          reviewed_at: null, created_at: '2026-10-31T09:00:00+00:00' },
+      ] } });
+  assert.match(filled, /1 reviewed/);
+  assert.match(filled, /owner\/public#42/);
+  assert.match(filled, /approve · low risk/);
+  assert.match(filled, /Rounding fix looks correct/);
+  assert.match(filled, /Skipped \(private\)/);
+  assert.match(filled, /Stored locally · Not posted to GitHub/);
+});
+
+test('review provenance distinguishes automatic and manual Muse reviews', () => {
+  const base = { reviewPreview: null, isPrivate: false, reviewApproved: false, reviewProcessing: false,
+    budget: null, modelKeyAvailable: true, copiedReviewDigest: false, setReviewApproved() {}, copyText() {},
+    handleReviewSubmit() {}, setReviewFormData() {}, reviewError: null };
+  const review = { unverified: true, model: 'muse-spark-1.3', reviewedAt: '2026-10-31T10:00:00+00:00',
+    inputDigest: 'a'.repeat(64), summary: 'Advisory summary.', riskLevel: 'low', recommendation: 'approve',
+    fileFindings: [], usage: { prompt_tokens: 10, completion_tokens: 5 } };
+  const automatic = render(PrReviewTab, { ...base, review: { ...review, source: 'automatic' } });
+  assert.match(automatic, /Automatic review/);
+  assert.match(automatic, /Not posted to GitHub/);
+  const manual = render(PrReviewTab, { ...base, review });
+  assert.match(manual, /Manual review/);
+});
+
+test('verification states unavailable checks and blocked draft PRs explicitly', () => {
+  const base = { context: { repository: 'owner/repo', issueNumber: 9, path: 'src/Other.php', sourceSha256: 'b'.repeat(64) },
+    verifying: false, pipelineGates: null, copiedReceipt: false, copyReceipt() {}, copiedBotComment: false,
+    setCopiedBotComment() {}, onVerifyCandidate() {}, githubConnection: null, publishedPr: null,
+    publisherDisconnected: true, publishingPr: false, onPublishDraftPr() {} };
+  const suggestion = { path: 'src/Other.php', find: 'a', replace: 'b', explanation: 'Try this.',
+    model: 'muse-spark-1.3', candidate: { sha256: 'c'.repeat(64), verified: false } };
+
+  const generalRepo = render(VerificationPipelineCard, { ...base, suggestion, verificationReport: null,
+    isOwnedFixture: false, isDedicatedTestRepo: false });
+  assert.match(generalRepo, /Checks unavailable for this repository/);
+  assert.match(generalRepo, /advisory and unverified/);
+
+  const verified = { id: '20261031T100000Z-abcdef123456', decision: 'VERIFIED', isSimulated: true,
+    receipt: { sha256: 'd'.repeat(64), externallyAnchored: false }, candidateSha256: 'c'.repeat(64),
+    gates: { baselineReproduced: true, negativeControlCaught: true, candidatePassed: true,
+      candidateStaticSafetyPassed: true, allowlistIntegrityIntact: true } };
+  const simulated = render(VerificationPipelineCard, { ...base, suggestion, verificationReport: verified,
+    pipelineGates: [], isOwnedFixture: true, isDedicatedTestRepo: true });
+  assert.match(simulated, /Draft PR unavailable for this run/);
+  assert.match(simulated, /isolated sandbox/);
+  assert.doesNotMatch(simulated, /Create draft PR/);
+
+  const genuine = render(VerificationPipelineCard, { ...base, suggestion,
+    verificationReport: { ...verified, isSimulated: false }, pipelineGates: [],
+    isOwnedFixture: true, isDedicatedTestRepo: true,
+    githubConnection: { repoPulls: [], user: { login: 'maintainer' } }, publisherDisconnected: false });
+  assert.doesNotMatch(genuine, /Draft PR unavailable for this run/);
+  assert.match(genuine, /Create draft PR/);
+});

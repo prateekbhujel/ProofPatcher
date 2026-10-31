@@ -568,6 +568,137 @@ final class AutoReviewLoopTest extends TestCase
         $this->assertSame('acme/authorized-repo', $results[0]['repository']);
     }
 
+    public function testPrivateRepositoryToggleFailsClosedAndDisablesSetting(): void
+    {
+        $controller = new AutoReviewController();
+        $session = new \Illuminate\Session\Store('test', new \Illuminate\Session\ArraySessionHandler(10));
+        $session->put('github_auth', [
+            'token' => '[REDACTED]',
+            'user' => ['id' => 1, 'login' => 'maintainer'],
+            'repositories' => [
+                ['fullName' => 'acme/private-repo', 'isPrivate' => true],
+            ],
+        ]);
+
+        // A stale enabled setting for the private repo must be switched off.
+        RepositoryAutoReviewSetting::setRepoEnabled('acme/private-repo', true);
+        $this->assertTrue(RepositoryAutoReviewSetting::isRepoEnabled('acme/private-repo'));
+
+        $request = Request::create('/repositories/auto-review/toggle', 'POST', [
+            'repository' => 'acme/private-repo',
+            'enabled' => true,
+        ]);
+        $request->setLaravelSession($session);
+
+        $response = $controller->toggle($request);
+        $this->assertSame(422, $response->getStatusCode());
+        $data = json_decode((string) $response->getContent(), true);
+        $this->assertFalse($data['success']);
+        $this->assertStringContainsString('public repositories only', $data['error']);
+        $this->assertFalse(RepositoryAutoReviewSetting::isRepoEnabled('acme/private-repo'));
+    }
+
+    public function testDashboardAutoReviewPropsAreScopedToAuthorizedRepositories(): void
+    {
+        $dashboard = new \ProofPatch\Http\Controllers\DashboardController();
+        $session = new \Illuminate\Session\Store('test', new \Illuminate\Session\ArraySessionHandler(10));
+        $session->put('github_auth', [
+            'token' => '[REDACTED]',
+            'user' => ['id' => 1, 'login' => 'maintainer'],
+            'repositories' => [
+                ['fullName' => 'acme/authorized-repo', 'isPrivate' => false],
+            ],
+        ]);
+
+        RepositoryAutoReviewSetting::setRepoEnabled('acme/authorized-repo', true);
+        RepositoryAutoReviewSetting::setRepoEnabled('other/foreign-repo', true);
+        AutoReviewResult::create([
+            'repository' => 'acme/authorized-repo',
+            'pull_number' => 1,
+            'head_sha' => '1111111111111111111111111111111111111111',
+            'base_sha' => '2222222222222222222222222222222222222222',
+            'status' => 'completed',
+            'is_public' => true,
+            'summary' => 'Authorized repo review',
+            'published_status' => 'local_only',
+        ]);
+        AutoReviewResult::create([
+            'repository' => 'other/foreign-repo',
+            'pull_number' => 2,
+            'head_sha' => '3333333333333333333333333333333333333333',
+            'base_sha' => '4444444444444444444444444444444444444444',
+            'status' => 'completed',
+            'is_public' => true,
+            'summary' => 'Foreign repo review',
+            'published_status' => 'local_only',
+        ]);
+
+        foreach (['/settings' => 'settings', '/repositories' => 'repositories'] as $path => $method) {
+            $request = Request::create($path, 'GET');
+            $request->setLaravelSession($session);
+            $props = $dashboard->{$method}($request)->toResponse($request)->getOriginalContent()->getData()['page']['props'];
+            $autoReview = $props['autoReview'];
+
+            $this->assertArrayHasKey('acme/authorized-repo', $autoReview['settings']);
+            $this->assertArrayNotHasKey('other/foreign-repo', $autoReview['settings']);
+            $this->assertSame(1, $autoReview['stats']['totalReviews']);
+            $this->assertSame(1, $autoReview['stats']['completed']);
+            $this->assertCount(1, $autoReview['recentResults']);
+            $this->assertSame('acme/authorized-repo', $autoReview['recentResults'][0]['repository']);
+            $this->assertSame('local_only', $autoReview['recentResults'][0]['published_status']);
+        }
+
+        // Disconnected visitors see no settings or findings at all.
+        $anonSession = new \Illuminate\Session\Store('test', new \Illuminate\Session\ArraySessionHandler(10));
+        $anonRequest = Request::create('/settings', 'GET');
+        $anonRequest->setLaravelSession($anonSession);
+        $anonProps = $dashboard->settings($anonRequest)->toResponse($anonRequest)->getOriginalContent()->getData()['page']['props'];
+        $this->assertSame([], $anonProps['autoReview']['settings']);
+        $this->assertSame([], $anonProps['autoReview']['recentResults']);
+        $this->assertSame(0, $anonProps['autoReview']['stats']['totalReviews']);
+    }
+
+    public function testDashboardMarksAutomaticReviewSource(): void
+    {
+        $dashboard = new \ProofPatch\Http\Controllers\DashboardController();
+        $session = new \Illuminate\Session\Store('test', new \Illuminate\Session\ArraySessionHandler(10));
+
+        $headSha = '1111111111111111111111111111111111111111';
+        $baseSha = '2222222222222222222222222222222222222222';
+        AutoReviewResult::create([
+            'repository' => 'acme/public-repo',
+            'pull_number' => 42,
+            'head_sha' => $headSha,
+            'base_sha' => $baseSha,
+            'status' => 'completed',
+            'is_public' => true,
+            'summary' => 'Automatic review summary',
+            'raw_review' => [
+                'summary' => 'Automatic review summary',
+                'riskLevel' => 'low',
+                'recommendation' => 'approve',
+            ],
+            'published_status' => 'local_only',
+        ]);
+
+        $session->put('pullRequest', [
+            'repository' => 'acme/public-repo',
+            'number' => 42,
+            'headSha' => $headSha,
+            'baseSha' => $baseSha,
+            'isPrivate' => false,
+        ]);
+        $session->put('pullRequestSnapshot', ['id' => 'snap1']);
+
+        $request = Request::create('/repositories', 'GET');
+        $request->setLaravelSession($session);
+        $props = $dashboard->repositories($request)->toResponse($request)->getOriginalContent()->getData()['page']['props'];
+
+        $this->assertNotNull($props['review']);
+        $this->assertSame('automatic', $props['review']['source']);
+        $this->assertSame('Automatic review summary', $props['review']['summary']);
+    }
+
     public function testDashboardRepositoriesPageDisplaysReviewOnlyForMatchingBaseSha(): void
     {
         $dashboard = new \ProofPatch\Http\Controllers\DashboardController();

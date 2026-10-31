@@ -204,6 +204,34 @@ export function VerificationPipelineCard({
         </div>
       )}
 
+      {suggestion && !(isOwnedFixture || isDedicatedTestRepo) && (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#141821] p-5 space-y-2 shadow-2xs">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+            <span>Checks unavailable for this repository</span>
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Automated checks run only on the pinned OrderTotal fixture and the dedicated test repository.
+            This suggestion is advisory and unverified: ProofPatcher has not executed it, and no draft PR can be created from it here.
+          </p>
+        </div>
+      )}
+
+      {verificationReport?.decision === 'VERIFIED' &&
+        verificationReport.isSimulated !== false &&
+        isDedicatedTestRepo && (
+          <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/20 p-5 space-y-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Draft PR unavailable for this run</span>
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              This run used host or simulated execution, so it cannot authorize publication.
+              Creating a draft PR requires a verified run from the isolated sandbox. The receipt above remains local evidence only.
+            </p>
+          </div>
+        )}
+
       {/* Pull Request & Merge Controls */}
       {verificationReport?.decision === 'VERIFIED' &&
         verificationReport.isSimulated === false &&

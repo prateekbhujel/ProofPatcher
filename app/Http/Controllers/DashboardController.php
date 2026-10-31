@@ -285,7 +285,7 @@ final class DashboardController
                     (string) $pull['baseSha']
                 );
                 if ($savedAuto !== null && $savedAuto->status === 'completed' && is_array($savedAuto->raw_review)) {
-                    $review = $savedAuto->raw_review;
+                    $review = array_merge($savedAuto->raw_review, ['source' => 'automatic']);
                 }
             } catch (\Throwable) {}
         }
@@ -362,24 +362,7 @@ final class DashboardController
             }
         }
 
-        $autoReview = [
-            'worker' => [
-                'isLive' => false,
-                'status' => 'offline',
-                'workerPid' => null,
-                'lastHeartbeatAt' => null,
-                'cycleCount' => 0,
-                'publicOnly' => true,
-                'message' => 'Review worker is offline.',
-            ],
-            'settings' => [],
-            'publicOnly' => true,
-        ];
-        try {
-            $workerStatusService = new \ProofPatch\Support\WorkerStatusService();
-            $autoReview['worker'] = $workerStatusService->getStatus();
-            $autoReview['settings'] = \ProofPatch\Models\RepositoryAutoReviewSetting::all(['repository', 'enabled', 'public_only'])->keyBy('repository')->all();
-        } catch (\Throwable) {}
+        $autoReview = $this->scopedAutoReviewProps($request);
 
         return Inertia::render('Repositories', [
             'pull' => $pull,
@@ -628,6 +611,7 @@ final class DashboardController
             $privateConsent = (bool) $request->input('private_consent', false);
 
             $result = $reviewAgent->review($pull, $patchPreview, $digest, $key, $privateConsent);
+            $result['source'] = 'manual';
             $this->putSession($request, 'pr_review', $result);
 
             return redirect('/repositories?preview=1');
@@ -1150,29 +1134,14 @@ final class DashboardController
         $policyFile = $this->project.'/.proofpatchrc.json';
         $policy = is_file($policyFile) ? json_decode((string) file_get_contents($policyFile), true) ?? [] : [];
 
-        $autoReview = [
-            'worker' => [
-                'isLive' => false,
-                'status' => 'offline',
-                'workerPid' => null,
-                'lastHeartbeatAt' => null,
-                'cycleCount' => 0,
-                'publicOnly' => true,
-                'message' => 'Review worker is offline.',
-            ],
-            'settings' => [],
-            'publicOnly' => true,
-        ];
         try {
-            $workerStatusService = new \ProofPatch\Support\WorkerStatusService();
-            $autoReview['worker'] = $workerStatusService->getStatus();
             foreach (($githubConnection['repositories'] ?? []) as $r) {
                 if (is_array($r) && is_string($r['fullName'] ?? null) && ($r['isPrivate'] ?? null) === true) {
                     \ProofPatch\Models\RepositoryAutoReviewSetting::disableForRepository($r['fullName']);
                 }
             }
-            $autoReview['settings'] = \ProofPatch\Models\RepositoryAutoReviewSetting::all(['repository', 'enabled', 'public_only'])->keyBy('repository')->all();
         } catch (\Throwable) {}
+        $autoReview = $this->scopedAutoReviewProps($request);
 
         $providerConfig = \ProofPatch\Agent\ProviderConfigStore::status();
         $statusMessage = session('status') ?? $this->getSession($request, 'status');
@@ -1274,6 +1243,78 @@ final class DashboardController
     private function budget(): RequestBudget
     {
         return RequestBudget::forRuntime();
+    }
+
+    /**
+     * Builds the automatic-review panel props scoped strictly to repositories
+     * authorized in the active GitHub session. Settings, counts, and recent
+     * findings for repositories outside the current grant are never exposed.
+     */
+    private function scopedAutoReviewProps(Request $request): array
+    {
+        $props = [
+            'worker' => [
+                'isLive' => false,
+                'status' => 'offline',
+                'workerPid' => null,
+                'lastHeartbeatAt' => null,
+                'cycleCount' => 0,
+                'publicOnly' => true,
+                'message' => 'Review worker is offline.',
+            ],
+            'settings' => [],
+            'stats' => [
+                'totalReviews' => 0,
+                'completed' => 0,
+                'failed' => 0,
+                'skippedPrivate' => 0,
+                'skippedBudget' => 0,
+            ],
+            'recentResults' => [],
+            'publicOnly' => true,
+        ];
+
+        try {
+            $props['worker'] = (new \ProofPatch\Support\WorkerStatusService())->getStatus();
+        } catch (\Throwable) {}
+
+        $authorized = [];
+        $auth = $this->getSession($request, 'github_auth');
+        if (is_array($auth) && isset($auth['token']) && is_array($auth['repositories'] ?? null)) {
+            foreach ($auth['repositories'] as $repo) {
+                if (is_array($repo) && is_string($repo['fullName'] ?? null) && trim($repo['fullName']) !== '') {
+                    $authorized[strtolower(trim($repo['fullName']))] = true;
+                }
+            }
+        }
+        if ($authorized === []) {
+            return $props;
+        }
+
+        try {
+            $keys = array_keys($authorized);
+            $lowerColumn = \Illuminate\Support\Facades\DB::raw('LOWER(repository)');
+            $props['settings'] = \ProofPatch\Models\RepositoryAutoReviewSetting::whereIn($lowerColumn, $keys)
+                ->get(['repository', 'enabled', 'public_only'])
+                ->keyBy('repository')
+                ->all();
+
+            $props['stats'] = [
+                'totalReviews' => \ProofPatch\Models\AutoReviewResult::whereIn($lowerColumn, $keys)->count(),
+                'completed' => \ProofPatch\Models\AutoReviewResult::whereIn($lowerColumn, $keys)->where('status', 'completed')->count(),
+                'failed' => \ProofPatch\Models\AutoReviewResult::whereIn($lowerColumn, $keys)->where('status', 'failed')->count(),
+                'skippedPrivate' => \ProofPatch\Models\AutoReviewResult::whereIn($lowerColumn, $keys)->where('status', 'skipped_private')->count(),
+                'skippedBudget' => \ProofPatch\Models\AutoReviewResult::whereIn($lowerColumn, $keys)->where('status', 'skipped_budget')->count(),
+            ];
+
+            $props['recentResults'] = \ProofPatch\Models\AutoReviewResult::whereIn($lowerColumn, $keys)
+                ->latest('id')
+                ->limit(10)
+                ->get(['id', 'repository', 'pull_number', 'status', 'summary', 'risk_level', 'recommendation', 'model', 'published_status', 'reviewed_at', 'created_at'])
+                ->toArray();
+        } catch (\Throwable) {}
+
+        return $props;
     }
 
     /** Backend evidence may contain private repository names and is not yet bound to a user. */

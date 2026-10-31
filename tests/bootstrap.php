@@ -38,7 +38,15 @@ putenv('PROOFPATCH_DB=' . $suiteFallbackDb);
 $_ENV['PROOFPATCH_DB'] = $suiteFallbackDb;
 $_SERVER['PROOFPATCH_DB'] = $suiteFallbackDb;
 
-register_shutdown_function(static function () use ($suiteFallbackDb, $suiteFallbackDir, $suiteStorage): void {
+// Isolate Muse provider selection from the developer's real encrypted config.
+// Without this, ProviderConfigStore::activeTarget() resolves ambient HOME state
+// (e.g. Meta selected in Settings) and tests asserting the Baseten default fail.
+$suiteProviderConfig = $suiteFallbackDir . '/provider_config.enc';
+putenv('PROOFPATCH_PROVIDER_CONFIG_FILE=' . $suiteProviderConfig);
+$_ENV['PROOFPATCH_PROVIDER_CONFIG_FILE'] = $suiteProviderConfig;
+$_SERVER['PROOFPATCH_PROVIDER_CONFIG_FILE'] = $suiteProviderConfig;
+
+register_shutdown_function(static function () use ($suiteFallbackDb, $suiteFallbackDir, $suiteStorage, $suiteProviderConfig): void {
     if (is_dir($suiteStorage)) {
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($suiteStorage, FilesystemIterator::SKIP_DOTS),
@@ -51,6 +59,9 @@ register_shutdown_function(static function () use ($suiteFallbackDb, $suiteFallb
     }
     if (file_exists($suiteFallbackDb)) {
         @unlink($suiteFallbackDb);
+    }
+    if (file_exists($suiteProviderConfig)) {
+        @unlink($suiteProviderConfig);
     }
     if (is_dir($suiteFallbackDir)) {
         @rmdir($suiteFallbackDir);

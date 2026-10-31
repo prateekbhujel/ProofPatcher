@@ -65,6 +65,9 @@ export function PrReviewTab({
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-violet-700" />
               <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Muse suggestions</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                {review.source === 'automatic' ? '· Automatic review' : '· Manual review'}
+              </span>
             </div>
             <span
               className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
@@ -88,6 +91,9 @@ export function PrReviewTab({
             <span>Tokens: {review.usage.prompt_tokens} in / {review.usage.completion_tokens} out</span>
             <span>Reviewed: {new Date(review.reviewedAt).toLocaleString()}</span>
           </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Advisory only · Stored in ProofPatcher · Not posted to GitHub. External repository tests were not run here.
+          </p>
         </div>
       )}
 
