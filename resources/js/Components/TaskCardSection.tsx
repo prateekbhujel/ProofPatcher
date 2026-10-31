@@ -11,7 +11,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { VoiceDictationButton } from './VoiceDictationButton';
-import { RepoCombobox } from './workbench/RepoCombobox';
+import { RepoSearchPicker } from './workbench/RepoSearchPicker';
 import { COMPOSER_DRAFT_KEY, ComposerDraft } from './os/DesktopWindows';
 import { Bold, Italic, Code, Quote, List, Link2 } from 'lucide-react';
 
@@ -24,11 +24,13 @@ export interface LocalTaskCard {
   updatedAt: string | null;
   hasImage: boolean;
   workbenchTaskId?: number | null;
+  repositoryIsPrivate?: boolean;
 }
 
-export interface GitHubRepoOption {
-  fullName: string;
-  isPrivate?: boolean;
+export interface TaskComposerConnection {
+  isConnected?: boolean;
+  selectedRepo?: string | null;
+  repositoryCount?: number;
 }
 
 export interface CardPreview {
@@ -504,11 +506,7 @@ export function FocusedLocalTaskView({
 export interface TaskCardSectionProps {
   localTasks?: LocalTaskCard[];
   cardPreview?: CardPreview | null;
-  githubConnection?: {
-    isConnected?: boolean;
-    repositories?: GitHubRepoOption[];
-    selectedRepo?: string | null;
-  } | null;
+  githubConnection?: TaskComposerConnection | null;
   onCreated?: (taskId: number | null) => void;
 }
 
@@ -516,16 +514,11 @@ export function NewTaskComposer({
   githubConnection = null,
   onCreated,
 }: {
-  githubConnection?: {
-    isConnected?: boolean;
-    repositories?: GitHubRepoOption[];
-    selectedRepo?: string | null;
-  } | null;
+  githubConnection?: TaskComposerConnection | null;
   onCreated?: (taskId: number | null) => void;
 }) {
-  const repositories = githubConnection?.repositories ?? [];
-  const defaultRepo = githubConnection?.selectedRepo || repositories[0]?.fullName || '';
-  const canCreate = Boolean(githubConnection?.isConnected && repositories.length > 0);
+  const defaultRepo = githubConnection?.selectedRepo || '';
+  const canCreate = Boolean(githubConnection?.isConnected);
   const { data, setData, post, processing, reset } = useForm({
     title: '',
     description: '',
@@ -690,9 +683,9 @@ export function NewTaskComposer({
           <label htmlFor="local-task-repository" className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
             Repository
           </label>
-          <RepoCombobox
+          <RepoSearchPicker
             id="local-task-repository"
-            repos={repositories}
+            ariaLabel="Task repository"
             value={data.repository}
             onChange={(fullName) => setData('repository', fullName)}
             disabled={!canCreate}

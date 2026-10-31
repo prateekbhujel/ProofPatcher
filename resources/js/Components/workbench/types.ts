@@ -59,7 +59,9 @@ export interface GitHubConnectionData {
     name?: string;
     avatarUrl?: string;
   } | null;
-  repositories: GitHubRepo[];
+  /** Full list is no longer shipped to Issues; pickers page through the search endpoint. */
+  repositories?: GitHubRepo[];
+  repositoryCount?: number;
   selectedRepo: string | null;
   dedicatedIssueNumber?: number | null;
   repoIssues: GitHubIssueItem[];

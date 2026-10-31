@@ -49,14 +49,14 @@ const { exports: desktopWindowsModule } = loadTsxModule(
     return require(id);
   },
 );
-const { exports: repoComboboxModule } = loadTsxModule('../../resources/js/Components/workbench/RepoCombobox.tsx');
+const { exports: repoPickerModule } = loadTsxModule('../../resources/js/Components/workbench/RepoSearchPicker.tsx');
 
 const { exports: taskCardModule, source: taskCardSource } = loadTsxModule(
   '../../resources/js/Components/TaskCardSection.tsx',
   (id) => {
     if (id === '@inertiajs/react') return inertiaMock;
     if (id === './VoiceDictationButton') return voiceModule;
-    if (id === './workbench/RepoCombobox') return repoComboboxModule;
+    if (id === './workbench/RepoSearchPicker') return repoPickerModule;
     if (id === './os/DesktopWindows') return desktopWindowsModule;
     return require(id);
   }
@@ -314,7 +314,7 @@ test('the task composer offers a searchable repo picker, formatting toolbar, and
   const html = renderToStaticMarkup(React.createElement(taskCardModule.NewTaskComposer, {
     githubConnection: {
       isConnected: true,
-      repositories: [{ fullName: 'owner/one' }, { fullName: 'owner/two', isPrivate: true }],
+      repositoryCount: 2,
       selectedRepo: 'owner/one',
     },
   }));
@@ -328,16 +328,16 @@ test('the task composer offers a searchable repo picker, formatting toolbar, and
   assert.match(html, /accept="image\/png,image\/jpeg"/);
 });
 
-test('the repo combobox lists options with private badges once opened', () => {
-  // Closed by default; the input still advertises search.
-  const html = renderToStaticMarkup(React.createElement(repoComboboxModule.RepoCombobox, {
+test('the repo search picker fetches nothing until opened', () => {
+  // Closed by default: no listbox, no fetch during render (effects only).
+  const html = renderToStaticMarkup(React.createElement(repoPickerModule.RepoSearchPicker, {
     id: 'repo-pick',
-    repos: [{ fullName: 'owner/one' }],
     value: 'owner/one',
     onChange: () => {},
   }));
   assert.match(html, /role="combobox"/);
   assert.match(html, /aria-expanded="false"/);
+  assert.match(html, /Search repositories/);
   assert.doesNotMatch(html, /role="listbox"/);
 });
 

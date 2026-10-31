@@ -54,6 +54,12 @@ const inertia = {
   usePage: () => ({ props: {} }),
 };
 const logo = loadTsx('../../resources/js/Components/ui/BrandMark.tsx');
+const repoPicker = loadTsx('../../resources/js/Components/workbench/RepoSearchPicker.tsx');
+const sidebarRequire = (id) => {
+  if (id === '@inertiajs/react') return inertia;
+  if (id === './RepoSearchPicker') return repoPicker;
+  return require(id);
+};
 const shellLoader = createLoader();
 const layout = shellLoader.load(shellLoader.resolveFile(fileURLToPath(import.meta.url), '../../resources/js/Components/AppLayout.tsx'));
 const onboarding = loadTsx('../../resources/js/Components/workbench/DisconnectedOnboardingView.tsx', (id) => {
@@ -121,7 +127,7 @@ test('a configured installation offers sign-in without asking the user for an Ap
 });
 
 test('the repository sidebar shows tasks only for the selected repository', () => {
-  const sidebar = loadTsx('../../resources/js/Components/workbench/WorkbenchSidebar.tsx', (id) => id === '@inertiajs/react' ? inertia : require(id));
+  const sidebar = loadTsx('../../resources/js/Components/workbench/WorkbenchSidebar.tsx', sidebarRequire);
   const connection = { selectedRepo: 'owner/one', repositories: [{ fullName: 'owner/one' }], repoIssues: [], repoPulls: [], user: { login: 'owner' } };
   const html = renderToStaticMarkup(React.createElement(sidebar.WorkbenchSidebar, {
     githubConnection: connection, sidebarTab: 'issues', sidebarQuery: '', filteredIssues: [], filteredPulls: [], issuePathMap: {},
@@ -135,10 +141,14 @@ test('the repository sidebar shows tasks only for the selected repository', () =
   // Account controls moved to the start menu; the sidebar stays task-focused.
   assert.doesNotMatch(html, /href="\/settings"/);
   assert.doesNotMatch(html, /Log out/);
+  // The repo switcher is the async searchable picker, not a native select.
+  assert.match(html, /role="combobox"/);
+  assert.match(html, /aria-label="Select connected repository"/);
+  assert.doesNotMatch(html, /<select/);
 });
 
 test('the dedicated test issue opens without a file path while other issues still need one', () => {
-  const sidebar = loadTsx('../../resources/js/Components/workbench/WorkbenchSidebar.tsx', (id) => id === '@inertiajs/react' ? inertia : require(id));
+  const sidebar = loadTsx('../../resources/js/Components/workbench/WorkbenchSidebar.tsx', sidebarRequire);
   const connection = { selectedRepo: 'owner/test', dedicatedIssueNumber: 1, repositories: [{ fullName: 'owner/test' }], repoIssues: [], repoPulls: [], user: { login: 'owner' } };
   const issues = [
     { number: 1, title: 'Known test issue', user: 'owner', createdAt: '2026-10-30T00:00:00Z' },

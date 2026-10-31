@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AppWindow as AppWindowIcon, ArrowRight } from 'lucide-react';
 import { applyThemePreference } from '../ThemeToggle';
 import { APP_FOLDERS, RAIL_APPS } from './apps';
+import { AppDock } from './AppDock';
 import { BootScreen } from './BootScreen';
 import { DesktopContextMenu } from './DesktopContextMenu';
 import { DesktopIcons } from './DesktopIcons';
@@ -9,6 +10,7 @@ import { KernelTaskbar } from './KernelTaskbar';
 import { TerminalLine } from './KernelTerminal';
 import { StartMenu } from './StartMenu';
 import { Window } from './Window';
+import { ClickSpark } from '../bits/ClickSpark';
 import {
   ConsoleContent,
   EngineContent,
@@ -422,9 +424,24 @@ export function OsDesktop(props: OsDesktopProps) {
     >
       <div className="os-grid-overlay pointer-events-none absolute inset-0" aria-hidden="true" />
       <BootScreen lines={bootLinesFor(props)} />
-      <div className="relative flex flex-col gap-3 p-3 pb-16 sm:flex-row sm:p-4 sm:pb-16">
+      <ClickSpark
+        sparkColor={['#2f6fed', '#0ea5e9']}
+        sparkCount={6}
+        sparkRadius={22}
+        duration={450}
+        className="relative flex flex-col gap-3 p-3 pb-16 sm:flex-row sm:p-4 sm:pb-16"
+      >
         <aside aria-label="Desktop rail" className="flex shrink-0 gap-2 overflow-x-auto sm:flex-col sm:overflow-visible">
-          <DesktopIcons layout="rail" onOpenApp={openApp} />
+          <div className="sm:hidden">
+            <DesktopIcons layout="rail" onOpenApp={openApp} />
+          </div>
+          <div className="hidden sm:block">
+            <AppDock
+              onOpenApp={openApp}
+              openApps={apps}
+              theme={typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+            />
+          </div>
           <div className="hidden border-t border-[var(--border)] pt-2 sm:block" aria-hidden="true" />
           <ul className="flex gap-1 sm:flex-col" aria-label="Window toggles">
             {WINDOW_DEFS.map((w) => {
@@ -458,7 +475,7 @@ export function OsDesktop(props: OsDesktopProps) {
           {(Object.keys(open) as string[]).filter((id) => NATIVE_IDS.includes(id as DesktopWindowId)).map((id) => renderNative(id as DesktopWindowId))}
           {apps.map((href, i) => renderApp(href, i))}
         </div>
-      </div>
+      </ClickSpark>
       <StartMenu
         open={startOpen}
         apps={[]}

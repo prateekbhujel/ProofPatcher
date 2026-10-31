@@ -14,6 +14,7 @@ use ProofPatch\Http\Controllers\LocalTaskCardController;
 use ProofPatch\Http\Controllers\LocalTaskImageController;
 use ProofPatch\Http\Controllers\ManualInlineCommentController;
 use ProofPatch\Http\Controllers\OsStatusController;
+use ProofPatch\Http\Controllers\RepositorySearchController;
 use ProofPatch\Http\Controllers\TelemetryController;
 use ProofPatch\Http\Controllers\TerminalController;
 
@@ -60,6 +61,7 @@ Route::post('/github/device/initiate', [DashboardController::class, 'initiateDev
 Route::post('/github/device/poll', [DashboardController::class, 'pollDeviceFlow']);
 Route::post('/github/device/disconnect', [DashboardController::class, 'disconnectDeviceFlowRequest']);
 Route::post('/github/repositories/select', [DashboardController::class, 'selectInstalledRepository']);
+Route::get('/github/repositories/search', RepositorySearchController::class)->middleware('throttle:120,1');
 Route::post('/github/pulls/capture', [DashboardController::class, 'captureInstalledPullRequest']);
 Route::match(['get', 'post'], '/checks', [DashboardController::class, 'checks']);
 Route::get('/settings', [DashboardController::class, 'settings']);

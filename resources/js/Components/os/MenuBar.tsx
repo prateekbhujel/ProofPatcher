@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
 import { BrandMark } from '../ui/BrandMark';
+import { ShinyText } from '../bits/ShinyText';
 
 interface MenuBarProps {
   /** Center hint, e.g. the next step. Hidden on small screens. */
@@ -22,9 +23,14 @@ export function MenuBar({ center, connected, userLogin, loading = false }: MenuB
           className="flex shrink-0 items-center gap-2 font-semibold text-[var(--fg)]"
         >
           <BrandMark size={16} />
-          <span>
-            ProofPatcher <span className="font-normal text-[var(--fg-muted)]">Kernel</span>
-          </span>
+          <ShinyText
+            text="ProofPatcher Kernel"
+            color={typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? '#b5b5b5' : '#334155'}
+            shineColor="#ffffff"
+            speed={4}
+            delay={1.5}
+            shineWidth={28}
+          />
         </Link>
         <span className="hidden min-w-0 flex-1 truncate text-center font-mono text-[11px] text-[var(--fg-muted)] md:block">
           {center}

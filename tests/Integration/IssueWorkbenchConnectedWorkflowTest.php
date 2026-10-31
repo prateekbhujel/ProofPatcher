@@ -513,7 +513,9 @@ final class IssueWorkbenchConnectedWorkflowTest extends TestCase
         $conn = $props['githubConnection'];
         self::assertTrue($conn['isConnected']);
         self::assertSame('testuser', $conn['user']['login']);
-        self::assertCount(2, $conn['repositories']);
+        // The full list stays server-side; pickers page the search endpoint.
+        self::assertArrayNotHasKey('repositories', $conn);
+        self::assertSame(2, $conn['repositoryCount']);
         self::assertSame('testuser/alpha', $conn['selectedRepo']);
         self::assertCount(1, $conn['repoIssues']);
         self::assertSame(42, $conn['repoIssues'][0]['number']);

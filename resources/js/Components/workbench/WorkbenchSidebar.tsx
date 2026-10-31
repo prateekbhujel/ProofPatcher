@@ -14,6 +14,7 @@ import {
   GitHubPullItem,
 } from './types';
 import { LocalTaskCard } from '../TaskCardSection';
+import { RepoSearchPicker } from './RepoSearchPicker';
 
 interface WorkbenchSidebarProps {
   githubConnection: GitHubConnectionData | null;
@@ -109,23 +110,13 @@ export function WorkbenchSidebar({
             )}
           </div>
 
-          <select
-            aria-label="Select connected repository"
+          <RepoSearchPicker
+            id="connected-repository"
+            ariaLabel="Select connected repository"
             value={githubConnection?.selectedRepo || ''}
-            onChange={(e) => handleSelectRepo(e.target.value)}
+            onChange={handleSelectRepo}
             disabled={loadingRepo}
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none"
-          >
-            {githubConnection?.repositories && githubConnection.repositories.length > 0 ? (
-              githubConnection.repositories.map((repo) => (
-                <option key={repo.fullName} value={repo.fullName}>
-                  {repo.fullName} {repo.isPrivate ? '(Private)' : ''}
-                </option>
-              ))
-            ) : (
-              <option value="">No repositories found</option>
-            )}
-          </select>
+          />
         </div>
 
         {/* Filter Tabs: Issues vs Pull Requests */}

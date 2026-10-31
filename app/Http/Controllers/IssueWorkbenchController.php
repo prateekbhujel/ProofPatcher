@@ -146,6 +146,17 @@ final class IssueWorkbenchController
 
         $tasks = [];
         $localTasks = [];
+        // Privacy flags for the few card repositories only — the full session
+        // list stays server-side; pickers page through /github/repositories/search.
+        $privacyByRepo = [];
+        $sessionAuth = $request->session()->get('github_auth');
+        if (is_array($sessionAuth) && is_array($sessionAuth['repositories'] ?? null)) {
+            foreach ($sessionAuth['repositories'] as $repo) {
+                if (is_array($repo) && is_string($repo['fullName'] ?? null)) {
+                    $privacyByRepo[strtolower($repo['fullName'])] = ($repo['isPrivate'] ?? null) !== false;
+                }
+            }
+        }
         $access = $request->attributes->get('proofpatch_github_access');
         if (is_array($access) && is_int($access['userId'] ?? null) && $access['userId'] > 0
             && is_array($access['repositories'] ?? null) && $access['repositories'] !== []) {
@@ -154,7 +165,9 @@ final class IssueWorkbenchController
                 ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(repository)'), array_keys($access['repositories']))
                 ->orderByDesc('updated_at')
                 ->get()
-                ->map(fn (LocalTaskCard $card) => $card->toBoardArray())
+                ->map(fn (LocalTaskCard $card) => $card->toBoardArray() + [
+                    'repositoryIsPrivate' => $privacyByRepo[strtolower($card->repository)] ?? true,
+                ])
                 ->values()
                 ->all();
         }
@@ -211,7 +224,9 @@ final class IssueWorkbenchController
             'clientId' => getenv('PROOFPATCH_GITHUB_CLIENT_ID') ?: getenv('GITHUB_APP_CLIENT_ID') ?: null,
             'isConnected' => is_array($githubAuth) && isset($githubAuth['token']),
             'user' => is_array($githubAuth) ? ($githubAuth['user'] ?? null) : null,
-            'repositories' => is_array($githubAuth) ? ($githubAuth['repositories'] ?? []) : [],
+            'repositoryCount' => is_array($githubAuth) && is_array($githubAuth['repositories'] ?? null)
+                ? count($githubAuth['repositories'])
+                : 0,
             'selectedRepo' => $selectedRepo,
             'dedicatedIssueNumber' => is_string($selectedRepo)
                 && \ProofPatch\GitHub\DedicatedTestRepo::name() !== null

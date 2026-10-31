@@ -196,17 +196,33 @@ export default function Issues({
     }
   }, [context?.repository, context?.issueNumber, cardPreview?.digest]);
 
+  // Auto-select the first repository without shipping the whole list.
   useEffect(() => {
     if (
-      githubConnection?.isConnected &&
-      githubConnection.repositories &&
-      githubConnection.repositories.length > 0 &&
-      !githubConnection.selectedRepo &&
-      !loadingRepo
+      !githubConnection?.isConnected ||
+      githubConnection.selectedRepo ||
+      loadingRepo ||
+      (githubConnection.repositoryCount ?? 0) === 0
     ) {
-      handleSelectRepo(githubConnection.repositories[0].fullName);
+      return;
     }
-  }, [githubConnection?.isConnected, githubConnection?.selectedRepo, githubConnection?.repositories]);
+    let cancelled = false;
+    fetch('/github/repositories/search?per_page=1', {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        const first = payload?.data?.[0]?.fullName;
+        if (!cancelled && typeof first === 'string' && first) handleSelectRepo(first);
+      })
+      .catch(() => {
+        // The sidebar picker stays available for a manual choice.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [githubConnection?.isConnected, githubConnection?.selectedRepo, githubConnection?.repositoryCount]);
 
   function handleSelectRepo(repoName: string) {
     if (!repoName) return;
@@ -687,7 +703,7 @@ export default function Issues({
                   preview={cardPreview}
                   proposalPreview={cardProposalPreview}
                   proposalResult={cardProposalResult}
-                  isPrivate={githubConnection?.repositories?.find((repo) => repo.fullName.toLowerCase() === selectedLocalCard.repository.toLowerCase())?.isPrivate !== false}
+                  isPrivate={selectedLocalCard.repositoryIsPrivate !== false}
                   modelKeyAvailable={modelKeyAvailable}
                   budgetCanRequest={Boolean(budget?.canRequest)}
                 />
