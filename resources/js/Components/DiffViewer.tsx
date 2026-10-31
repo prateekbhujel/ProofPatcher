@@ -99,22 +99,22 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
   return (
     <div
       className={`diff-viewer border rounded-lg overflow-hidden bg-white shadow-2xs transition-colors ${
-        isViewed ? 'border-slate-200/60 opacity-80' : 'border-slate-300'
+        isViewed ? 'border-slate-200/60 opacity-80 dark:border-slate-800/60' : 'border-slate-300 dark:border-slate-700'
       }`}
     >
       {/* File Header Bar — Exact GitHub PR Style */}
-      <div className="diff-file-header w-full p-2.5 sm:px-4 bg-[#f6f8fa] border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs select-none">
+      <div className="diff-file-header w-full p-2.5 sm:px-4 bg-[#f6f8fa] border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs select-none dark:border-slate-800">
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
             aria-label={isExpanded ? 'Collapse file' : 'Expand file'}
-            className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition"
+            className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition dark:text-slate-400"
           >
             {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
 
-          <FileText className="w-4 h-4 text-slate-500 shrink-0" />
+          <FileText className="w-4 h-4 text-slate-500 shrink-0 dark:text-slate-400" />
 
           <span className="diff-file-name font-mono font-semibold text-[#1f2328] truncate text-[13px]">{file.name}</span>
 
@@ -124,7 +124,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
             title="Copy path"
             className="p-1 text-slate-400 hover:text-slate-700 rounded transition"
           >
-            {copiedPath ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+            {copiedPath ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
           </button>
 
           <span className="text-slate-400 text-2xs uppercase font-medium">({file.status})</span>
@@ -142,7 +142,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
             <div className="flex items-center gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => {
                 const total = (file.additions || 0) + (file.deletions || 0);
-                if (total === 0) return <span key={i} className="w-1.5 h-2 rounded-2xs bg-slate-200" />;
+                if (total === 0) return <span key={i} className="w-1.5 h-2 rounded-2xs bg-slate-200 dark:bg-slate-700" />;
                 const addRatio = (file.additions || 0) / total;
                 const addBlocks = Math.round(addRatio * 5);
                 const isAdd = i < addBlocks;
@@ -157,15 +157,15 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
           </div>
 
           {/* Unified / Split Toggle */}
-          <div className="hidden sm:inline-flex items-center p-0.5 bg-slate-200/70 rounded-md border border-slate-300 text-[11px]">
+          <div className="hidden sm:inline-flex items-center p-0.5 bg-slate-200/70 rounded-md border border-slate-300 text-[11px] dark:bg-slate-700/70 dark:border-slate-700">
             <button
               type="button"
               onClick={() => setDiffMode('unified')}
               title="Unified diff"
               className={`px-2 py-0.5 rounded transition font-medium flex items-center gap-1 ${
                 diffMode === 'unified'
-                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-slate-900 shadow-2xs font-semibold dark:bg-[#141821] dark:text-slate-100'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
               <AlignJustify className="w-3 h-3" />
@@ -177,8 +177,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
               title="Split diff"
               className={`px-2 py-0.5 rounded transition font-medium flex items-center gap-1 ${
                 diffMode === 'split'
-                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-slate-900 shadow-2xs font-semibold dark:bg-[#141821] dark:text-slate-100'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
               <Columns className="w-3 h-3" />
@@ -187,12 +187,12 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
           </div>
 
           {/* Viewed Checkbox */}
-          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none dark:text-slate-400">
             <input
               type="checkbox"
               checked={isViewed}
               onChange={(e) => setIsViewed(e.target.checked)}
-              className="rounded border-slate-300 text-accent-600 focus:ring-accent-500 w-3.5 h-3.5"
+              className="rounded border-slate-300 text-accent-600 focus:ring-accent-500 w-3.5 h-3.5 dark:border-slate-700"
             />
             <span className="font-medium text-[11px]">Viewed</span>
           </label>
@@ -204,24 +204,24 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
         <div className="space-y-0">
           {/* Unanchored Muse Hints Warning if any */}
           {unanchoredFindings.length > 0 && (
-            <div className="p-3 bg-amber-50/70 border-b border-amber-200 text-xs space-y-1.5">
-              <div className="flex items-center gap-2 text-amber-900 font-semibold">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <div className="p-3 bg-amber-50/70 border-b border-amber-200 text-xs space-y-1.5 dark:bg-amber-950/40/70 dark:border-amber-800">
+              <div className="flex items-center gap-2 text-amber-900 font-semibold dark:text-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 dark:text-amber-400" />
                 <span>Muse Advisory Hint (Outside Captured Diff Hunks)</span>
               </div>
               <div className="space-y-1 pt-0.5">
                 {unanchoredFindings.map((uf, uIdx) => (
                   <div
                     key={uIdx}
-                    className="p-2 rounded bg-white/80 border border-amber-200 text-slate-700 text-xs space-y-0.5"
+                    className="p-2 rounded bg-white/80 border border-amber-200 text-slate-700 text-xs space-y-0.5 dark:bg-[#141821]/80 dark:border-amber-800 dark:text-slate-300"
                   >
                     <div className="flex items-center gap-2 font-mono text-[11px]">
-                      <span className="font-semibold text-amber-900">Line Hint: {uf.lineHint ?? 'None'}</span>
-                      <span className="uppercase text-2xs px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">
+                      <span className="font-semibold text-amber-900 dark:text-amber-200">Line Hint: {uf.lineHint ?? 'None'}</span>
+                      <span className="uppercase text-2xs px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold dark:text-amber-300">
                         {uf.status}
                       </span>
                     </div>
-                    <p className="text-slate-800">{uf.comment}</p>
+                    <p className="text-slate-800 dark:text-slate-200">{uf.comment}</p>
                   </div>
                 ))}
               </div>
@@ -230,7 +230,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
 
           {/* Render Diff Lines or Unavailable State */}
           {!file.patch ? (
-            <div className="p-6 text-center text-xs text-slate-500 bg-slate-50/50">
+            <div className="p-6 text-center text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-900/50 dark:text-slate-400">
               {file.status === 'oversize'
                 ? 'Patch exceeds preview size limits.'
                 : 'Unified patch diff not available for this file (file may be binary or unmodified).'}

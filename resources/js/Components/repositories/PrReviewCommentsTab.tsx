@@ -43,7 +43,7 @@ export function PrReviewCommentsTab({
             <button
               type="submit"
               disabled={clearDraftsProcessing}
-              className="text-[11px] font-medium text-rose-600 hover:text-rose-800 underline disabled:opacity-50"
+              className="text-[11px] font-medium text-rose-600 hover:text-rose-800 underline disabled:opacity-50 dark:text-rose-400"
             >
               Clear All Drafts ({drafts.length})
             </button>
@@ -51,7 +51,7 @@ export function PrReviewCommentsTab({
         )}
       </div>
 
-      {commentPosted && <p role="status" className="text-xs text-emerald-700">Comment posted on GitHub.</p>}
+      {commentPosted && <p role="status" className="text-xs text-emerald-700 dark:text-emerald-400">Comment posted on GitHub.</p>}
 
       {drafts.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No draft comments yet. Add one from a changed line.</p>}
       {drafts.map((draft) => (

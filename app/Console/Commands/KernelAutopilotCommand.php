@@ -40,17 +40,17 @@ final class KernelAutopilotCommand extends Command
     {
         $token = GitHubTokenStore::getToken();
         if ($token === null || $token === '') {
-            $this->error('No GitHub token found. Run php artisan github:connect first.');
+            $this->error(KernelCli::report('kernel:autopilot · cannot start', 'no GitHub token stored', 'php artisan github:connect'));
             return self::FAILURE;
         }
 
         $repo = $this->option('repo') ? trim((string) $this->option('repo')) : KernelCli::getSelectedRepo();
         if ($repo === null || $repo === '') {
-            $this->error('No repository given. Run php artisan kernel:select-repo or pass --repo=owner/name.');
+            $this->error(KernelCli::report('kernel:autopilot · cannot start', 'no repository given', 'php artisan kernel:select-repo or pass --repo=owner/name'));
             return self::FAILURE;
         }
         if (!KernelCli::isValidRepo($repo)) {
-            $this->error('Expected a repository handle in owner/repo form.');
+            $this->error(KernelCli::report('kernel:autopilot · cannot start', "expected owner/repo, got '{$repo}'", 'php artisan kernel:select-repo --list'));
             return self::FAILURE;
         }
 
@@ -60,13 +60,13 @@ final class KernelAutopilotCommand extends Command
             $authorized[strtolower($row['fullName'])] = $row['fullName'];
         }
         if (!isset($authorized[strtolower($repo)])) {
-            $this->error("{$repo} is not in the current GitHub grant.");
+            $this->error(KernelCli::report('kernel:autopilot · cannot start', "{$repo} is not in the current GitHub grant", 'php artisan kernel:select-repo --list'));
             return self::FAILURE;
         }
         $repo = $authorized[strtolower($repo)];
 
         if (!RepositoryAutoReviewSetting::isRepoEnabled($repo)) {
-            $this->error("Auto-review is off for {$repo}. Enable it: php artisan kernel:select-repo --enable-review {$repo}");
+            $this->error(KernelCli::report('kernel:autopilot · cannot start', "auto-review is off for {$repo}", "php artisan kernel:select-repo --enable-review {$repo}"));
             return self::FAILURE;
         }
 
@@ -112,14 +112,15 @@ final class KernelAutopilotCommand extends Command
                 try {
                     $summary = $this->service->poll($token, $repo);
                 } catch (\Throwable $e) {
-                    $this->error('Poll cycle failed: ' . $e->getMessage());
+                    $this->error(KernelCli::report("kernel:autopilot · cycle {$cycles} failed", $e->getMessage(), 'fix the cause above, then re-run kernel:autopilot'));
                     return self::FAILURE;
                 }
 
                 if (($summary['status'] ?? '') === 'no_token' || ($summary['status'] ?? '') === 'auth_revoked') {
                     $errors = is_array($summary['errors'] ?? null) ? $summary['errors'] : [];
-                    $this->error('GitHub authorization was revoked or expired. Reconnect: php artisan github:connect --force'
-                        . ($errors !== [] ? ' (' . implode('; ', array_map('strval', $errors)) . ')' : ''));
+                    $why = 'GitHub authorization was revoked or expired'
+                        . ($errors !== [] ? ' (' . implode('; ', array_map('strval', $errors)) . ')' : '');
+                    $this->error(KernelCli::report('kernel:autopilot · authorization lost', $why, 'php artisan github:connect --force'));
                     return self::FAILURE;
                 }
 

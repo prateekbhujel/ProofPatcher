@@ -21,6 +21,9 @@ class HandleInertiaRequests extends Middleware
         }
 
         return array_merge(parent::share($request), [
+            // Desktop app windows embed pages in iframes (?embed=1): the shell
+            // drops its own chrome there so windows never nest menu bars.
+            'embed' => $request->query('embed') === '1',
             'csrf_token' => csrf_token(),
             'notifications' => $notifications,
             'error' => fn () => $request->session()->get('error'),

@@ -35,7 +35,7 @@ export function DisconnectedOnboardingView({ error, deviceClientIdInput, setDevi
                 <code className="flex-1 rounded-lg bg-slate-100 px-4 py-3 text-center text-lg font-semibold tracking-widest dark:bg-slate-800">{device.userCode}</code>
                 <button type="button" onClick={() => copyDeviceCode(device.userCode)} aria-label="Copy code" className="rounded-lg border border-slate-300 p-3 dark:border-slate-700"><Copy className="h-4 w-4" /></button>
               </div>
-              {copiedDeviceCode && <p className="text-xs text-slate-500">Copied</p>}
+              {copiedDeviceCode && <p className="text-xs text-slate-500 dark:text-slate-400">Copied</p>}
               <a href={device.verificationUri || 'https://github.com/login/device'} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium dark:border-slate-700">Open GitHub <ExternalLink className="h-4 w-4" /></a>
               <button type="button" disabled={isSubmittingDevice} onClick={() => handlePollDeviceFlow()} className="w-full rounded-lg bg-accent-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-800 disabled:opacity-50">{isSubmittingDevice ? 'Checking…' : 'Check connection'}</button>
             </div>
@@ -43,7 +43,7 @@ export function DisconnectedOnboardingView({ error, deviceClientIdInput, setDevi
             <form onSubmit={handleInitiateDeviceFlow} className="mt-6 space-y-4">
               {!githubConnection?.isConfigured && (
                 <div className="space-y-2">
-                  <p className="text-sm text-slate-500">This installation needs a GitHub App client ID.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">This installation needs a GitHub App client ID.</p>
                   <label htmlFor="onboarding-client-id" className="block text-sm font-medium">GitHub App client ID</label>
                   <input id="onboarding-client-id" value={deviceClientIdInput} onChange={(e) => setDeviceClientIdInput(e.target.value)} placeholder="Enter client ID" autoComplete="off" className="w-full rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-sm dark:border-slate-700" />
                 </div>
@@ -52,10 +52,10 @@ export function DisconnectedOnboardingView({ error, deviceClientIdInput, setDevi
                 <GitBranch className="h-4 w-4" />
                 {isSubmittingDevice ? 'Connecting…' : 'Continue with GitHub'}
               </button>
-              <p className="text-xs text-slate-500">You’ll enter a short code on GitHub.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">You’ll enter a short code on GitHub.</p>
             </form>
           )}
-          <Link href="/settings" className="mt-5 inline-block text-sm text-slate-500 hover:text-accent-700 dark:hover:text-accent-300">Settings</Link>
+          <Link href="/settings" className="mt-5 inline-block text-sm text-slate-500 hover:text-accent-700 dark:hover:text-accent-300 dark:text-slate-400">Settings</Link>
         </div>
       </div>
     </AppLayout>

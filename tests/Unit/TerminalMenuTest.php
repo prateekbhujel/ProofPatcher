@@ -74,6 +74,19 @@ final class TerminalMenuTest extends TestCase
         $this->assertSame('', TerminalMenu::up(0));
     }
 
+    public function testFrameBatchesTheWholeRedraw(): void
+    {
+        $frame = TerminalMenu::frame($this->options(), 1);
+
+        $this->assertStringStartsWith("\e[3A", $frame);
+        $this->assertSame(3, substr_count($frame, "\e[K"));
+        $this->assertSame(1, substr_count($frame, '❯'));
+        $this->assertStringContainsString('Status dashboard', $frame);
+        $this->assertStringContainsString('Connect GitHub', $frame);
+        $this->assertStringContainsString('Quit', $frame);
+        $this->assertSame('', TerminalMenu::frame([], 0));
+    }
+
     private function scriptedTerm(array $keys): object
     {
         return new class($keys) {
@@ -129,6 +142,17 @@ final class TerminalMenuTest extends TestCase
 
         $this->assertSame('quit', $choice);
         $this->assertStringContainsString("\e[3A", implode('', $term->written));
+    }
+
+    public function testChooseRedrawsWithOneWritePerKeypress(): void
+    {
+        $this->requireTerminalExtension();
+        $term = $this->scriptedTerm(['down', 'enter']);
+
+        TerminalMenu::choose($term, 'Pick', $this->options());
+
+        $redraws = array_filter($term->written, fn (string $chunk) => str_contains($chunk, "\e[3A"));
+        $this->assertCount(1, $redraws);
     }
 
     public function testChooseWrapsUpwards(): void

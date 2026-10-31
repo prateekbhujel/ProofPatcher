@@ -82,7 +82,7 @@ export function UnifiedDiffTable({
                 {/* Diff Row */}
                 <tr
                   className={`group border-b border-slate-100 ${
-                    isAdd ? 'diff-added bg-[#e6ffec]' : isDel ? 'diff-removed bg-[#ffebe9]' : 'diff-context bg-white'
+                    isAdd ? 'diff-added bg-[#e6ffec]' : isDel ? 'diff-removed bg-[#ffebe9]' : 'diff-context bg-white dark:bg-[#141821]'
                   }`}
                 >
                   {/* Old Line Number */}
@@ -154,9 +154,9 @@ export function UnifiedDiffTable({
                 {matchingFinding && (
                   <tr>
                     <td colSpan={5} className="p-3 bg-[#f6f8fa] border-y border-[#d0d7de]">
-                      <div className="rounded-lg bg-white border border-[#d0d7de] shadow-2xs p-3.5 space-y-3 font-sans">
+                      <div className="rounded-lg bg-white border border-[#d0d7de] shadow-2xs p-3.5 space-y-3 font-sans dark:bg-[#141821]">
                         {/* Bot Header */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-accent-700 text-white flex items-center justify-center text-xs font-bold">
                               <Sparkles className="w-3.5 h-3.5" />
@@ -168,8 +168,8 @@ export function UnifiedDiffTable({
                                 matchingFinding.status === 'approval'
                                   ? 'bg-[#dafbe1] text-[#1a7f37]'
                                   : matchingFinding.status === 'concern'
-                                  ? 'bg-amber-100 text-amber-900'
-                                  : 'bg-slate-100 text-slate-800'
+                                  ? 'bg-amber-100 text-amber-900 dark:text-amber-200'
+                                  : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
                               }`}
                             >
                               {matchingFinding.status === 'concern'
@@ -189,7 +189,7 @@ export function UnifiedDiffTable({
                                       matchingDraft?.comment || matchingFinding.comment
                                     )
                               }
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-accent-700 hover:text-accent-900 underline"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-accent-700 hover:text-accent-900 underline dark:text-accent-300"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                               <span>
@@ -209,15 +209,15 @@ export function UnifiedDiffTable({
                         </div>
 
                         {/* Collapsible AI Prompt & Context */}
-                        <details className="group/details text-[11px] text-slate-500 border-t border-slate-100 pt-2">
-                          <summary className="cursor-pointer hover:text-slate-800 font-medium select-none flex items-center gap-1 text-slate-600">
+                        <details className="group/details text-[11px] text-slate-500 border-t border-slate-100 pt-2 dark:border-slate-800 dark:text-slate-400">
+                          <summary className="cursor-pointer hover:text-slate-800 font-medium select-none flex items-center gap-1 text-slate-600 dark:text-slate-400">
                             <span>▶ Diff context & anchor verification</span>
                             <span className="text-2xs text-slate-400 font-mono">
                               ({matchingFinding.path}:{matchingFinding.lineHint} · SHA:{' '}
                               {headSha.slice(0, 8)})
                             </span>
                           </summary>
-                          <p className="mt-1.5 p-2 rounded bg-slate-50 border border-slate-200 text-slate-700 font-mono text-[11px] leading-relaxed">
+                          <p className="mt-1.5 p-2 rounded bg-slate-50 border border-slate-200 text-slate-700 font-mono text-[11px] leading-relaxed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300">
                             This suggestion matches line {matchingFinding.lineHint} in the captured patch.
                             Review its content before posting.
                           </p>
@@ -247,7 +247,7 @@ export function UnifiedDiffTable({
                 {/* Saved Local Draft Banner */}
                 {matchingDraft && (
                   <tr>
-                    <td colSpan={5} className="p-3 bg-accent-50/70 border-y border-accent-200">
+                    <td colSpan={5} className="p-3 bg-accent-50/70 border-y border-accent-200 dark:bg-accent-950/40/70 dark:border-accent-800">
                       <InlineDraft draft={matchingDraft} onEdit={() => openEditorForLine(lineKey, matchingDraft.comment)} onDelete={onDeleteDraft} />
                     </td>
                   </tr>

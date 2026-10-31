@@ -52,7 +52,7 @@ export function TaskComposerFooter({
                     onClick={() => onExecutePrompt('verify')}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300 transition"
                   >
-                    <Check className="w-3 h-3 text-emerald-600" />
+                    <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                     <span>Verify 5 Gates</span>
                   </button>
                   <button
@@ -102,7 +102,7 @@ export function TaskComposerFooter({
           <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 pt-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[11px]">
-                <MessageSquare className="w-3 h-3 text-slate-500" aria-hidden="true" />
+                <MessageSquare className="w-3 h-3 text-slate-500 dark:text-slate-400" aria-hidden="true" />
                 Local note
               </span>
               <VoiceDictationButton
@@ -113,7 +113,7 @@ export function TaskComposerFooter({
                 }}
               />
               {draft && (
-                <span className="font-mono text-[11px] text-slate-500">
+                <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
                   Saved {draft.savedAt.replace('T', ' ').slice(0, 16)}
                 </span>
               )}

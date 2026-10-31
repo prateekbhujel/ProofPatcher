@@ -171,13 +171,68 @@ html.dark {
     transition: opacity 280ms ease;
   }
 
+  /* OS desktop: deep machine-room wallpaper plus a faint grid. */
+  .os-wallpaper {
+    background:
+      radial-gradient(1100px 520px at 18% -8%, rgb(38 68 120 / 0.55) 0%, transparent 60%),
+      radial-gradient(900px 480px at 88% 108%, rgb(16 92 78 / 0.4) 0%, transparent 55%),
+      #070b14;
+  }
+  .os-grid-overlay {
+    background-image:
+      linear-gradient(rgb(148 163 184 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(148 163 184 / 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 75%);
+  }
+
+  /* OS desktop: window open fade (opacity only — drag owns geometry). */
+  .os-window-enter {
+    animation: pp-os-fade 140ms ease-out;
+  }
+
+  /* OS desktop: smooth minimize, maximize, and restore glides. */
+  .os-window-move {
+    transition:
+      left 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      top 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      width 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  /* OS desktop: minimize-out fade. */
+  .os-window-leave {
+    opacity: 0;
+    transform: scale(0.96);
+    transition:
+      opacity 140ms ease-out,
+      transform 140ms ease-out;
+  }
+
+  /* OS desktop: start menu rise. */
+  .os-menu-enter {
+    animation: pp-os-rise 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  /* OS desktop: breathing live dot on the taskbar. */
+  .os-live-dot {
+    animation: pp-os-pulse 2.2s ease-in-out infinite;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .spin-ring,
     .shimmer,
     .enter-up,
     .pop,
-    .pp-caret {
+    .pp-caret,
+    .os-window-enter,
+    .os-menu-enter,
+    .os-live-dot {
       animation: none;
+    }
+    .os-window-move,
+    .os-window-leave {
+      transition: none;
     }
     .boot-leave {
       transition: none;
@@ -226,5 +281,35 @@ html.dark {
 @keyframes pp-blink {
   50% {
     opacity: 0;
+  }
+}
+
+@keyframes pp-os-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pp-os-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pp-os-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
   }
 }

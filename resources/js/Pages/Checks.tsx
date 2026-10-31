@@ -103,22 +103,22 @@ export default function Checks({
 
       <div className="space-y-6">
         {/* Workspace Context Hero */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4 dark:bg-[#141821] dark:border-slate-800">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                <span className="px-1.5 py-0.5 rounded bg-accent-100 text-accent-800 font-mono text-[10px] font-bold uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium dark:text-slate-400">
+                <span className="px-1.5 py-0.5 rounded bg-accent-100 text-accent-800 font-mono text-[10px] font-bold uppercase tracking-wider dark:bg-accent-950/60 dark:text-accent-300">
                   Kernel Module · Chromium Sandbox
                 </span>
                 <span>/</span>
-                <span className="font-semibold text-slate-900">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {fixture.includes('occlusion-b') ? 'Lumen Checkout' : fixture.includes('modal-overflow') ? 'Aura Checkout' : 'Northline Checkout'}
                 </span>
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Visual &amp; CSS Sandbox Verification</h1>
-              <p className="text-xs text-slate-600 max-w-2xl">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Visual &amp; CSS Sandbox Verification</h1>
+              <p className="text-xs text-slate-600 max-w-2xl dark:text-slate-400">
                 4-gate headless Chromium visual verifier for UI/CSS patches (Baseline Reproduction, Protected E2E Tests, Outside-Mask Pixel Guard, and Test Authority Integrity). For backend PHP/AST 5-Gate repository issue verification, use{' '}
-                <Link href="/issues" className="font-semibold text-accent-700 hover:underline">
+                <Link href="/issues" className="font-semibold text-accent-700 hover:underline dark:text-accent-300">
                   Issues &amp; Tasks
                 </Link>
                 .
@@ -129,12 +129,12 @@ export default function Checks({
               <span
                 className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold ${
                   decision === 'VERIFIED'
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400'
                     : decision === 'FAILED'
-                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-400'
                     : decision === 'INCONCLUSIVE'
-                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                    : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400'
+                    : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:border-slate-800 dark:text-slate-300'
                 }`}
               >
                 <span
@@ -151,8 +151,8 @@ export default function Checks({
                 {decision}
               </span>
 
-              <span className="font-mono text-xs text-slate-500">
-                Run ID: <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 text-[11px]">{runId.slice(0, 16)}...</code>
+              <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                Run ID: <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 text-[11px] dark:bg-slate-800 dark:border-slate-800 dark:text-slate-200">{runId.slice(0, 16)}...</code>
               </span>
             </div>
           </div>
@@ -160,21 +160,21 @@ export default function Checks({
 
         {/* Error notification */}
         {error && (
-          <div role="alert" className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+          <div role="alert" className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
             {error}
           </div>
         )}
 
         {/* Tab Bar */}
-        <div className="border-b border-slate-200">
+        <div className="border-b border-slate-200 dark:border-slate-800">
           <nav className="flex space-x-6 sm:space-x-8 overflow-x-auto">
             <button
               type="button"
               onClick={() => setActiveTab('workspace')}
               className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === 'workspace'
-                  ? 'border-slate-900 text-slate-900 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
+                  ? 'border-slate-900 text-slate-900 font-semibold dark:text-slate-100'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 font-medium dark:text-slate-400'
               }`}
             >
               <Code2 className="w-3.5 h-3.5" />
@@ -186,8 +186,8 @@ export default function Checks({
               onClick={() => setActiveTab('visual')}
               className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === 'visual'
-                  ? 'border-slate-900 text-slate-900 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
+                  ? 'border-slate-900 text-slate-900 font-semibold dark:text-slate-100'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 font-medium dark:text-slate-400'
               }`}
             >
               <ImageIcon className="w-3.5 h-3.5" />
@@ -199,8 +199,8 @@ export default function Checks({
               onClick={() => setActiveTab('evidence')}
               className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === 'evidence'
-                  ? 'border-slate-900 text-slate-900 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
+                  ? 'border-slate-900 text-slate-900 font-semibold dark:text-slate-100'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 font-medium dark:text-slate-400'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
@@ -212,13 +212,13 @@ export default function Checks({
               onClick={() => setActiveTab('history')}
               className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === 'history'
-                  ? 'border-slate-900 text-slate-900 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'
+                  ? 'border-slate-900 text-slate-900 font-semibold dark:text-slate-100'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 font-medium dark:text-slate-400'
               }`}
             >
               <History className="w-3.5 h-3.5" />
               <span>Run History</span>
-              <span className="ml-1 bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded text-[10px] font-semibold">
+              <span className="ml-1 bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded text-[10px] font-semibold dark:bg-slate-800 dark:text-slate-300">
                 {historyList.length}
               </span>
             </button>
@@ -250,17 +250,17 @@ export default function Checks({
                 runId={runId}
               />
             ) : (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-8 text-center space-y-4">
-                <div className="w-12 h-12 rounded-full bg-accent-50 text-accent-700 flex items-center justify-center mx-auto">
+              <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-8 text-center space-y-4 dark:bg-[#141821] dark:border-slate-800">
+                <div className="w-12 h-12 rounded-full bg-accent-50 text-accent-700 flex items-center justify-center mx-auto dark:bg-accent-950/40 dark:text-accent-300">
                   <ImageIcon className="w-6 h-6" />
                 </div>
                 <div className="max-w-md mx-auto space-y-1.5">
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {report?.proposal?.file?.endsWith('.php') || (report as any)?.kind === 'owned_backend'
                       ? 'Headless Backend Verification Run'
                       : 'Visual Screenshots Unavailable'}
                   </h3>
-                  <p className="text-xs text-slate-500 leading-relaxed">
+                  <p className="text-xs text-slate-500 leading-relaxed dark:text-slate-400">
                     {report?.proposal?.file?.endsWith('.php') || (report as any)?.kind === 'owned_backend'
                       ? `Run ${runId} verified PHP backend logic (${report?.proposal?.file || (report as any)?.targetFile || 'src/OrderTotal.php'}) through test assertions, negative controls, and AST safety. Headless backend tests do not generate browser DOM screenshots.`
                       : `Run ${runId} does not have browser screenshot evidence attached.`}

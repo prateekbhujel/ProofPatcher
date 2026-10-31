@@ -81,4 +81,44 @@ final class KernelCliTest extends TestCase
 
         $this->assertNull(KernelCli::getSelectedRepo());
     }
+
+    public function testReportNamesWhereWhyAndFix(): void
+    {
+        $report = KernelCli::report('kernel:autopilot · cannot start', 'auto-review is off for acme/repo', 'php artisan kernel:select-repo --enable-review acme/repo');
+
+        $this->assertStringContainsString('✕ kernel:autopilot · cannot start', $report);
+        $this->assertStringContainsString('why: auto-review is off for acme/repo', $report);
+        $this->assertStringContainsString('fix: php artisan kernel:select-repo --enable-review acme/repo', $report);
+    }
+
+    public function testReportOmitsEmptyFix(): void
+    {
+        $report = KernelCli::report('kernel shell · autopilot', 'no repository selected');
+
+        $this->assertStringContainsString('✕ kernel shell · autopilot', $report);
+        $this->assertStringNotContainsString('fix:', $report);
+    }
+
+    public function testAutopilotBlockerFlagsEveryPrecondition(): void
+    {
+        $this->assertSame(
+            ['why' => 'no repository selected', 'fix' => 'php artisan kernel:select-repo'],
+            KernelCli::autopilotBlocker(null, ['acme/repo'], true)
+        );
+        $this->assertSame(
+            ['why' => 'expected owner/repo, got \'nope\'', 'fix' => 'php artisan kernel:select-repo --list'],
+            KernelCli::autopilotBlocker('nope', ['acme/repo'], true)
+        );
+        $this->assertSame(
+            ['why' => 'evil/other is not in the current GitHub grant', 'fix' => 'php artisan kernel:select-repo --list'],
+            KernelCli::autopilotBlocker('evil/other', ['acme/repo'], true)
+        );
+        $this->assertSame(
+            ['why' => 'auto-review is off for acme/repo', 'fix' => 'php artisan kernel:select-repo --enable-review acme/repo'],
+            KernelCli::autopilotBlocker('acme/repo', ['acme/repo'], false)
+        );
+        $this->assertNull(KernelCli::autopilotBlocker('acme/repo', ['acme/repo'], true));
+        // Case-insensitive grant match.
+        $this->assertNull(KernelCli::autopilotBlocker('ACME/REPO', ['acme/repo'], true));
+    }
 }

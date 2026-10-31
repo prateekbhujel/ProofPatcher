@@ -242,12 +242,12 @@ export default function Repositories({
       <div className="space-y-6">
         {/* Error notification */}
         {error && (
-          <div role="alert" className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+          <div role="alert" className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
             <span>{error}</span>
           </div>
         )}
         {reviewError && (
-          <div role="alert" className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+          <div role="alert" className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
             <span>{reviewError}</span>
           </div>
         )}
@@ -335,15 +335,15 @@ export default function Repositories({
 
             {/* TAB PANE: STRUCTURED REVIEW & DIFFS */}
             {activeTab === 'review' && (
-              <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6 space-y-6">
+              <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6 space-y-6 dark:bg-[#141821] dark:border-slate-800/80">
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-slate-800" />
+                      <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2 dark:text-slate-100">
+                        <FileText className="w-4 h-4 text-slate-800 dark:text-slate-200" />
                         <span>Review & Inline Findings</span>
                       </h2>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">
                         Diff-first code review. Inspect captured diffs, review advisory findings, and draft local line comments.
                       </p>
                     </div>
@@ -353,7 +353,7 @@ export default function Repositories({
                         <button
                           type="submit"
                           disabled={clearReviewProcessing}
-                          className="px-3 py-1.5 text-xs font-medium rounded-md text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 shadow-2xs transition disabled:opacity-50"
+                          className="px-3 py-1.5 text-xs font-medium rounded-md text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 shadow-2xs transition disabled:opacity-50 dark:bg-[#141821] dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                         >
                           Clear Review
                         </button>
@@ -363,19 +363,19 @@ export default function Repositories({
                 </div>
 
                 {/* Honest Disclosure Alert */}
-                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs flex items-start gap-2.5">
-                  <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs flex items-start gap-2.5 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300">
+                  <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5 dark:text-slate-400" />
                   <div className="space-y-0.5">
-                    <p className="font-semibold text-slate-900">Advisory Review Only</p>
-                    <p className="text-slate-600 text-[11px] leading-relaxed">
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">Advisory Review Only</p>
+                    <p className="text-slate-600 text-[11px] leading-relaxed dark:text-slate-400">
                       Review suggestions are advisory. Individual comments can be posted manually to the configured test repository. External repository tests are not run here.
                     </p>
                   </div>
                 </div>
 
                 {reviewError && (
-                  <div role="alert" className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <div role="alert" className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 dark:text-rose-400" />
                     <span>{reviewError}</span>
                   </div>
                 )}
@@ -411,11 +411,11 @@ export default function Repositories({
                 />
 
                 {/* Local Saved Drafts & Review Decision Bar */}
-                <div className="p-5 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div className="p-5 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-4 dark:bg-[#141821] dark:border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
                     <div>
-                      <h3 className="text-xs font-semibold text-slate-900">Maintainer Review Decision (Local Draft)</h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100">Maintainer Review Decision (Local Draft)</h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5 dark:text-slate-400">
                         Record a maintainer conclusion and draft comments for this pull request.
                       </p>
                     </div>

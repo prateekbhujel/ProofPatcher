@@ -88,6 +88,11 @@ final class KernelTelemetryCommand extends Command
             $this->table(['Time (UTC)', 'Kind', 'Status', 'Detail', 'Usage'], $rows);
         }
 
+        if (!$data['ledgerFound'] && $data['models'] === [] && $data['perDay'] === [] && $data['feed'] === []) {
+            $this->newLine();
+            $this->line('Next: run one review or autopilot cycle to generate local usage.');
+        }
+
         return self::SUCCESS;
     }
 

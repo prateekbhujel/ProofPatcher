@@ -86,9 +86,9 @@ export default function Overview({
             <div className="flex flex-wrap items-center gap-2.5">
               <Link
                 href="/repositories"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:bg-[#141821] dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <GitPullRequest className="h-3.5 w-3.5 text-slate-600" />
+                <GitPullRequest className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                 <span>Review Pull Requests</span>
               </Link>
               <Link
@@ -103,17 +103,17 @@ export default function Overview({
 
           <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 dark:border-slate-800 pt-5 sm:grid-cols-4">
             <div className="rounded-lg border border-slate-200 p-3.5 dark:border-slate-700">
-              <dt className="text-[11px] font-medium text-slate-500">Provider balance</dt>
+              <dt className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Provider balance</dt>
               <dd className="mt-1 text-sm font-medium">Unavailable</dd>
               <p className="text-[10px] text-slate-400">Check your provider dashboard</p>
             </div>
             <div className="rounded-lg border border-slate-200/80 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50 p-3.5 space-y-1">
-              <dt className="text-[11px] font-medium text-slate-500">Local Verifications</dt>
+              <dt className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Local Verifications</dt>
               <dd className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">{totalRuns}</dd>
-              <p className="text-[10px] text-emerald-600 font-medium">{verifiedRuns} verified passes</p>
+              <p className="text-[10px] text-emerald-600 font-medium dark:text-emerald-400">{verifiedRuns} verified passes</p>
             </div>
             <div className="rounded-lg border border-slate-200/80 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50 p-3.5 space-y-1">
-              <dt className="text-[11px] font-medium text-slate-500">PR Snapshots</dt>
+              <dt className="text-[11px] font-medium text-slate-500 dark:text-slate-400">PR Snapshots</dt>
               <dd className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">{totalSnapshots}</dd>
               <p className="text-[10px] text-slate-400">Captured for review</p>
             </div>
@@ -124,78 +124,78 @@ export default function Overview({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Link
             href="/repositories"
-            className="p-4 rounded-xl border border-slate-200 bg-white hover:border-accent-300 transition group"
+            className="p-4 rounded-xl border border-slate-200 bg-white hover:border-accent-300 transition group dark:bg-[#141821] dark:border-slate-800"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-lg bg-accent-50 text-accent-700 flex items-center justify-center font-semibold text-xs border border-accent-200/80 group-hover:bg-accent-700 group-hover:text-white transition">
+                <span className="w-8 h-8 rounded-lg bg-accent-50 text-accent-700 flex items-center justify-center font-semibold text-xs border border-accent-200/80 group-hover:bg-accent-700 group-hover:text-white transition dark:bg-accent-950/40 dark:border-accent-800/80 dark:text-accent-300">
                   <GitPullRequest className="w-4 h-4" />
                 </span>
-                <span className="text-xs font-semibold text-slate-900 group-hover:text-accent-700 transition">
+                <span className="text-xs font-semibold text-slate-900 group-hover:text-accent-700 transition dark:text-slate-100">
                   Pull Requests
                 </span>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-accent-700 transition" />
             </div>
-            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed dark:text-slate-400">
               Capture pull request snapshots, inspect diffs, and post approved line-anchored review comments.
             </p>
           </Link>
 
           <Link
             href="/issues"
-            className="p-4 rounded-xl border border-slate-200 bg-white hover:border-accent-300 transition group"
+            className="p-4 rounded-xl border border-slate-200 bg-white hover:border-accent-300 transition group dark:bg-[#141821] dark:border-slate-800"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-lg bg-accent-50 text-accent-700 flex items-center justify-center font-semibold text-xs border border-accent-200/80 group-hover:bg-accent-700 group-hover:text-white transition">
+                <span className="w-8 h-8 rounded-lg bg-accent-50 text-accent-700 flex items-center justify-center font-semibold text-xs border border-accent-200/80 group-hover:bg-accent-700 group-hover:text-white transition dark:bg-accent-950/40 dark:border-accent-800/80 dark:text-accent-300">
                   <ClipboardList className="w-4 h-4" />
                 </span>
-                <span className="text-xs font-semibold text-slate-900 group-hover:text-accent-700 transition">
+                <span className="text-xs font-semibold text-slate-900 group-hover:text-accent-700 transition dark:text-slate-100">
                   Issues &amp; Tasks
                 </span>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-accent-700 transition" />
             </div>
-            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed dark:text-slate-400">
               Review repository issues, test candidate fixes in an isolated microVM, and prepare draft pull requests.
             </p>
           </Link>
 
           <Link
             href="/settings"
-            className="p-4 rounded-xl border border-slate-200 bg-white hover:border-accent-300 transition group"
+            className="p-4 rounded-xl border border-slate-200 bg-white hover:border-accent-300 transition group dark:bg-[#141821] dark:border-slate-800"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-semibold text-xs border border-slate-200 group-hover:bg-accent-700 group-hover:text-white transition">
+                <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-semibold text-xs border border-slate-200 group-hover:bg-accent-700 group-hover:text-white transition dark:bg-slate-800 dark:border-slate-800 dark:text-slate-300">
                   <Settings className="w-4 h-4" />
                 </span>
-                <span className="text-xs font-semibold text-slate-900 group-hover:text-accent-700 transition">
+                <span className="text-xs font-semibold text-slate-900 group-hover:text-accent-700 transition dark:text-slate-100">
                   GitHub App &amp; Budget
                 </span>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-accent-700 transition" />
             </div>
-            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed dark:text-slate-400">
               Connect your GitHub App via Device Flow, select repositories, and review local model request usage.
             </p>
           </Link>
         </div>
 
         {/* Captured Pull Requests Datatable */}
-        <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+        <section className="bg-white rounded-xl border border-slate-200 overflow-hidden dark:bg-[#141821] dark:border-slate-800">
+          <div className="px-5 py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50 dark:border-slate-800">
             <div>
               <div className="flex items-center gap-2">
-                <h2 id="captured-prs-heading" className="text-sm font-semibold text-slate-900">
+                <h2 id="captured-prs-heading" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Captured Pull Requests
                 </h2>
-                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-700 border border-slate-200 tabular-nums">
+                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-700 border border-slate-200 tabular-nums dark:bg-slate-800 dark:border-slate-800 dark:text-slate-300">
                   {recent.length}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">
                 Saved snapshots ready for diff inspection and line-anchored review comments.
               </p>
             </div>
@@ -217,21 +217,21 @@ export default function Overview({
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white placeholder-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:border-transparent transition"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white placeholder-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:border-transparent transition dark:bg-[#141821] dark:border-slate-700"
               />
             </div>
           </div>
 
           {filteredPulls.length === 0 ? (
             <div className="p-8 text-center space-y-2">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {searchQuery ? 'No pull requests matched your filter.' : 'No pull request snapshots captured yet.'}
               </p>
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="text-xs text-accent-700 hover:underline font-medium"
+                  className="text-xs text-accent-700 hover:underline font-medium dark:text-accent-300"
                 >
                   Clear filter
                 </button>
@@ -247,25 +247,25 @@ export default function Overview({
               >
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
-                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5">
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
+                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5 dark:bg-slate-900">
                         Repository &amp; Pull Request
                       </th>
-                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5">
+                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5 dark:bg-slate-900">
                         Commit SHA
                       </th>
-                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5">
+                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5 dark:bg-slate-900">
                         State
                       </th>
-                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5">
+                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5 dark:bg-slate-900">
                         Captured At
                       </th>
-                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5 text-right">
+                      <th scope="col" className="sticky top-0 z-10 bg-slate-50 py-2.5 px-5 text-right dark:bg-slate-900">
                         Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
+                  <tbody className="divide-y divide-slate-100 text-xs dark:divide-slate-800">
                     {paginatedPulls.map((item) => {
                       const isMerged = item.pull.isMerged || item.pull.state.toLowerCase() === 'merged';
                       const isOpen = item.pull.state.toLowerCase() === 'open';
@@ -273,20 +273,20 @@ export default function Overview({
                       return (
                         <tr
                           key={item.id}
-                          className="hover:bg-slate-50/70 transition-colors group"
+                          className="hover:bg-slate-50/70 transition-colors group dark:hover:bg-slate-800/70"
                         >
                           <td className="py-3 px-5 max-w-sm">
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-slate-900 truncate">
+                              <span className="font-semibold text-slate-900 truncate dark:text-slate-100">
                                 {item.pull.repository}#{item.pull.number}
                               </span>
                             </div>
-                            <div className="text-slate-600 truncate mt-0.5 text-[11px]">
+                            <div className="text-slate-600 truncate mt-0.5 text-[11px] dark:text-slate-400">
                               {item.pull.title}
                             </div>
                           </td>
                           <td className="py-3 px-5 whitespace-nowrap">
-                            <code className="text-[11px] font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                            <code className="text-[11px] font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200 dark:bg-slate-800 dark:border-slate-800 dark:text-slate-300">
                               {item.pull.headSha.slice(0, 8)}
                             </code>
                           </td>
@@ -294,22 +294,22 @@ export default function Overview({
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
                                 isMerged
-                                  ? 'bg-accent-50 text-accent-800 border border-accent-200'
+                                  ? 'bg-accent-50 text-accent-800 border border-accent-200 dark:bg-accent-950/40 dark:border-accent-800 dark:text-accent-300'
                                   : isOpen
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:border-slate-800 dark:text-slate-300'
                               }`}
                             >
                               {isMerged ? 'MERGED' : item.pull.state.toUpperCase()}
                             </span>
                           </td>
-                          <td className="py-3 px-5 text-slate-500 whitespace-nowrap font-mono text-[11px]">
+                          <td className="py-3 px-5 text-slate-500 whitespace-nowrap font-mono text-[11px] dark:text-slate-400">
                             {formatTime(item.capturedAt)}
                           </td>
                           <td className="py-3 px-5 text-right whitespace-nowrap">
                             <Link
                               href={`/repositories?snapshot=${encodeURIComponent(item.id)}`}
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-900 group-hover:text-accent-700 hover:underline"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-900 group-hover:text-accent-700 hover:underline dark:text-slate-100"
                             >
                               <span>Inspect</span>
                               <ArrowRight className="w-3 h-3" />
@@ -324,8 +324,8 @@ export default function Overview({
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="px-5 py-2.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 bg-slate-50/40">
-                  <span className="text-[11px] text-slate-500 tabular-nums">
+                <div className="px-5 py-2.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 bg-slate-50/40 dark:bg-slate-900/40 dark:border-slate-800 dark:text-slate-400">
+                  <span className="text-[11px] text-slate-500 tabular-nums dark:text-slate-400">
                     Showing {(safeCurrentPage - 1) * pageSize + 1} to{' '}
                     {Math.min(safeCurrentPage * pageSize, filteredPulls.length)} of {filteredPulls.length} snapshots
                   </span>
@@ -335,7 +335,7 @@ export default function Overview({
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={safeCurrentPage === 1}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition dark:bg-[#141821] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                       <span>Prev</span>
@@ -350,7 +350,7 @@ export default function Overview({
                           className={`w-6 h-6 rounded text-xs font-medium flex items-center justify-center transition ${
                             pageNum === safeCurrentPage
                               ? 'bg-accent-700 text-white font-semibold'
-                              : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                              : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 dark:bg-[#141821] dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800'
                           }`}
                         >
                           {pageNum}
@@ -362,7 +362,7 @@ export default function Overview({
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={safeCurrentPage === totalPages}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition dark:bg-[#141821] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <span>Next</span>
                       <ChevronRight className="w-3.5 h-3.5" />

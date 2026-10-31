@@ -54,7 +54,7 @@ export default function Docs() {
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'workflow'
                   ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
               }`}
             >
               <GitPullRequest className="w-3.5 h-3.5" />
@@ -67,7 +67,7 @@ export default function Docs() {
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'verification'
                   ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -80,7 +80,7 @@ export default function Docs() {
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'receipts'
                   ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
@@ -93,7 +93,7 @@ export default function Docs() {
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'security'
                   ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
@@ -198,7 +198,7 @@ export default function Docs() {
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-xs text-slate-900 dark:text-slate-100">Gate 2: Baseline Failure Reproduction</span>
-                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Exit Code 1</span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">Exit Code 1</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                     Executes the test suite against the unpatched base fixture. Proves the reported bug is real and produces an expected failure rather than an already-passing test suite.
@@ -208,7 +208,7 @@ export default function Docs() {
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-xs text-slate-900 dark:text-slate-100">Gate 3: Negative Control Guard</span>
-                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">Exit Code 1</span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-400">Exit Code 1</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                     Substitutes a known dummy stub (e.g. <code className="font-mono">return 0;</code>) into the test harness to verify that the test suite actually catches invalid or trivial patches.
@@ -218,7 +218,7 @@ export default function Docs() {
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-xs text-slate-900 dark:text-slate-100">Gate 4: Candidate Test Execution</span>
-                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Exit Code 0</span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400">Exit Code 0</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                     Runs the patched candidate in an isolated scratch worktree. Confirms that all unit and regression tests pass cleanly without errors.
@@ -228,7 +228,7 @@ export default function Docs() {
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-xs text-slate-900 dark:text-slate-100">Gate 5: Allowlist &amp; Hash Integrity</span>
-                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-accent-50 text-accent-700 border border-accent-200">SHA-256 Match</span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-950/40 dark:border-accent-800 dark:text-accent-300">SHA-256 Match</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                     Verifies that authoritative test suites and protected repository files were not altered during the candidate execution run.
@@ -275,14 +275,14 @@ export default function Docs() {
               <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
                   <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">Verify Receipt via CLI</span>
-                  <p className="text-[11px] text-slate-500 font-mono">php artisan proofpatch:check-receipt &lt;runId&gt;</p>
+                  <p className="text-[11px] text-slate-500 font-mono dark:text-slate-400">php artisan proofpatch:check-receipt &lt;runId&gt;</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => copyCommand('php artisan proofpatch:check-receipt 20261030T131306Z-65eee2f5')}
                   className="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 inline-flex items-center gap-1.5"
                 >
-                  {copiedCmd ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                  {copiedCmd ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
                   <span>{copiedCmd ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
@@ -296,7 +296,7 @@ export default function Docs() {
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
               <div className="p-3.5 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 space-y-1">
                 <div className="flex items-center gap-2 font-semibold text-xs">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 dark:text-amber-400" />
                   <span>Worktrees Are NOT Security Sandboxes</span>
                 </div>
                 <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">

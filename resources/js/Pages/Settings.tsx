@@ -170,15 +170,15 @@ export default function Settings({
 
         {/* Alerts */}
         {(statusMessage || githubConnection.statusMessage) && (
-          <div className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 dark:text-emerald-400" />
             <span>{statusMessage || githubConnection.statusMessage}</span>
           </div>
         )}
 
         {(errorMessage || githubConnection.errorMessage) && (
-          <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+          <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 dark:text-rose-400" />
             <span>{errorMessage || githubConnection.errorMessage}</span>
           </div>
         )}
@@ -192,7 +192,7 @@ export default function Settings({
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'code-review'
                   ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
               }`}
             >
               <GitPullRequest className="w-3.5 h-3.5" />
@@ -205,7 +205,7 @@ export default function Settings({
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'usage'
                   ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
@@ -218,7 +218,7 @@ export default function Settings({
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'github'
                   ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
               }`}
             >
               <Key className="w-3.5 h-3.5" />
@@ -234,7 +234,7 @@ export default function Settings({
               className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
                 activeTab === 'general'
                   ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -255,7 +255,7 @@ export default function Settings({
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                  <FolderGit2 className="w-3 h-3 text-slate-500" />
+                  <FolderGit2 className="w-3 h-3 text-slate-500 dark:text-slate-400" />
                   <span>{githubConnection.isConnected ? 'GitHub' : 'Not Connected'}</span>
                 </div>
               </div>
@@ -290,7 +290,7 @@ export default function Settings({
                             <FolderGit2 className="w-3.5 h-3.5 text-slate-400" />
                             <span>{repo.fullName}</span>
                             {repo.isPrivate && (
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
                                 Private
                               </span>
                             )}
@@ -302,7 +302,7 @@ export default function Settings({
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-slate-500 py-3 text-center bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                <p className="text-xs text-slate-500 py-3 text-center bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 dark:text-slate-400">
                   Connect GitHub to inspect repositories.
                 </p>
               )}
@@ -425,7 +425,7 @@ export default function Settings({
                             {sourceBadge}
                           </span>
                         </div>
-                        <div className="text-[11px] font-mono text-slate-500 truncate">{info.endpoint}</div>
+                        <div className="text-[11px] font-mono text-slate-500 truncate dark:text-slate-400">{info.endpoint}</div>
                         <div className="flex items-center gap-2">
                           <input
                             type="password"
@@ -481,7 +481,7 @@ export default function Settings({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   usageSubTab === 'overview'
                     ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
                 }`}
               >
                 Overview
@@ -492,7 +492,7 @@ export default function Settings({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   usageSubTab === 'analytics'
                     ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
                 }`}
               >
                 Analytics
@@ -503,13 +503,13 @@ export default function Settings({
               <div className="space-y-6">
                 <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#141821]">
                   <h2 className="text-sm font-semibold">Provider balances</h2>
-                  <p className="mt-2 text-sm text-slate-500">Unavailable here. Check your provider dashboard for balances and billing.</p>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Unavailable here. Check your provider dashboard for balances and billing.</p>
                   {budget && (
                     <>
                     <div className="mt-5 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">
                       <h3 className="font-medium">Local request budget</h3>
-                      <p className="mt-1 text-slate-500">{budget.attempts} of {budget.maxAttempts} attempts · ${(budget.remainingMicros / 1000000).toFixed(2)} estimated remaining</p>
-                      <p className="mt-1 text-xs text-slate-500">Local estimates are not provider balances or billing limits.</p>
+                      <p className="mt-1 text-slate-500 dark:text-slate-400">{budget.attempts} of {budget.maxAttempts} attempts · ${(budget.remainingMicros / 1000000).toFixed(2)} estimated remaining</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Local estimates are not provider balances or billing limits.</p>
                     </div>
                     <AutopilotBudgetCard
                       caps={autopilotBudget ?? null}
@@ -525,7 +525,7 @@ export default function Settings({
             ) : (
               <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
                 <h2 className="text-sm font-semibold">Usage history</h2>
-                <p className="text-sm text-slate-500">Provider usage is not available in ProofPatcher. Check your provider dashboard.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Provider usage is not available in ProofPatcher. Check your provider dashboard.</p>
               </div>
             )}
           </div>
@@ -541,7 +541,7 @@ export default function Settings({
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">GitHub OAuth Device Flow (RFC 8628)</h2>
                 </div>
                 {githubConnection.isConnected && (
-                  <span className="text-xs px-2 py-0.5 rounded font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="text-xs px-2 py-0.5 rounded font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400">
                     Connected
                   </span>
                 )}
@@ -555,7 +555,7 @@ export default function Settings({
                         <img
                           src={githubConnection.user.avatarUrl}
                           alt={`@${githubConnection.user.login}`}
-                          className="w-10 h-10 rounded-full border border-slate-300"
+                          className="w-10 h-10 rounded-full border border-slate-300 dark:border-slate-700"
                         />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-accent-600 text-white font-bold flex items-center justify-center">
@@ -566,7 +566,7 @@ export default function Settings({
                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                           @{githubConnection.user.login}
                         </div>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
                           {repositories.length} repository {repositories.length === 1 ? 'access granted' : 'accesses granted'}
                         </p>
                       </div>
@@ -576,7 +576,7 @@ export default function Settings({
                       type="button"
                       onClick={handleDisconnect}
                       disabled={isSubmitting}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-md border border-rose-300 text-rose-700 hover:bg-rose-50 transition"
+                      className="px-3 py-1.5 text-xs font-semibold rounded-md border border-rose-300 text-rose-700 hover:bg-rose-50 transition dark:text-rose-400"
                     >
                       Disconnect Account
                     </button>
@@ -622,13 +622,13 @@ export default function Settings({
                   {githubConnection.deviceFlow && (
                     <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
                       <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Verification Code: <span className="font-mono text-accent-700 font-bold">{githubConnection.deviceFlow.userCode}</span>
+                        Verification Code: <span className="font-mono text-accent-700 font-bold dark:text-accent-300">{githubConnection.deviceFlow.userCode}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={copyUserCode}
-                          className="px-3 py-1 text-xs font-medium rounded border border-slate-300 bg-white text-slate-700"
+                          className="px-3 py-1 text-xs font-medium rounded border border-slate-300 bg-white text-slate-700 dark:bg-[#141821] dark:border-slate-700 dark:text-slate-300"
                         >
                           {copiedCode ? 'Copied' : 'Copy Code'}
                         </button>
@@ -644,7 +644,7 @@ export default function Settings({
                           type="button"
                           onClick={handlePoll}
                           disabled={isSubmitting}
-                          className="px-3 py-1 text-xs font-medium rounded border border-slate-300 bg-white"
+                          className="px-3 py-1 text-xs font-medium rounded border border-slate-300 bg-white dark:bg-[#141821] dark:border-slate-700"
                         >
                           Check Status
                         </button>

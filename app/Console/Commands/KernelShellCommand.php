@@ -66,7 +66,10 @@ final class KernelShellCommand extends Command
                 return self::SUCCESS;
             }
 
+            // Instant acknowledgement: the shell answers on this frame, before
+            // the (possibly slow) action runs, so Enter never feels dead.
             $this->line('');
+            $this->line('▸ ' . $this->labelFor($action) . ' …');
             match ($action) {
                 'status' => $this->call('kernel:status'),
                 'connect' => $this->call('github:connect'),
@@ -139,6 +142,17 @@ final class KernelShellCommand extends Command
         }
     }
 
+    private function labelFor(string $action): string
+    {
+        foreach ($this->menuOptions() as $option) {
+            if ($option['key'] === $action) {
+                return $option['label'];
+            }
+        }
+
+        return $action;
+    }
+
     private function autopilotOnce(): void
     {
         $repo = KernelCli::getSelectedRepo();
@@ -150,12 +164,39 @@ final class KernelShellCommand extends Command
                 return;
             }
         }
+        // Preconditions first: never ask for a time budget we cannot spend.
+        $authorized = [];
+        foreach (KernelCli::connectState()['repos'] as $row) {
+            $authorized[] = strtolower($row['fullName']);
+        }
+        $blocker = KernelCli::autopilotBlocker($repo, $authorized, $this->reviewEnabled($repo));
+        if ($blocker !== null && str_contains($blocker['why'], 'auto-review is off')) {
+            // The one-click fix lives here, not in another terminal session.
+            $answer = strtolower($this->promptLine("Auto-review is off for {$repo}. Enable now? [Y/n]", 'Y'));
+            if ($answer === '' || $answer === 'y' || $answer === 'yes') {
+                $this->call('kernel:select-repo', ['repo' => $repo, '--enable-review' => true]);
+                $blocker = KernelCli::autopilotBlocker($repo, $authorized, $this->reviewEnabled($repo));
+            }
+        }
+        if ($blocker !== null) {
+            $this->error(KernelCli::report('kernel shell · autopilot', $blocker['why'], $blocker['fix']));
+            return;
+        }
         $minutes = $this->promptLine("Autopilot time budget for {$repo} (minutes, 1-180)", '10');
         if ($minutes === '' || (int) $minutes < 1 || (int) $minutes > 180) {
             $this->warn('Enter 1 to 180.');
             return;
         }
         $this->call('kernel:autopilot', ['--repo' => $repo, '--minutes' => (int) $minutes]);
+    }
+
+    private function reviewEnabled(string $repo): bool
+    {
+        try {
+            return \ProofPatch\Models\RepositoryAutoReviewSetting::isRepoEnabled($repo);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function verifyOnce(): void
@@ -165,7 +206,7 @@ final class KernelShellCommand extends Command
             return;
         }
         if (!is_file($path)) {
-            $this->warn('File not found.');
+            $this->error(KernelCli::report('kernel shell · verify', "file not found: {$path}", 'pass the path to a JSON patch file (max 16 KB)'));
             return;
         }
         $this->call('review:verify', ['patch' => $path]);

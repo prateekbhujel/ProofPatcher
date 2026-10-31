@@ -15,7 +15,7 @@ export function AutopilotBudgetCard({ caps, spentAttempts, spentDollars, onSave,
   return (
     <div className="mt-5 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">
       <h3 className="font-medium">Autopilot spending cap</h3>
-      <p className="mt-1 text-slate-500">
+      <p className="mt-1 text-slate-500 dark:text-slate-400">
         Spent so far: {spentAttempts} attempts · ${spentDollars.toFixed(2)} reserved.
         {caps == null || (caps.maxAttempts == null && caps.maxReservedDollars == null)
           ? ' No cap set: autopilot reviews are bounded only by the local request budget.'
@@ -68,7 +68,7 @@ export function AutopilotBudgetCard({ caps, spentAttempts, spentDollars, onSave,
           </button>
         </div>
       </div>
-      <p className="mt-2 text-xs text-slate-500">Caps stop automatic reviews when reached. They never raise the local request budget.</p>
+      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Caps stop automatic reviews when reached. They never raise the local request budget.</p>
     </div>
   );
 }

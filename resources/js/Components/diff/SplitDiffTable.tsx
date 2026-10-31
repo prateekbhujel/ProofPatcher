@@ -62,11 +62,11 @@ export function SplitDiffTable({
 
             return (
               <React.Fragment key={rIdx}>
-                <tr className="border-b border-slate-100 group">
+                <tr className="border-b border-slate-100 group dark:border-slate-800">
                   {/* Left Line Number (Base) */}
                   <td
                     className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[#d0d7de]/60 ${
-                      leftDel ? 'diff-removed bg-[#ffdce0] text-[#cf222e]' : 'bg-white text-[#656d76]'
+                      leftDel ? 'diff-removed bg-[#ffdce0] text-[#cf222e]' : 'bg-white text-[#656d76] dark:bg-[#141821]'
                     }`}
                   >
                     {row.left?.lineNum ?? ''}
@@ -75,7 +75,7 @@ export function SplitDiffTable({
                   {/* Left Sign Marker (-) */}
                   <td
                     className={`diff-sign text-center select-none font-bold ${
-                      leftDel ? 'diff-removed bg-[#ffdce0] text-[#cf222e]' : 'bg-white text-transparent'
+                      leftDel ? 'diff-removed bg-[#ffdce0] text-[#cf222e]' : 'bg-white text-transparent dark:bg-[#141821]'
                     }`}
                   >
                     {leftDel ? '-' : ' '}
@@ -84,7 +84,7 @@ export function SplitDiffTable({
                   {/* Left Code Content */}
                   <td
                     className={`diff-code px-2 py-0.5 whitespace-pre overflow-x-auto border-r border-[#d0d7de] text-[#1f2328] ${
-                      leftDel ? 'diff-removed bg-[#ffebe9]' : 'bg-white'
+                      leftDel ? 'diff-removed bg-[#ffebe9]' : 'bg-white dark:bg-[#141821]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -102,7 +102,7 @@ export function SplitDiffTable({
                   {/* Right Line Number (Head) */}
                   <td
                     className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[#d0d7de]/60 ${
-                      rightAdd ? 'diff-added bg-[#dafbe1] text-[#1a7f37]' : 'bg-white text-[#656d76]'
+                      rightAdd ? 'diff-added bg-[#dafbe1] text-[#1a7f37]' : 'bg-white text-[#656d76] dark:bg-[#141821]'
                     }`}
                   >
                     {row.right?.lineNum ?? ''}
@@ -111,7 +111,7 @@ export function SplitDiffTable({
                   {/* Right Sign Marker (+) */}
                   <td
                     className={`diff-sign text-center select-none font-bold ${
-                      rightAdd ? 'diff-added bg-[#dafbe1] text-[#1a7f37]' : 'bg-white text-transparent'
+                      rightAdd ? 'diff-added bg-[#dafbe1] text-[#1a7f37]' : 'bg-white text-transparent dark:bg-[#141821]'
                     }`}
                   >
                     {rightAdd ? '+' : ' '}
@@ -120,7 +120,7 @@ export function SplitDiffTable({
                   {/* Right Code Content */}
                   <td
                     className={`diff-code px-2 py-0.5 whitespace-pre overflow-x-auto text-[#1f2328] relative ${
-                      rightAdd ? 'diff-added bg-[#e6ffec]' : 'bg-white'
+                      rightAdd ? 'diff-added bg-[#e6ffec]' : 'bg-white dark:bg-[#141821]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -168,7 +168,7 @@ export function SplitDiffTable({
                 )}
                 {[leftDraft, rightDraft].filter((draft): draft is CommentDraft => Boolean(draft)).map((draft) => (
                   <tr key={draft.id}>
-                    <td colSpan={6} className="p-3 bg-accent-50/70 border-y border-accent-200">
+                    <td colSpan={6} className="p-3 bg-accent-50/70 border-y border-accent-200 dark:bg-accent-950/40/70 dark:border-accent-800">
                       <InlineDraft draft={draft} onEdit={() => openEditorForLine(draft.side === 'LEFT' ? leftLineKey : rightLineKey, draft.comment)} onDelete={onDeleteDraft} />
                     </td>
                   </tr>

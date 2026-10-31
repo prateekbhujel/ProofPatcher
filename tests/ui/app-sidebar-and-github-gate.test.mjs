@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { transformSync } from 'esbuild';
@@ -14,17 +15,47 @@ function loadTsx(relativePath, resolve = require) {
   new Function('exports', 'require', 'module', code)(mod.exports, resolve, mod);
   return mod.exports;
 }
+/** Recursive TSX loader: resolves relative imports against the importing file. */
+function createLoader() {
+  const cache = new Map();
+  function resolveFile(base, spec) {
+    const url = new URL(spec, pathToFileURL(base));
+    for (const candidate of [url.pathname, `${url.pathname}.tsx`, `${url.pathname}.ts`]) {
+      try {
+        readFileSync(candidate, 'utf8');
+        return candidate;
+      } catch {
+        /* try next */
+      }
+    }
+    throw new Error(`Cannot resolve ${spec} from ${base}`);
+  }
+  function load(absPath) {
+    if (cache.has(absPath)) return cache.get(absPath).exports;
+    const source = readFileSync(absPath, 'utf8');
+    const loader = absPath.endsWith('.ts') ? 'ts' : 'tsx';
+    const { code } = transformSync(source, { loader, format: 'cjs' });
+    const mod = { exports: {} };
+    cache.set(absPath, mod);
+    const localRequire = (id) => {
+      if (id === '@inertiajs/react') return inertia;
+      if (id.startsWith('.')) return load(resolveFile(absPath, id));
+      return require(id);
+    };
+    new Function('exports', 'require', 'module', code)(mod.exports, localRequire, mod);
+    return mod.exports;
+  }
+  return { load, resolveFile };
+}
 const inertia = {
   Link: ({ children, href, ...props }) => React.createElement('a', { href, ...props }, children),
   Head: ({ title }) => React.createElement('title', {}, title),
   router: { post() {} },
+  usePage: () => ({ props: {} }),
 };
 const logo = loadTsx('../../resources/js/Components/ui/BrandMark.tsx');
-const layout = loadTsx('../../resources/js/Components/AppLayout.tsx', (id) => {
-  if (id === '@inertiajs/react') return inertia;
-  if (id === './ui/BrandMark') return logo;
-  return require(id);
-});
+const shellLoader = createLoader();
+const layout = shellLoader.load(shellLoader.resolveFile(fileURLToPath(import.meta.url), '../../resources/js/Components/AppLayout.tsx'));
 const onboarding = loadTsx('../../resources/js/Components/workbench/DisconnectedOnboardingView.tsx', (id) => {
   if (id === '@inertiajs/react') return inertia;
   if (id === '../AppLayout') return layout;
@@ -37,18 +68,38 @@ const baseProps = {
   handleInitiateDeviceFlow() {}, handlePollDeviceFlow() {}, copyDeviceCode() {}, copiedDeviceCode: false,
 };
 
-test('the workspace has no duplicate global sidebar; other pages link the Kernel home', () => {
+test('the workspace runs fullscreen in the shell; app pages get the window chrome', () => {
   const body = React.createElement('p', {}, 'Page content');
   const workspace = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'issues' }, body));
   assert.match(workspace, /Page content/);
-  assert.doesNotMatch(workspace, /<aside|ProofPatcher Kernel home/);
+  assert.doesNotMatch(workspace, /<aside/);
+  assert.doesNotMatch(workspace, /app window/);
+  assert.match(workspace, /aria-label="ProofPatcher Kernel home"/);
+  assert.match(workspace, /Open start menu/);
   const settings = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'settings' }, body));
+  assert.match(settings, /settings app window/);
+  assert.match(settings, /Close settings and return to desktop/);
   assert.match(settings, /href="\/"[^>]*aria-label="ProofPatcher Kernel home"/);
-  assert.match(settings, /href="\/issues"/);
-  assert.match(settings, /href="\/repositories"/);
-  assert.doesNotMatch(settings, /href="\/checks"/);
-  assert.match(settings, /href="\/telemetry"/);
-  assert.match(settings, /href="\/settings"/);
+  assert.match(settings, /Open start menu/);
+});
+
+test('the shell is honest while status loads: placeholders, never offline claims', () => {
+  const body = React.createElement('p', {}, 'Page content');
+  const html = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'settings' }, body));
+  assert.match(html, /status loading/);
+  assert.match(html, /···/);
+  assert.doesNotMatch(html, /not connected/);
+  assert.doesNotMatch(html, /autopilot offline/);
+});
+
+test('embedded pages render bare content with no nested chrome', () => {
+  const shell = shellLoader.load(shellLoader.resolveFile(fileURLToPath(import.meta.url), '../../resources/js/Components/os/OsShell.tsx'));
+  const body = React.createElement('p', {}, 'Page content');
+  const html = renderToStaticMarkup(React.createElement(shell.OsShell, { appId: 'docs', embed: true }, body));
+  assert.match(html, /Page content/);
+  assert.doesNotMatch(html, /ProofPatcher Kernel home/);
+  assert.doesNotMatch(html, /Open start menu/);
+  assert.doesNotMatch(html, /app window/);
 });
 
 test('an unconfigured installation explains the missing GitHub App ID', () => {

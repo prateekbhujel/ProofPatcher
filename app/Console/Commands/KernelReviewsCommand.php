@@ -43,6 +43,10 @@ final class KernelReviewsCommand extends Command
 
         if ($rows->isEmpty()) {
             $this->line('No automatic review findings yet.');
+            $selected = \ProofPatch\Support\KernelCli::getSelectedRepo();
+            $this->line($selected !== null
+                ? "Next: php artisan kernel:autopilot --repo={$selected} --minutes=10"
+                : 'Next: php artisan kernel:status shows the one step that unblocks reviews.');
             return self::SUCCESS;
         }
 

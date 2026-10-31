@@ -120,7 +120,7 @@ export function ProposalDiffCard({
                 </button>
               )}
             </div>
-            <span className="text-[11px] text-slate-500 font-mono">
+            <span className="text-[11px] text-slate-500 font-mono dark:text-slate-400">
               {!modelContextAllowed ? 'Private repository content stays local' : canAskMuse ? 'Approval applies once' : 'Muse is not configured or the local limit is reached'}
             </span>
           </div>
@@ -152,13 +152,13 @@ export function ProposalDiffCard({
 
           <div className="font-mono text-xs divide-y divide-slate-100 dark:divide-slate-800">
             <div className="bg-rose-50/75 dark:bg-rose-950/30 text-rose-950 dark:text-rose-200 px-4 py-2.5 flex items-start gap-3 overflow-x-auto">
-              <span className="text-rose-600 select-none shrink-0">-</span>
+              <span className="text-rose-600 select-none shrink-0 dark:text-rose-400">-</span>
               <pre className="whitespace-pre-wrap break-words">
                 {suggestion.find}
               </pre>
             </div>
             <div className="bg-emerald-50/75 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200 px-4 py-2.5 flex items-start gap-3 overflow-x-auto">
-              <span className="text-emerald-700 select-none shrink-0">+</span>
+              <span className="text-emerald-700 select-none shrink-0 dark:text-emerald-400">+</span>
               <pre className="whitespace-pre-wrap break-words">
                 {suggestion.replace}
               </pre>
@@ -187,7 +187,7 @@ export function ProposalDiffCard({
                   {suggestion.isOfflineExample ? 'Offline reference' : suggestion.model ? 'Muse suggestion' : 'Suggestion'}
                 </span>
                 {verificationReport && (
-                  <span className="text-slate-500">
+                  <span className="text-slate-500 dark:text-slate-400">
                     · {passedGateCount} passed, {5 - passedGateCount} failed
                   </span>
                 )}
@@ -202,11 +202,11 @@ export function ProposalDiffCard({
                   <button
                     type="button"
                     onClick={() => copyCandidateHash(suggestion.candidate!.sha256)}
-                    className="shrink-0 rounded p-1 text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                    className="shrink-0 rounded p-1 text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 dark:text-slate-400"
                     aria-label="Copy change hash"
                     title="Copy change hash"
                   >
-                    {copiedCandidateSha ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                    {copiedCandidateSha ? <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> : <Copy className="h-4 w-4" />}
                   </button>
                 </div>
               </details>

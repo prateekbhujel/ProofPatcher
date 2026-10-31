@@ -141,7 +141,7 @@ export function VerificationPipelineCard({
                       Receipt Manifest ({verificationReport.id.slice(0, 15)}…)
                     </span>
                   </span>
-                  <span className="text-[11px] font-mono text-slate-500">
+                  <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                     {verificationReport.receipt?.externallyAnchored ? 'Externally anchored' : 'Local receipt'}
                   </span>
                 </div>
@@ -159,9 +159,9 @@ export function VerificationPipelineCard({
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition shrink-0"
                   >
                     {copiedReceipt ? (
-                      <Check className="w-3 h-3 text-emerald-600" />
+                      <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <Copy className="w-3 h-3 text-slate-500" />
+                      <Copy className="w-3 h-3 text-slate-500 dark:text-slate-400" />
                     )}
                     <span>{copiedReceipt ? 'Copied' : 'Copy SHA'}</span>
                   </button>
@@ -176,11 +176,11 @@ export function VerificationPipelineCard({
                       <Bot className="w-3.5 h-3.5 text-accent-700 dark:text-accent-400" />
                       <span>Check summary</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">Not posted to GitHub</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Not posted to GitHub</span>
                   </div>
                   <pre className="p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{checkSummary}</pre>
                   <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
                       Copy this summary to share it yourself.
                     </span>
                     <button
@@ -283,10 +283,10 @@ export function VerificationPipelineCard({
               <div className="rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div className="space-y-0.5 min-w-0">
                   <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                    <GitMerge className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <GitMerge className="w-3.5 h-3.5 text-emerald-600 shrink-0 dark:text-emerald-400" />
                     <span className="truncate">PR #{openReadyPull.number}: {openReadyPull.title}</span>
                   </div>
-                  <div className="text-[11px] font-mono text-slate-500 truncate">
+                  <div className="text-[11px] font-mono text-slate-500 truncate dark:text-slate-400">
                     {openReadyPull.head} &rarr; {openReadyPull.base} · SHA {openReadyPull.headSha.slice(0, 8)}
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export function VerificationPipelineCard({
             {publishedPr ? (
               <div className="rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 p-3.5 space-y-1.5 text-xs">
                 <div className="font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>PR #{publishedPr.prNumber} ({publishedPr.branch}) published on GitHub</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -360,7 +360,7 @@ export function VerificationPipelineCard({
                   Create a draft PR on branch `proofpatch/{context.issueNumber}-…` using your connected GitHub account ({githubConnection?.user?.login ? `@${githubConnection.user.login}` : 'authenticated user'}), or use the prompt below to merge/close PRs.
                 </p>
                 {publisherDisconnected ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-amber-800 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-amber-800 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 dark:text-amber-300">
                     <Lock className="w-3.5 h-3.5" />
                     <span>Publishing unavailable</span>
                   </span>

@@ -98,9 +98,45 @@ test('the taskbar is honest when disconnected and offline', () => {
 
 test('desktop icons link to the existing pages', () => {
   const html = renderToStaticMarkup(React.createElement(desktop.DesktopIcons, {}));
-  for (const href of ['/issues', '/repositories', '/telemetry', '/settings', '/docs']) {
+  for (const href of ['/issues', '/repositories', '/telemetry', '/terminal', '/settings', '/docs']) {
     assert.match(html, new RegExp(`href="${href}"`));
   }
   assert.match(html, /Issues &amp; Tasks/);
   assert.match(html, /Pull Requests/);
+  assert.match(html, /Terminal/);
+});
+
+test('the taskbar never shrinks its status items', () => {
+  const html = renderToStaticMarkup(React.createElement(taskbar.KernelTaskbar, {
+    connected: true,
+    userLogin: 'maintainer',
+    reposCount: 68,
+    openIssues: 0,
+    openPulls: 0,
+    findingsCount: 3,
+    budgetText: '$0.22 left',
+    workerLive: false,
+    workerStatus: 'offline',
+  }));
+  assert.match(html, /autopilot offline/);
+  assert.ok(!html.match(/<span>\d+ (repo|issue|pull|finding)/));
+});
+
+test('the taskbar shows placeholders while status loads', () => {
+  const html = renderToStaticMarkup(React.createElement(taskbar.KernelTaskbar, {
+    connected: false,
+    userLogin: null,
+    reposCount: 0,
+    openIssues: 0,
+    openPulls: 0,
+    findingsCount: 0,
+    budgetText: '···',
+    workerLive: false,
+    workerStatus: '···',
+    loading: true,
+  }));
+  assert.match(html, /status loading/);
+  assert.match(html, /···/);
+  assert.doesNotMatch(html, /not connected/);
+  assert.doesNotMatch(html, /autopilot offline/);
 });

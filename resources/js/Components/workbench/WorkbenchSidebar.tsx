@@ -94,7 +94,7 @@ export function WorkbenchSidebar({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1.5">
-              <FolderGit2 className="w-3.5 h-3.5 text-slate-500" />
+              <FolderGit2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Connected Repository</span>
             </span>
             {githubConnection?.selectedRepo && (
@@ -103,7 +103,7 @@ export function WorkbenchSidebar({
                 onClick={() => handleSelectRepo(githubConnection.selectedRepo!)}
                 disabled={loadingRepo}
                 title="Refresh repository issues and pull requests"
-                className="p-1 rounded text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                className="p-1 rounded text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 dark:text-slate-400"
               >
                 <RefreshCw className={`w-3 h-3 ${loadingRepo ? 'animate-spin' : ''}`} />
               </button>
@@ -203,7 +203,7 @@ export function WorkbenchSidebar({
               })}
             </div>
             {stateFilteredIssues.length > pageSize && (
-              <span className="font-mono text-slate-500">
+              <span className="font-mono text-slate-500 dark:text-slate-400">
                 p.{safeIssuePage}/{totalIssuePages}
               </span>
             )}
@@ -241,7 +241,7 @@ export function WorkbenchSidebar({
               })}
             </div>
             {stateFilteredPulls.length > pageSize && (
-              <span className="font-mono text-slate-500">
+              <span className="font-mono text-slate-500 dark:text-slate-400">
                 p.{safePullPage}/{totalPullPages}
               </span>
             )}
@@ -253,7 +253,7 @@ export function WorkbenchSidebar({
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 border-t border-slate-200/70 dark:border-slate-800 space-y-2 [scrollbar-width:thin]">
           {sidebarTab === 'issues' ? (
             pagedIssues.length === 0 ? (
-              <p className="p-2 text-xs text-slate-500">
+              <p className="p-2 text-xs text-slate-500 dark:text-slate-400">
                 {githubConnection?.selectedRepo ? 'No matching issues.' : 'Choose a repository.'}
               </p>
             ) : (
@@ -364,7 +364,7 @@ export function WorkbenchSidebar({
                 );
               })}
               {stateFilteredIssues.length > pageSize && (
-                <div className="flex items-center justify-between pt-1 pb-2 text-[11px] text-slate-500">
+                <div className="flex items-center justify-between pt-1 pb-2 text-[11px] text-slate-500 dark:text-slate-400">
                   <span>
                     {(safeIssuePage - 1) * pageSize + 1}–{Math.min(safeIssuePage * pageSize, stateFilteredIssues.length)} of {stateFilteredIssues.length}
                   </span>
@@ -392,7 +392,7 @@ export function WorkbenchSidebar({
             )
           ) : (
             pagedPulls.length === 0 ? (
-              <p className="text-xs text-slate-500 p-2">No pull requests found.</p>
+              <p className="text-xs text-slate-500 p-2 dark:text-slate-400">No pull requests found.</p>
             ) : (
               <>
               {pagedPulls.map((pull) => (
@@ -436,7 +436,7 @@ export function WorkbenchSidebar({
                 </div>
               ))}
               {stateFilteredPulls.length > pageSize && (
-                <div className="flex items-center justify-between pt-1 pb-2 text-[11px] text-slate-500">
+                <div className="flex items-center justify-between pt-1 pb-2 text-[11px] text-slate-500 dark:text-slate-400">
                   <span>
                     {(safePullPage - 1) * pageSize + 1}–{Math.min(safePullPage * pageSize, stateFilteredPulls.length)} of {stateFilteredPulls.length}
                   </span>
@@ -466,7 +466,7 @@ export function WorkbenchSidebar({
 
         {localTasks.some((task) => task.repository.toLowerCase() === githubConnection?.selectedRepo?.toLowerCase()) && (
           <div className="space-y-1 border-t border-slate-200 pt-2.5 dark:border-slate-800">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Automation Tasks</h2>
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Automation Tasks</h2>
             {localTasks.filter((task) => task.repository.toLowerCase() === githubConnection?.selectedRepo?.toLowerCase()).map((task) => (
               <button key={task.id} type="button" onClick={() => onSelectTask(Number(task.id))} className="block w-full truncate rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 bg-white/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 hover:bg-slate-200/70 dark:text-slate-300 dark:hover:bg-slate-800">
                 {task.title}
@@ -482,13 +482,13 @@ export function WorkbenchSidebar({
           <button
             type="button"
             onClick={() => setViewMode('new')}
-            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-800"
           >
             <Plus className="mr-1 inline h-3.5 w-3.5" /> New task
           </button>
           <Link
             href="/repositories"
-            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-center text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-center text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-800"
           >
             PR Dashboard
           </Link>
@@ -520,7 +520,7 @@ export function WorkbenchSidebar({
               href="/settings"
               aria-label="Account and GitHub settings"
               title="Account & GitHub settings"
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-300/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-900 text-[11px] font-medium shrink-0"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-300/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-900 text-[11px] font-medium shrink-0 dark:hover:text-slate-100"
             >
               <SettingsIcon className="w-3.5 h-3.5" />
               <span>Settings</span>

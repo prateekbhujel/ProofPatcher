@@ -231,7 +231,7 @@ export function VoiceDictationButton({
               ? 'bg-accent-50 text-accent-800 border-accent-300 dark:bg-accent-950/70 dark:text-accent-200 dark:border-accent-800'
               : state === 'unsupported' || state === 'error'
                 ? 'bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/70 dark:text-amber-200 dark:border-amber-800'
-                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
+                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
         }`}
       >
         {isListening ? (

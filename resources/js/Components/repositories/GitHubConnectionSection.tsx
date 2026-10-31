@@ -48,30 +48,30 @@ export function GitHubConnectionSection({
   handleCaptureGitHubPull,
 }: GitHubConnectionSectionProps) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden dark:bg-[#141821] dark:border-slate-800">
       <button
         type="button"
         onClick={() => setGitHubSectionOpen(!gitHubSectionOpen)}
         aria-expanded={gitHubSectionOpen}
         aria-controls="github-connection-details"
-        className="w-full p-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between text-left cursor-pointer select-none hover:bg-slate-100/60 transition"
+        className="w-full p-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between text-left cursor-pointer select-none hover:bg-slate-100/60 transition dark:bg-slate-900/70 dark:border-slate-800 dark:hover:bg-slate-700/60"
       >
         <div className="flex items-center gap-2.5">
-          <FolderGit2 className="w-4 h-4 text-accent-700" />
+          <FolderGit2 className="w-4 h-4 text-accent-700 dark:text-accent-300" />
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-900">GitHub Connection</span>
+            <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">GitHub Connection</span>
           </div>
           {githubConnection?.isConnected ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               Connected as @{githubConnection.user?.login}
             </span>
           ) : githubConnection?.deviceFlow ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
               Code: {githubConnection.deviceFlow.userCode}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:border-slate-800 dark:text-slate-400">
               Not Connected
             </span>
           )}
@@ -85,14 +85,14 @@ export function GitHubConnectionSection({
         <div id="github-connection-details" className="p-5 space-y-4">
           {/* Feedback messages */}
           {githubConnection?.statusMessage && (
-            <div className="p-3 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="p-3 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 dark:text-emerald-400" />
               <span>{githubConnection.statusMessage}</span>
             </div>
           )}
           {githubConnection?.errorMessage && (
-            <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 dark:text-rose-400" />
               <span>{githubConnection.errorMessage}</span>
             </div>
           )}
@@ -100,25 +100,25 @@ export function GitHubConnectionSection({
           {/* State 1: Connected */}
           {githubConnection?.isConnected ? (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
                 <div className="flex items-center gap-3">
                   {githubConnection.user?.avatarUrl ? (
                     <img
                       src={githubConnection.user.avatarUrl}
                       alt={githubConnection.user.login}
-                      className="w-8 h-8 rounded-full border border-slate-300"
+                      className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-accent-100 text-accent-700 flex items-center justify-center font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-accent-100 text-accent-700 flex items-center justify-center font-bold text-xs dark:bg-accent-950/60 dark:text-accent-300">
                       {githubConnection.user?.login.slice(0, 2).toUpperCase()}
                     </div>
                   )}
                   <div>
-                    <div className="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
+                    <div className="text-xs font-semibold text-slate-900 flex items-center gap-1.5 dark:text-slate-100">
                       <span>{githubConnection.user?.name || githubConnection.user?.login}</span>
                       <span className="text-slate-400 font-mono font-normal">(@{githubConnection.user?.login})</span>
                     </div>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       {githubConnection.repositories.length} authorized {githubConnection.repositories.length === 1 ? 'repository' : 'repositories'} available
                     </p>
                   </div>
@@ -127,9 +127,9 @@ export function GitHubConnectionSection({
                 <form onSubmit={handleDisconnectDevice}>
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 shadow-2xs transition"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 shadow-2xs transition dark:bg-[#141821] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
-                    <LogOut className="w-3.5 h-3.5 text-slate-500" />
+                    <LogOut className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <span>Disconnect</span>
                   </button>
                 </form>
@@ -138,21 +138,21 @@ export function GitHubConnectionSection({
               {/* Selected Repositories List */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-slate-800">Installed Repositories (Least Privilege Scope)</h4>
-                  <span className="text-[11px] text-slate-500">Selected during app installation</span>
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">Installed Repositories (Least Privilege Scope)</h4>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Selected during app installation</span>
                 </div>
 
                 {githubConnection.repositoriesStatus?.truncated && (
-                  <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800 flex items-start gap-2 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 dark:text-amber-400" />
                     <div>
                       <span className="font-semibold">Repositories List Capped:</span> Additional repositories were omitted by pagination limits.
                     </div>
                   </div>
                 )}
                 {githubConnection.repositoriesStatus?.errors && githubConnection.repositoriesStatus.errors.length > 0 && (
-                  <div className="p-2.5 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-800 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="p-2.5 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-800 flex items-start gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 dark:text-rose-400" />
                     <div>
                       <span className="font-semibold">Partial Installation Errors:</span>
                       <ul className="list-disc list-inside mt-0.5 font-mono text-[11px]">
@@ -165,8 +165,8 @@ export function GitHubConnectionSection({
                 )}
 
                 {githubConnection.repositories.length === 0 ? (
-                  <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs text-slate-500 space-y-1">
-                    <p className="font-medium text-slate-700">No repositories granted to this installation.</p>
+                  <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs text-slate-500 space-y-1 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
+                    <p className="font-medium text-slate-700 dark:text-slate-300">No repositories granted to this installation.</p>
                     <p className="text-[11px]">
                       Configure repository permissions on GitHub to grant ProofPatcher access to selected owned repositories.
                     </p>
@@ -182,23 +182,23 @@ export function GitHubConnectionSection({
                           onClick={() => handleSelectRepository(repo.fullName)}
                           className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between gap-2 ${
                             isCurrent
-                              ? 'bg-accent-50/70 border-accent-300 ring-1 ring-accent-400'
-                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                              ? 'bg-accent-50/70 border-accent-300 ring-1 ring-accent-400 dark:bg-accent-950/40/70 dark:border-accent-700'
+                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 dark:bg-[#141821] dark:border-slate-800 dark:hover:bg-slate-800/50 dark:hover:border-slate-600'
                           }`}
                         >
                           <div className="min-w-0">
-                            <div className="text-xs font-semibold text-slate-900 truncate">{repo.fullName}</div>
-                            <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                            <div className="text-xs font-semibold text-slate-900 truncate dark:text-slate-100">{repo.fullName}</div>
+                            <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5 dark:text-slate-400">
                               <span>{repo.defaultBranch}</span>
                               <span>·</span>
-                              <span className={repo.isPrivate ? 'text-amber-700 font-medium' : 'text-emerald-700 font-medium'}>
+                              <span className={repo.isPrivate ? 'text-amber-700 font-medium dark:text-amber-400' : 'text-emerald-700 font-medium dark:text-emerald-400'}>
                                 {repo.isPrivate ? 'Private' : 'Public'}
                               </span>
                             </div>
                           </div>
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                              isCurrent ? 'bg-accent-700 text-white' : 'bg-slate-100 text-slate-600'
+                              isCurrent ? 'bg-accent-700 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                             }`}
                           >
                             {isCurrent ? 'Selected' : 'Select'}
@@ -212,27 +212,27 @@ export function GitHubConnectionSection({
 
               {/* Pull Requests in Selected Repo */}
               {githubConnection.selectedRepo && (
-                <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-slate-800">
-                      Pull Requests in <span className="font-mono text-accent-900">{githubConnection.selectedRepo}</span>
+                    <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Pull Requests in <span className="font-mono text-accent-900 dark:text-accent-300">{githubConnection.selectedRepo}</span>
                     </h4>
-                    <span className="text-[11px] text-slate-500 font-mono">
+                    <span className="text-[11px] text-slate-500 font-mono dark:text-slate-400">
                       {githubConnection.repoPulls.length} total
                     </span>
                   </div>
 
                   {githubConnection.repoPullsStatus?.truncated && (
-                    <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800 flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800 flex items-start gap-2 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 dark:text-amber-400" />
                       <div>
                         <span className="font-semibold">Pull Requests Capped:</span> Showing first 500 open pull requests.
                       </div>
                     </div>
                   )}
                   {githubConnection.repoPullsStatus?.errors && githubConnection.repoPullsStatus.errors.length > 0 && (
-                    <div className="p-2.5 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-800 flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="p-2.5 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-800 flex items-start gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 dark:text-rose-400" />
                       <div>
                         <span className="font-semibold">Partial Retrieval Errors:</span>
                         <ul className="list-disc list-inside mt-0.5 font-mono text-[11px]">
@@ -245,41 +245,41 @@ export function GitHubConnectionSection({
                   )}
 
                   {githubConnection.repoPulls.length === 0 ? (
-                    <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs text-slate-500">
+                    <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs text-slate-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
                       No open pull requests found in {githubConnection.selectedRepo}.
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden bg-white">
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden bg-white dark:bg-[#141821] dark:border-slate-800 dark:divide-slate-800">
                       {githubConnection.repoPulls.map((pr) => (
                         <div
                           key={pr.number}
-                          className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition"
+                          className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition dark:hover:bg-slate-800/60"
                         >
                           <div className="space-y-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-slate-900">#{pr.number}</span>
+                              <span className="font-bold text-xs text-slate-900 dark:text-slate-100">#{pr.number}</span>
                               <span
                                 className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase border ${
                                   (pr as any).state === 'merged'
-                                    ? 'bg-accent-50 text-accent-700 border-accent-200'
+                                    ? 'bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-950/40 dark:border-accent-800 dark:text-accent-300'
                                     : (pr as any).state === 'closed'
-                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-400'
                                     : (pr as any).isDraft
-                                    ? 'bg-slate-100 text-slate-700 border-slate-300'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400'
                                 }`}
                               >
                                 {(pr as any).isDraft && (pr as any).state === 'open' ? 'DRAFT' : ((pr as any).state || 'OPEN')}
                               </span>
-                              <span className="text-xs font-medium text-slate-800 truncate">{pr.title}</span>
+                              <span className="text-xs font-medium text-slate-800 truncate dark:text-slate-200">{pr.title}</span>
                               {pr.isPrivate && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                                  <Lock className="w-2.5 h-2.5 text-amber-700" />
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+                                  <Lock className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400" />
                                   Private
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-2 font-mono">
+                            <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-2 font-mono dark:text-slate-400">
                               <span>by @{pr.user}</span>
                               <span>·</span>
                               <span>{pr.head} → {pr.base}</span>
@@ -287,7 +287,7 @@ export function GitHubConnectionSection({
                           </div>
 
                           {pr.isPrivate && !githubConnection.canCapturePrivateTestRepo ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200">
+                            <span className="inline-flex items-center px-2 py-1 rounded text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
                               Private PR capture disabled
                             </span>
                           ) : (
@@ -309,28 +309,28 @@ export function GitHubConnectionSection({
             </div>
           ) : githubConnection?.deviceFlow ? (
             /* State 2: Device Code Awaiting Authorization */
-            <div className="p-4 rounded-lg bg-amber-50/70 border border-amber-200 space-y-3">
+            <div className="p-4 rounded-lg bg-amber-50/70 border border-amber-200 space-y-3 dark:bg-amber-950/40/70 dark:border-amber-800">
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-amber-900">Authorize Device in Your Browser</div>
-                <p className="text-xs text-amber-800">
+                <div className="text-xs font-semibold text-amber-900 dark:text-amber-200">Authorize Device in Your Browser</div>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
                   Open GitHub, verify the code below, and authorize ProofPatcher. No personal access tokens or secrets are transferred.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-white rounded-md border border-amber-200">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-white rounded-md border border-amber-200 dark:bg-[#141821] dark:border-amber-800">
                 <div className="flex-1">
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">One-Time User Code</span>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <code className="text-lg font-mono font-bold text-accent-700 tracking-widest">
+                    <code className="text-lg font-mono font-bold text-accent-700 tracking-widest dark:text-accent-300">
                       {githubConnection.deviceFlow.userCode}
                     </code>
                     <button
                       type="button"
                       onClick={() => copyUserCode(githubConnection.deviceFlow!.userCode)}
-                      className="p-1 rounded text-slate-400 hover:text-slate-600"
+                      className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                       title="Copy code"
                     >
-                      {copiedUserCode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedUserCode ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>
@@ -350,7 +350,7 @@ export function GitHubConnectionSection({
                     type="button"
                     onClick={() => handlePollDeviceFlow()}
                     disabled={isSubmittingDevice}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition disabled:opacity-50 dark:bg-[#141821] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isSubmittingDevice ? 'animate-spin' : ''}`} />
                     <span>Check Status</span>
@@ -362,7 +362,7 @@ export function GitHubConnectionSection({
             /* State 3: Disconnected - Initiate Flow */
             <form onSubmit={handleInitiateDeviceFlow} className="space-y-3">
               <div className="space-y-1">
-                <label htmlFor="client_id" className="block text-xs font-medium text-slate-700">
+                <label htmlFor="client_id" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                   GitHub App Client ID
                 </label>
                 <input
@@ -371,9 +371,9 @@ export function GitHubConnectionSection({
                   value={clientIdInput}
                   onChange={(e) => setClientIdInput(e.target.value)}
                   placeholder="e.g., Ov23li... (configured in Settings)"
-                  className="w-full text-xs font-mono rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                  className="w-full text-xs font-mono rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-accent-500 dark:border-slate-700 dark:text-slate-100"
                 />
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Connect via GitHub OAuth Device Flow (RFC 8628) with user-code authorization.
                 </p>
               </div>

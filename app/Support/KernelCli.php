@@ -120,6 +120,48 @@ final class KernelCli
     }
 
     /**
+     * One error language for the whole terminal surface: every failure names
+     * where it happened, why, and the single fix. Pure so both commands and
+     * the shell render identical reports.
+     */
+    public static function report(string $where, string $why, ?string $fix = null): string
+    {
+        $lines = ['✕ ' . trim($where), '  why: ' . trim($why)];
+        if ($fix !== null && trim($fix) !== '') {
+            $lines[] = '  fix: ' . trim($fix);
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Autopilot preconditions, checked before any prompt. Returns null when
+     * the run can start, otherwise the blocker as why + fix.
+     *
+     * @param list<string> $authorizedLower
+     * @return ?array{why: string, fix: string}
+     */
+    public static function autopilotBlocker(?string $repo, array $authorizedLower, bool $reviewEnabled): ?array
+    {
+        if ($repo === null || trim($repo) === '') {
+            return ['why' => 'no repository selected', 'fix' => 'php artisan kernel:select-repo'];
+        }
+        $repo = trim($repo);
+        if (!self::isValidRepo($repo)) {
+            return ['why' => "expected owner/repo, got '{$repo}'", 'fix' => 'php artisan kernel:select-repo --list'];
+        }
+        $allowed = array_fill_keys($authorizedLower, true);
+        if (!isset($allowed[strtolower($repo)])) {
+            return ['why' => "{$repo} is not in the current GitHub grant", 'fix' => 'php artisan kernel:select-repo --list'];
+        }
+        if (!$reviewEnabled) {
+            return ['why' => "auto-review is off for {$repo}", 'fix' => "php artisan kernel:select-repo --enable-review {$repo}"];
+        }
+
+        return null;
+    }
+
+    /**
      * @return array{connected: bool, user: ?array{login: ?string}, repos: list<array{fullName: string}>}
      */
     public static function connectState(): array

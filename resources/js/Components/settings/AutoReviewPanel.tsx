@@ -52,11 +52,11 @@ export function AutoReviewPanel({ connected, repositories, autoReview, pendingRe
       </div>
 
       {!autoReview ? (
-        <p className="text-xs text-slate-500">Automatic actions are not active yet. Open a pull request to review it manually.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Automatic actions are not active yet. Open a pull request to review it manually.</p>
       ) : !connected ? (
-        <p className="text-xs text-slate-500">Connect GitHub to choose repositories.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Connect GitHub to choose repositories.</p>
       ) : repositories.length === 0 ? (
-        <p className="text-xs text-slate-500">No repositories are available to this GitHub connection.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">No repositories are available to this GitHub connection.</p>
       ) : (
         <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg">
           {repositories.map((repo) => {
@@ -67,11 +67,11 @@ export function AutoReviewPanel({ connected, repositories, autoReview, pendingRe
                 <div className="min-w-0">
                   <div className="break-all font-medium text-slate-900 dark:text-slate-100">{repo.fullName}</div>
                   {repo.isPrivate ? (
-                    <div className="mt-1 text-slate-500">
+                    <div className="mt-1 text-slate-500 dark:text-slate-400">
                       Private repositories are not sent to Muse. Local issue examination, offline verification, and user-permitted PR actions remain available.
                     </div>
                   ) : (
-                    <div className="mt-1 text-slate-500">
+                    <div className="mt-1 text-slate-500 dark:text-slate-400">
                       Public repository · Automatic Muse PR review {enabled ? 'enabled' : 'disabled'}.
                     </div>
                   )}

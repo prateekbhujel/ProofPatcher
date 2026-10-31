@@ -13,7 +13,9 @@ use ProofPatch\Http\Controllers\KernelController;
 use ProofPatch\Http\Controllers\LocalTaskCardController;
 use ProofPatch\Http\Controllers\LocalTaskImageController;
 use ProofPatch\Http\Controllers\ManualInlineCommentController;
+use ProofPatch\Http\Controllers\OsStatusController;
 use ProofPatch\Http\Controllers\TelemetryController;
+use ProofPatch\Http\Controllers\TerminalController;
 
 Route::get('/', [KernelController::class, 'show']);
 Route::get('/telemetry', [TelemetryController::class, 'show']);
@@ -66,6 +68,11 @@ Route::post('/settings/providers/key', [DashboardController::class, 'saveProvide
 Route::post('/settings/providers/key/remove', [DashboardController::class, 'removeProviderKey']);
 Route::post('/settings/autopilot-budget', [DashboardController::class, 'saveAutopilotBudget']);
 Route::get('/docs', [DashboardController::class, 'docs']);
+
+// OS shell: live status for the menu bar/taskbar, and the read-only web terminal.
+Route::get('/os/status', [OsStatusController::class, 'show']);
+Route::get('/terminal', [TerminalController::class, 'show']);
+Route::post('/terminal/run', [TerminalController::class, 'run'])->middleware('throttle:30,1');
 Route::post('/notifications/clear', [DashboardController::class, 'clearNotifications']);
 Route::get('/checks/image', [DashboardController::class, 'image']);
 Route::get('/runs/{runId}/images/{image}', [DashboardController::class, 'imageByPath']);

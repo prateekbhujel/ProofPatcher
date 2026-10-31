@@ -41,11 +41,11 @@ export function PrFilesTab({
   onDeleteDraft,
 }: PrFilesTabProps) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6 space-y-4">
+    <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6 space-y-4 dark:bg-[#141821] dark:border-slate-800/80">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Changed Files</h2>
-          <p className="text-xs text-slate-500">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Changed Files</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Click any file row to expand its unified diff, inspect inline findings, and draft local line comments.
           </p>
         </div>
@@ -56,7 +56,7 @@ export function PrFilesTab({
             placeholder="Filter files..."
             value={fileQuery}
             onChange={(e) => setFileQuery(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-accent-500 shadow-2xs"
+            className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-accent-500 shadow-2xs dark:border-slate-700"
           />
         </div>
       </div>
@@ -69,10 +69,10 @@ export function PrFilesTab({
       </div>
 
       {!patchPreview && snapshot && (
-        <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 dark:bg-slate-900 dark:border-slate-800">
           <div className="space-y-0.5">
-            <p className="font-semibold text-slate-800">Unified diffs and inline commenting require patch preview</p>
-            <p className="text-slate-500 text-[11px]">
+            <p className="font-semibold text-slate-800 dark:text-slate-200">Unified diffs and inline commenting require patch preview</p>
+            <p className="text-slate-500 text-[11px] dark:text-slate-400">
               Load public patch diffs to expand files, view Muse findings, and draft maintainer comments.
             </p>
           </div>
@@ -86,21 +86,21 @@ export function PrFilesTab({
       )}
 
       {patchPreviewError && (
-        <div role="alert" className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+        <div role="alert" className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 dark:text-rose-400" />
           <span>{patchPreviewError}</span>
         </div>
       )}
 
       {patchPreview?.filesTruncated && (
-        <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200">
+        <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
           GitHub returned only {patchPreview.files.length} of {patchPreview.changedFiles} changed files.
         </p>
       )}
 
       <div className="space-y-3">
         {filteredFiles.length === 0 ? (
-          <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
             No matching files found.
           </div>
         ) : (

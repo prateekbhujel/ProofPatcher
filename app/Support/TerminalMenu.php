@@ -141,15 +141,30 @@ final class TerminalMenu
     }
 
     /**
+     * The whole redraw as one string: cursor-up plus every cleared row. One
+     * write per keypress keeps the menu flicker-free even on slow terminals.
+     *
+     * @param list<array{key: string, label: string}> $options
+     */
+    public static function frame(array $options, int $highlight): string
+    {
+        if ($options === []) {
+            return '';
+        }
+        $out = self::up(count($options));
+        foreach (explode("\n", self::render($options, $highlight)) as $line) {
+            $out .= "\e[K" . $line . "\n";
+        }
+
+        return $out;
+    }
+
+    /**
      * @param list<array{key: string, label: string}> $options
      */
     private static function redraw(object $term, array $options, int $highlight): void
     {
-        $count = count($options);
-        $term->write(self::up($count));
-        foreach (explode("\n", self::render($options, $highlight)) as $line) {
-            $term->write("\e[K" . $line . "\n");
-        }
+        $term->write(self::frame($options, $highlight));
     }
 
     /**

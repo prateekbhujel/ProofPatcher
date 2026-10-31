@@ -92,12 +92,12 @@ function TaskImage({ task }: { task: LocalTaskCard }) {
           href={`/issues/tasks/${task.id}/image`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent-50 text-xs text-accent-800 hover:bg-accent-100 font-medium border border-accent-200 transition"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent-50 text-xs text-accent-800 hover:bg-accent-100 font-medium border border-accent-200 transition dark:bg-accent-950/40 dark:border-accent-800 dark:text-accent-300"
         >
-          <ImageIcon className="w-3.5 h-3.5 text-accent-700" />
+          <ImageIcon className="w-3.5 h-3.5 text-accent-700 dark:text-accent-300" />
           <span>Open attached screenshot</span>
         </a>
-        <span className="text-[11px] text-slate-500">
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">
           Saved locally on this machine · not sent to or interpreted by Muse
         </span>
       </div>
@@ -136,12 +136,12 @@ function TaskImage({ task }: { task: LocalTaskCard }) {
         type="button"
         disabled={uploading}
         onClick={() => input.current?.click()}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 transition disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 transition disabled:opacity-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
       >
-        <Plus className="w-3.5 h-3.5 text-accent-700" />
+        <Plus className="w-3.5 h-3.5 text-accent-700 dark:text-accent-300" />
         <span>{uploading ? 'Saving screenshot…' : 'Attach screenshot'}</span>
       </button>
-      <span className="text-[11px] text-slate-500">
+      <span className="text-[11px] text-slate-500 dark:text-slate-400">
         PNG/JPEG under 2 MB · kept local only, not interpreted by Muse
       </span>
     </div>
@@ -193,14 +193,14 @@ export function FocusedLocalTaskView({
   return (
     <div className="space-y-5">
       {/* Task Header Card */}
-      <div className="rounded-xl border border-slate-200 border-t-2 border-t-accent-600/80 bg-white p-5 space-y-3">
+      <div className="rounded-xl border border-slate-200 border-t-2 border-t-accent-600/80 bg-white p-5 space-y-3 dark:bg-[#141821] dark:border-slate-800">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
-              <FolderGit2 className="w-3.5 h-3.5 text-slate-500" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200 dark:bg-slate-800 dark:border-slate-800 dark:text-slate-300">
+              <FolderGit2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>{task.repository}</span>
             </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200 capitalize">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200 capitalize dark:bg-slate-800 dark:border-slate-800 dark:text-slate-300">
               {task.status || 'queued'}
             </span>
           </div>
@@ -210,8 +210,8 @@ export function FocusedLocalTaskView({
           </span>
         </div>
 
-        <h2 className="text-base font-semibold text-slate-900">{task.title}</h2>
-        <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50/80 p-3 rounded-lg border border-slate-200/70">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{task.title}</h2>
+        <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50/80 p-3 rounded-lg border border-slate-200/70 dark:bg-slate-900/80 dark:border-slate-800/70 dark:text-slate-300">
           {task.description}
         </p>
 
@@ -234,7 +234,7 @@ export function FocusedLocalTaskView({
             <button
               type="button"
               onClick={() => router.visit('/repositories')}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-xs hover:bg-slate-100 transition"
+              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-xs hover:bg-slate-100 transition dark:hover:bg-slate-700"
             >
               Open PR Triage &amp; Merge Dashboard
             </button>
@@ -243,16 +243,16 @@ export function FocusedLocalTaskView({
       ) : (
       <>
       {/* Step 1: Local Public-File Preview */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-3.5">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-3.5 dark:bg-[#141821] dark:border-slate-800">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xs font-semibold text-slate-900">1. Pin Public File &amp; Commit</h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100">1. Pin Public File &amp; Commit</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5 dark:text-slate-400">
               Fetches the file anonymously from GitHub to verify the repository is public. Nothing is sent to a model.
             </p>
           </div>
           {currentPreview && (
-            <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 dark:bg-slate-800 dark:border-slate-800 dark:text-slate-400">
               {currentPreview.context.path} @ {currentPreview.context.commit.slice(0, 8)}
             </span>
           )}
@@ -266,7 +266,7 @@ export function FocusedLocalTaskView({
           }}
         >
           <div className="sm:col-span-5">
-            <label htmlFor={`preview-path-${task.id}`} className="block text-[11px] font-medium text-slate-700 mb-1">
+            <label htmlFor={`preview-path-${task.id}`} className="block text-[11px] font-medium text-slate-700 mb-1 dark:text-slate-300">
               File path
             </label>
             <input
@@ -279,11 +279,11 @@ export function FocusedLocalTaskView({
               value={data.path}
               onChange={(event) => setData('path', event.target.value)}
               placeholder="src/OrderTotal.php"
-              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-accent-600"
+              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-accent-600 dark:border-slate-700 dark:text-slate-100"
             />
           </div>
           <div className="sm:col-span-5">
-            <label htmlFor={`preview-commit-${task.id}`} className="block text-[11px] font-medium text-slate-700 mb-1">
+            <label htmlFor={`preview-commit-${task.id}`} className="block text-[11px] font-medium text-slate-700 mb-1 dark:text-slate-300">
               40-character commit SHA
             </label>
             <input
@@ -297,7 +297,7 @@ export function FocusedLocalTaskView({
               value={data.commit}
               onChange={(event) => setData('commit', event.target.value)}
               placeholder="e.g. 676e73d674aca9ba711aa10877ffd7287e1f25b3"
-              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-accent-600"
+              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-accent-600 dark:border-slate-700 dark:text-slate-100"
             />
           </div>
           <div className="sm:col-span-2">
@@ -312,19 +312,19 @@ export function FocusedLocalTaskView({
         </form>
 
         {currentPreview && (
-          <div className="pt-2 space-y-2 border-t border-slate-100 text-xs">
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
+          <div className="pt-2 space-y-2 border-t border-slate-100 text-xs dark:border-slate-800">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
               <span>Local preview ready · not sent to any model</span>
               <span className="font-mono">SHA-256: {currentPreview.context.sourceSha256.slice(0, 12)}…</span>
             </div>
-            <details className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
-              <summary className="cursor-pointer font-medium text-slate-800 text-xs">
+            <details className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 dark:bg-slate-900/70 dark:border-slate-800">
+              <summary className="cursor-pointer font-medium text-slate-800 text-xs dark:text-slate-200">
                 Inspect pinned source ({currentPreview.context.path}) &amp; preview digest
               </summary>
-              <pre className="mt-2 max-h-52 overflow-auto whitespace-pre rounded bg-white p-2.5 text-[11px] font-mono text-slate-800 border border-slate-200">
+              <pre className="mt-2 max-h-52 overflow-auto whitespace-pre rounded bg-white p-2.5 text-[11px] font-mono text-slate-800 border border-slate-200 dark:bg-[#141821] dark:border-slate-800 dark:text-slate-200">
                 {currentPreview.context.source}
               </pre>
-              <p className="mt-1.5 text-[10px] font-mono text-slate-500 break-all">
+              <p className="mt-1.5 text-[10px] font-mono text-slate-500 break-all dark:text-slate-400">
                 Preview digest: {currentPreview.digest}
               </p>
             </details>
@@ -334,27 +334,27 @@ export function FocusedLocalTaskView({
 
       {/* Step 2: In-Context Approval Card (Helicon style) */}
       {currentPreview && !currentProposalResult && (
-        <div className="rounded-xl border-2 border-amber-200/90 bg-amber-50/30 p-5 space-y-3.5">
+        <div className="rounded-xl border-2 border-amber-200/90 bg-amber-50/30 p-5 space-y-3.5 dark:bg-amber-950/40/30 dark:border-amber-800/90">
           <div className="flex items-start gap-2.5">
-            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 dark:text-amber-400" />
             <div className="space-y-0.5">
-              <h3 className="text-xs font-semibold text-slate-900">
+              <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                 {currentProposalPreview
                   ? '2. Muse Spark Open wants to read this public task & file'
                   : '2. Prepare single-file model request'}
               </h3>
-              <p className="text-[11px] text-slate-600">
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
                 Nothing is sent until you confirm the task text is public and approve this exact snapshot.
               </p>
             </div>
           </div>
 
-          <label className="flex items-start gap-2 text-xs text-slate-800 cursor-pointer select-none bg-white p-3 rounded-lg border border-slate-200">
+          <label className="flex items-start gap-2 text-xs text-slate-800 cursor-pointer select-none bg-white p-3 rounded-lg border border-slate-200 dark:bg-[#141821] dark:border-slate-800 dark:text-slate-200">
             <input
               type="checkbox"
               checked={publicTextConfirmed}
               onChange={(e) => setPublicTextConfirmed(e.target.checked)}
-              className="mt-0.5 rounded border-slate-300 text-accent-700 focus:ring-accent-600"
+              className="mt-0.5 rounded border-slate-300 text-accent-700 focus:ring-accent-600 dark:border-slate-700 dark:text-accent-300"
             />
             <span>
               I confirm this task title and description contain only <strong>public, non-confidential text</strong> safe to send to Baseten (<code className="font-mono text-[11px]">meta-models/muse-spark-open-1026</code>). Local screenshots are never included.
@@ -363,7 +363,7 @@ export function FocusedLocalTaskView({
 
           {!currentProposalPreview ? (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
                 Creates a single-use approval token bound to card version <code className="font-mono">{currentPreview.context.cardVersion.slice(0, 8)}</code>
               </span>
               <button
@@ -387,20 +387,20 @@ export function FocusedLocalTaskView({
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="rounded-lg bg-white border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-800 flex flex-wrap items-center justify-between gap-2">
+              <div className="rounded-lg bg-white border border-slate-200 px-3.5 py-2.5 font-mono text-xs text-slate-800 flex flex-wrap items-center justify-between gap-2 dark:bg-[#141821] dark:border-slate-800 dark:text-slate-200">
                 <span>
                   POST {currentProposalPreview.destination} · {currentPreview.context.path}
                 </span>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
                   Est. ${(currentProposalPreview.estimatedMicros / 1_000_000).toFixed(4)}
                 </span>
               </div>
 
-              <details className="text-[11px] text-slate-600">
-                <summary className="cursor-pointer font-medium text-slate-700">
+              <details className="text-[11px] text-slate-600 dark:text-slate-400">
+                <summary className="cursor-pointer font-medium text-slate-700 dark:text-slate-300">
                   Inspect exact JSON payload &amp; request digest ({currentProposalPreview.digest.slice(0, 12)}…)
                 </summary>
-                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-white border border-slate-200 p-2.5 font-mono text-[11px] text-slate-800">
+                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-white border border-slate-200 p-2.5 font-mono text-[11px] text-slate-800 dark:bg-[#141821] dark:border-slate-800 dark:text-slate-200">
                   {JSON.stringify(currentProposalPreview.body, null, 2)}
                 </pre>
               </details>
@@ -431,12 +431,12 @@ export function FocusedLocalTaskView({
                     <span>{sendingProposal ? 'Requesting…' : 'Allow once'}</span>
                   </button>
                   {(!modelKeyAvailable || !budgetCanRequest) && (
-                    <span className="text-[11px] text-amber-800">
+                    <span className="text-[11px] text-amber-800 dark:text-amber-300">
                       {!modelKeyAvailable ? 'Baseten API key not configured on host.' : 'Local request budget exhausted.'}
                     </span>
                   )}
                 </div>
-                <span className="text-[11px] text-slate-500 font-mono">
+                <span className="text-[11px] text-slate-500 font-mono dark:text-slate-400">
                   Single-use approval · Digest pinned
                 </span>
               </div>
@@ -447,43 +447,43 @@ export function FocusedLocalTaskView({
 
       {/* Step 3: Readable Inline Diff Result (Helicon style) */}
       {currentProposalResult && (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
-          <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 font-mono text-xs text-slate-900 font-medium">
-              <FileCode className="w-3.5 h-3.5 text-accent-700" />
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs dark:bg-[#141821] dark:border-slate-800">
+          <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 dark:bg-slate-900 dark:border-slate-800">
+            <div className="flex items-center gap-2 font-mono text-xs text-slate-900 font-medium dark:text-slate-100">
+              <FileCode className="w-3.5 h-3.5 text-accent-700 dark:text-accent-300" />
               <span>{currentProposalResult.path}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono font-semibold text-emerald-700">+1</span>
-              <span className="text-[11px] font-mono font-semibold text-rose-700">-1</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+              <span className="text-[11px] font-mono font-semibold text-emerald-700 dark:text-emerald-400">+1</span>
+              <span className="text-[11px] font-mono font-semibold text-rose-700 dark:text-rose-400">-1</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
                 Unverified In-Memory Preview
               </span>
             </div>
           </div>
 
-          <div className="px-4 py-2 bg-slate-100/70 border-b border-slate-200/80 font-mono text-[11px] text-slate-500">
+          <div className="px-4 py-2 bg-slate-100/70 border-b border-slate-200/80 font-mono text-[11px] text-slate-500 dark:bg-slate-800/70 dark:border-slate-800/80 dark:text-slate-400">
             @@ {currentProposalResult.path} @ {currentProposalResult.commit.slice(0, 8)} @@
           </div>
 
-          <div className="font-mono text-xs divide-y divide-slate-100">
-            <div className="bg-rose-50/70 text-rose-950 px-4 py-2 flex items-start gap-3 overflow-x-auto">
+          <div className="font-mono text-xs divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="bg-rose-50/70 text-rose-950 px-4 py-2 flex items-start gap-3 overflow-x-auto dark:bg-rose-950/40/70">
               <span className="text-rose-500 select-none shrink-0">-</span>
               <pre className="whitespace-pre-wrap break-words line-through decoration-rose-400/80">
                 {currentProposalResult.find}
               </pre>
             </div>
-            <div className="bg-emerald-50/70 text-emerald-950 px-4 py-2 flex items-start gap-3 overflow-x-auto">
-              <span className="text-emerald-600 select-none shrink-0">+</span>
+            <div className="bg-emerald-50/70 text-emerald-950 px-4 py-2 flex items-start gap-3 overflow-x-auto dark:bg-emerald-950/40/70">
+              <span className="text-emerald-600 select-none shrink-0 dark:text-emerald-400">+</span>
               <pre className="whitespace-pre-wrap break-words">
                 {currentProposalResult.replace}
               </pre>
             </div>
           </div>
 
-          <div className="px-4 py-3 bg-white border-t border-slate-200 space-y-2">
-            <p className="text-xs text-slate-700 leading-relaxed">{currentProposalResult.explanation}</p>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-mono pt-1">
+          <div className="px-4 py-3 bg-white border-t border-slate-200 space-y-2 dark:bg-[#141821] dark:border-slate-800">
+            <p className="text-xs text-slate-700 leading-relaxed dark:text-slate-300">{currentProposalResult.explanation}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-mono pt-1 dark:text-slate-400">
               <span>
                 Allowed once · {currentProposalResult.model} ({currentProposalResult.usage.prompt_tokens + currentProposalResult.usage.completion_tokens} tokens)
               </span>
