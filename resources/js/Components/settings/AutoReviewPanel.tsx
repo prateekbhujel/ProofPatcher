@@ -146,6 +146,57 @@ export function AutoReviewPanel({ connected, repositories, autoReview, pendingRe
           )}
         </div>
       )}
+
+      {autoReview && connected && stats && (
+        <div className="text-xs text-slate-500 dark:text-slate-400" aria-label="Automatic review totals">
+          {stats.completed} reviewed · {stats.failed} failed · {stats.skippedPrivate} skipped (private) · {stats.skippedBudget} skipped (budget)
+        </div>
+      )}
+
+      {autoReview && connected && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100">Recent findings</h3>
+          {recentResults.length === 0 ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              No automatic reviews yet. Enable a public repository above and start the worker; new findings will appear here and stay in ProofPatcher.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg">
+              {recentResults.map((result) => (
+                <li key={result.id} className="px-3 py-2.5 text-xs space-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-slate-900 dark:text-slate-100 break-all">
+                      {result.repository}#{result.pull_number}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      result.status === 'completed'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                        : result.status === 'failed'
+                        ? 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800'
+                        : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                    }`}>
+                      {statusLabel(result.status)}
+                    </span>
+                  </div>
+                  {result.status === 'completed' && (
+                    <div className="text-slate-600 dark:text-slate-300 space-y-0.5">
+                      <div>
+                        {result.recommendation ? result.recommendation.replace(/_/g, ' ') : 'No recommendation'}
+                        {result.risk_level ? ` · ${result.risk_level} risk` : ''}
+                      </div>
+                      {result.summary && <p className="text-slate-500 dark:text-slate-400 line-clamp-2">{result.summary}</p>}
+                    </div>
+                  )}
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Stored locally · Not posted to GitHub
+                    {result.reviewed_at ? ` · ${new Date(result.reviewed_at).toLocaleString()}` : ''}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
     </section>
   );
