@@ -89,21 +89,14 @@ final class DashboardController
         }
 
         $runFiles = glob($this->runsDir.'/*/result.json') ?: [];
-        $totalRuns = 0;
-        $verifiedRuns = 0;
+        $reads = [];
         foreach ($runFiles as $rf) {
             try {
-                $run = (new RunEvidence())->read(dirname($rf));
-                // Existing private GitHub evidence has no account ownership.
-                if (!\ProofPatch\Application\Evidence\PublicCheckRunPolicy::isPublic($run['report'])) {
-                    continue;
-                }
-                $totalRuns++;
-                if ($run['receipt'] !== null && $run['report']['decision'] === 'VERIFIED') {
-                    $verifiedRuns++;
-                }
+                $reads[] = (new RunEvidence())->read(dirname($rf));
             } catch (\Throwable) {}
         }
+        // Existing private GitHub evidence has no account ownership.
+        [$totalRuns, $verifiedRuns] = \ProofPatch\Application\Evidence\OverviewRunCounts::count($reads);
 
         return Inertia::render('Overview', [
             'totalSnapshots' => $totalSnapshots,
@@ -365,7 +358,6 @@ final class DashboardController
     public function checks(Request $request): InertiaResponse|\Illuminate\Http\RedirectResponse
     {
         $runsDir = $this->runsDir;
-        $validId = static fn(string $id): bool => \ProofPatch\Application\Evidence\CheckRunImage::isValidRunId($id);
         $runDir = static fn(string $id): ?string => \ProofPatch\Application\Evidence\CheckRunDirectory::resolve($runsDir, $id);
 
         if ($request->isMethod('post')) {
@@ -427,12 +419,7 @@ final class DashboardController
         $latestVisualRunId = null;
         $runFiles = glob($this->runsDir.'/*/result.json') ?: [];
         rsort($runFiles, SORT_STRING);
-        if ($runId !== '' && $validId($runId)) {
-            $requestedFile = $this->runsDir.'/'.$runId.'/result.json';
-            if (is_file($requestedFile) && !in_array($requestedFile, array_slice($runFiles, 0, 25), true)) {
-                array_unshift($runFiles, $requestedFile);
-            }
-        }
+        $runFiles = \ProofPatch\Application\Evidence\CheckRunHistory::prioritizeRequested($runFiles, $runId, $this->runsDir);
         foreach ($runFiles as $file) {
             if (count($history) >= 20 && ($runId === '' || isset($history[$runId]))) {
                 break;
@@ -467,8 +454,7 @@ final class DashboardController
         $report = $history[$runId] ?? null;
         $selectedHasVisual = $report !== null && is_file($this->runsDir.'/'.$runId.'/baseline/checkout.png') && is_file($this->runsDir.'/'.$runId.'/candidate/checkout.png');
         $currentHead = trim(LocalProcess::output(['git', '-C', $this->project, 'rev-parse', 'HEAD']));
-        $baselineReady = $report !== null && ($report['integrityValid'] ?? false) && ($report['baseCommit'] ?? null) === $currentHead
-            && ($report['runs']['baseline']['exitCode'] ?? null) === 1;
+        $baselineReady = \ProofPatch\Application\Evidence\CheckRunHistory::isBaselineReady($report, $currentHead);
         $budgetStatus = $this->hariBudget();
 
         $proposal = $this->getSession($request, 'proposal');
@@ -483,11 +469,7 @@ final class DashboardController
                 $outcome = ($this->hari ?? \Hari\Hari::registry())
                     ->resolve('evidence.verify', 1, 'web')
                     ->invoke(['directory' => $runDir($runId)]);
-                if (is_array($outcome) && ($outcome['valid'] ?? null) === true && is_array($outcome['receipt'] ?? null)) {
-                    $receipt = $outcome['receipt'];
-                } else {
-                    $receiptError = is_string($outcome['reason'] ?? null) ? $outcome['reason'] : 'Receipt is invalid.';
-                }
+                [$receipt, $receiptError] = \ProofPatch\Application\Evidence\CheckRunHistory::receiptOutcome($outcome);
             } catch (\Throwable $exception) {
                 $receiptError = $exception->getMessage();
             }
@@ -541,9 +523,13 @@ final class DashboardController
             $this->forgetSession($request, 'review_approval_token');
 
             $cachedPreview = $this->getSession($request, 'patch_preview');
-            if (is_array($cachedPreview) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($cachedPreview['headSha'] ?? null, $pull['headSha'] ?? null)) {
-                $patchPreview = $cachedPreview;
+            $resolution = \ProofPatch\Application\Review\PatchPreviewResolution::resolve($cachedPreview, null, $pull);
+            if ($resolution->decision === \ProofPatch\Application\Review\PatchPreviewResolution::USE_CACHED) {
+                $patchPreview = $resolution->preview;
             } else {
+                if ($resolution->decision === \ProofPatch\Application\Review\PatchPreviewResolution::STALE_PRIVATE) {
+                    throw new \RuntimeException('Private pull request content cannot be sent to a model.');
+                }
                 $patchPreview = (new PublicPatchPreview(HttpClient::create()))->fetch($pull);
                 $this->putSession($request, 'patch_preview', $patchPreview);
             }
@@ -638,20 +624,22 @@ final class DashboardController
             $cachedPreview = $this->getSession($request, 'patch_preview');
             $snapshot = $this->getSession($request, 'pullRequestSnapshot');
             $diskPreviewFile = ($pull['isPrivate'] ?? false) !== true && is_array($snapshot) && isset($snapshot['id']) ? $this->snapshotsDir.'/'.$snapshot['id'].'-preview.json' : null;
+            $diskPreview = null;
             if (!is_array($cachedPreview) && $diskPreviewFile && is_file($diskPreviewFile)) {
                 try {
                     $diskData = json_decode((string) file_get_contents($diskPreviewFile), true, 64, JSON_THROW_ON_ERROR);
-                    if (is_array($diskData) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($diskData['headSha'] ?? null, $pull['headSha'] ?? null)) {
-                        $cachedPreview = $diskData;
-                        $this->putSession($request, 'patch_preview', $diskData);
-                    }
+                    $diskPreview = is_array($diskData) ? $diskData : null;
                 } catch (\Throwable) {}
             }
 
-            if (is_array($cachedPreview) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($cachedPreview['headSha'] ?? null, $pull['headSha'] ?? null)) {
-                $patchPreview = $cachedPreview;
+            $resolution = \ProofPatch\Application\Review\PatchPreviewResolution::resolve($cachedPreview, $diskPreview, $pull);
+            if ($resolution->decision === \ProofPatch\Application\Review\PatchPreviewResolution::USE_CACHED) {
+                $patchPreview = $resolution->preview;
+            } elseif ($resolution->decision === \ProofPatch\Application\Review\PatchPreviewResolution::USE_DISK) {
+                $patchPreview = $resolution->preview;
+                $this->putSession($request, 'patch_preview', $patchPreview);
             } else {
-                if (($pull['isPrivate'] ?? false) === true) {
+                if ($resolution->decision === \ProofPatch\Application\Review\PatchPreviewResolution::STALE_PRIVATE) {
                     throw new \RuntimeException('Open the private pull request again before adding comments.');
                 }
                 $patchPreview = (new PublicPatchPreview(HttpClient::create()))->fetch($pull);
@@ -771,10 +759,12 @@ final class DashboardController
                 $this->forgetSession($request, 'github_device_flow');
                 $this->addNotification($request, 'success', 'GitHub Connected', "Successfully connected as @{$user['login']}.");
 
-                if (($reposStatus['truncated'] ?? false) || !empty($reposStatus['errors'] ?? [])) {
-                    $warn = ($reposStatus['truncated'] ?? false)
-                        ? 'Repositories list was truncated by pagination limits.'
-                        : 'Some repositories could not be retrieved: '.implode('; ', $reposStatus['errors']);
+                $warn = \ProofPatch\Application\Repository\GitHubListWarning::message(
+                    $reposStatus,
+                    'Repositories list was truncated by pagination limits.',
+                    'Some repositories could not be retrieved: '
+                );
+                if ($warn !== null) {
                     $this->addNotification($request, 'warning', 'Repositories Incomplete', $warn);
                 }
 
@@ -898,10 +888,12 @@ final class DashboardController
             $this->putSession($request, 'github_repo_pulls', $pulls);
             $this->putSession($request, 'github_repo_pulls_status', $pullsStatus);
 
-            if (($pullsStatus['truncated'] ?? false) || !empty($pullsStatus['errors'] ?? [])) {
-                $warn = ($pullsStatus['truncated'] ?? false)
-                    ? 'Pull requests list was capped at pagination limit (500).'
-                    : 'Some pull requests could not be retrieved: '.implode('; ', $pullsStatus['errors']);
+            $warn = \ProofPatch\Application\Repository\GitHubListWarning::message(
+                $pullsStatus,
+                'Pull requests list was capped at pagination limit (500).',
+                'Some pull requests could not be retrieved: '
+            );
+            if ($warn !== null) {
                 $this->addNotification($request, 'warning', 'Pull Requests Incomplete', $warn);
             }
 
