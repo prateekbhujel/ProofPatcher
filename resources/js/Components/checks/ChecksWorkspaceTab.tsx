@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronDown, Play, Sparkles } from 'lucide-react';
 import { BudgetStatus } from './types';
+import { budgetDollars, reviewUsageLine } from '../ui/budgetCopy';
 
 interface ChecksWorkspaceTabProps {
   data: {
@@ -162,26 +163,26 @@ export function ChecksWorkspaceTab({
           {budgetStatus ? (
             <>
               <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Estimated reservation</span>
+                <span className="text-slate-500 dark:text-slate-400">Held for model calls</span>
                 <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
-                  ${(budgetStatus.reservedMicros / 1000000).toFixed(3)}
+                  {budgetDollars(budgetStatus.reservedMicros)}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Local reservation limit</span>
+                <span className="text-slate-500 dark:text-slate-400">Local spending limit</span>
                 <span className="font-mono text-slate-900 dark:text-slate-100">
-                  ${(budgetStatus.limitMicros / 1000000).toFixed(2)}
+                  {budgetDollars(budgetStatus.limitMicros)}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1">
-                <span className="text-slate-500 dark:text-slate-400">Attempts</span>
+                <span className="text-slate-500 dark:text-slate-400">Model requests</span>
                 <span className="font-medium text-slate-900 dark:text-slate-100">
-                  {budgetStatus.attempts} / {budgetStatus.maxAttempts}
+                  {reviewUsageLine(budgetStatus.attempts, budgetStatus.maxAttempts)}
                 </span>
               </div>
             </>
           ) : (
-            <p className="text-slate-500 dark:text-slate-400">Ledger inactive (local mock mode).</p>
+            <p className="text-slate-500 dark:text-slate-400">Budget unavailable right now.</p>
           )}
 
           <div className="pt-1.5 text-slate-500 text-[11px] leading-relaxed dark:text-slate-400">

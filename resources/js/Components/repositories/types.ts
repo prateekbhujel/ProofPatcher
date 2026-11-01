@@ -178,6 +178,7 @@ export interface ReviewResult {
     completion_tokens: number;
   };
   source?: 'automatic' | 'manual';
+  publishedStatus?: string | null;
 }
 
 export interface ReviewPreviewData {

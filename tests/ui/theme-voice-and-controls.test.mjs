@@ -40,12 +40,15 @@ const { exports: alertBannerModule } = loadTsxModule(
   '../../resources/js/Components/ui/AlertBanner.tsx',
   (id) => (id === '@inertiajs/react' ? inertiaMock : require(id)),
 );
+const { loadTsModule } = await import('./helpers/loadTsModule.mjs');
+const budgetCopy = loadTsModule(new URL('../../resources/js/Components/ui/budgetCopy.ts', import.meta.url));
 const { exports: desktopWindowsModule } = loadTsxModule(
   '../../resources/js/Components/os/DesktopWindows.tsx',
   (id) => {
     if (id === '@inertiajs/react') return inertiaMock;
     if (id === './KernelTerminal') return kernelTerminalModule;
     if (id === '../ui/AlertBanner') return alertBannerModule;
+    if (id === '../ui/budgetCopy') return budgetCopy;
     return require(id);
   },
 );
@@ -118,6 +121,68 @@ test('VoiceDictationButton does not request microphone permission on render and 
   }
 });
 
+test('leaving voice dictation stops recording without uploading audio', async () => {
+  let cleanup;
+  let recorder;
+  let uploads = 0;
+  let stopped = 0;
+  const fakeReact = {
+    ...React,
+    useState: (initial) => [initial, () => {}],
+    useRef: (initial) => ({ current: initial }),
+    useEffect: (effect) => { cleanup = effect(); },
+  };
+  const voice = loadTsxModule('../../resources/js/Components/VoiceDictationButton.tsx',
+    (id) => id === 'react' ? fakeReact : require(id)).exports;
+  const oldWindow = globalThis.window;
+  const oldNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const oldRecorder = globalThis.MediaRecorder;
+  const oldFetch = globalThis.fetch;
+  globalThis.window = {};
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {
+    mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop: () => { stopped++; } }] }) },
+  } });
+  globalThis.MediaRecorder = class {
+    state = 'inactive';
+    mimeType = 'audio/webm';
+    constructor() { recorder = this; }
+    start() { this.state = 'recording'; }
+    stop() { this.state = 'inactive'; void this.onstop?.(); }
+  };
+  globalThis.fetch = async () => { uploads++; throw new Error('unexpected upload'); };
+
+  try {
+    const view = voice.VoiceDictationButton({ onTranscript: () => assert.fail('unexpected transcript') });
+    view.props.children[0].props.onClick();
+    await new Promise(setImmediate);
+    recorder.ondataavailable({ data: new Blob(['voice']) });
+    cleanup();
+    await new Promise(setImmediate);
+    assert.equal(uploads, 0);
+    assert.ok(stopped > 0);
+
+    // Permission can resolve after the user navigates away. The late stream
+    // must be stopped without starting another recorder or sending audio.
+    let resolvePermission;
+    navigator.mediaDevices.getUserMedia = () => new Promise((resolve) => { resolvePermission = resolve; });
+    const pending = voice.VoiceDictationButton({ onTranscript: () => assert.fail('unexpected transcript') });
+    const firstRecorder = recorder;
+    pending.props.children[0].props.onClick();
+    cleanup();
+    const before = stopped;
+    resolvePermission({ getTracks: () => [{ stop: () => { stopped++; } }] });
+    await new Promise(setImmediate);
+    assert.equal(stopped, before + 1);
+    assert.equal(recorder, firstRecorder);
+    assert.equal(uploads, 0);
+  } finally {
+    if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+    if (oldNavigator) Object.defineProperty(globalThis, 'navigator', oldNavigator); else delete globalThis.navigator;
+    if (oldRecorder === undefined) delete globalThis.MediaRecorder; else globalThis.MediaRecorder = oldRecorder;
+    globalThis.fetch = oldFetch;
+  }
+});
+
 test('ThinkingAnimation uses honest status text without fake terminal logs or space/nebula glow orbs', () => {
   const html = renderToStaticMarkup(
     React.createElement(thinkingModule.ThinkingAnimation, {
@@ -165,8 +230,26 @@ test('a private dedicated issue offers only the offline reference repair', () =>
   assert.match(html, /Private repository content stays local/);
 });
 
+test('private test case requires a separate provider consent before asking Muse', () => {
+  const { exports: proposal } = loadTsxModule('../../resources/js/Components/workbench/ProposalDiffCard.tsx', (id) => {
+    if (id === '../ui/ThinkingAnimation') return thinkingModule;
+    return require(id);
+  });
+  const html = renderToStaticMarkup(React.createElement(proposal.ProposalDiffCard, {
+    context: { path: 'src/OrderTotal.php' }, preview: { destination: 'https://example.test', digest: 'a'.repeat(64), body: {}, estimatedMicros: 1000 },
+    suggestion: null, sending: false, modelContextAllowed: true, modelKeyAvailable: true, privateModelConsentRequired: true,
+    isDedicatedTestRepo: true, isOwnedFixture: true, budget: { canRequest: true },
+    verificationReport: null, passedGateCount: 0, copiedCandidateSha: false, copyCandidateHash() {}, onRequestSuggestion() {},
+  }));
+  assert.match(html, /I approve sending this private test issue/);
+  assert.match(html, /https:\/\/example\.test/);
+  assert.match(html, /<button type="submit" disabled=""/);
+  assert.match(html, /test harness stays local/);
+});
+
 test('public Muse review is enabled only when approved, funded and configured', () => {
-  const { exports: review } = loadTsxModule('../../resources/js/Components/repositories/PrReviewTab.tsx');
+  const { exports: review } = loadTsxModule('../../resources/js/Components/repositories/PrReviewTab.tsx',
+    (id) => (id === '../ui/budgetCopy' ? budgetCopy : require(id)));
   const props = {
     review: null, reviewPreview: { filesCount: 1, estimatedMicros: 1000, digest: 'a'.repeat(64), body: {} },
     isPrivate: false, reviewApproved: true, reviewProcessing: false, budget: { canRequest: true, attempts: 0, maxAttempts: 10 },

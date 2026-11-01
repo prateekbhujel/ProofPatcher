@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use ProofPatch\Agent\ProviderConfigStore;
-use ProofPatch\Agent\RequestBudget;
 use ProofPatch\Support\AutoReviewPanelProps;
 use ProofPatch\Support\SessionHelper;
 
@@ -19,6 +18,10 @@ use ProofPatch\Support\SessionHelper;
  */
 final class KernelController
 {
+    public function __construct(private ?\Hari\Registry $hari = null)
+    {
+    }
+
     public function show(Request $request): InertiaResponse
     {
         $auth = SessionHelper::get($request, 'github_auth');
@@ -36,7 +39,7 @@ final class KernelController
 
         $budget = null;
         try {
-            $budget = RequestBudget::forRuntime()->status();
+            $budget = ($this->hari ?? \Hari\Hari::registry())->resolve('budget.status', 1, 'web')->invoke([]);
         } catch (\Throwable) {}
 
         $autopilotCaps = null;
@@ -50,7 +53,7 @@ final class KernelController
             ];
         } catch (\Throwable) {}
 
-        $autoReview = AutoReviewPanelProps::forRequest($request, 5);
+        $autoReview = AutoReviewPanelProps::forRequest($request, 5, $this->hari);
 
         $context = SessionHelper::get($request, 'issue_context');
         $hasContext = is_array($context);
@@ -65,8 +68,15 @@ final class KernelController
         $review = SessionHelper::get($request, 'pr_review');
         $hasReview = $review !== null;
         $isDedicated = (bool) SessionHelper::get($request, 'issue_is_dedicated_test_repo', false);
+        $gates = $hasReport && is_array($report['gates'] ?? null) ? $report['gates'] : [];
+        $requiredGates = ['baselineReproduced', 'negativeControlCaught', 'candidatePassed', 'candidateStaticSafetyPassed', 'allowlistIntegrityIntact'];
         $verified = $hasReport && ($report['decision'] ?? null) === 'VERIFIED';
-        $genuineRun = $verified && ($report['isSimulated'] ?? true) === false;
+        foreach ($requiredGates as $gate) {
+            $verified = $verified && ($gates[$gate] ?? null) === true;
+        }
+        $genuineRun = $verified && ($report['isSimulated'] ?? true) === false
+            && ($report['isolated'] ?? false) === true && ($report['genuineProviderEvidence'] ?? false) === true
+            && ($report['oracleVerified'] ?? false) === true;
 
         $state = [
             'connected' => $connected,
@@ -99,8 +109,8 @@ final class KernelController
             'user' => is_array($auth) ? ($auth['user'] ?? null) : null,
             'reposCount' => count($repos),
             'selectedRepo' => $selectedRepo,
-            'openIssues' => is_array($repoIssues) ? count($repoIssues) : 0,
-            'openPulls' => is_array($repoPulls) ? count($repoPulls) : 0,
+            'openIssues' => is_array($repoIssues) ? count(array_filter($repoIssues, static fn ($issue) => is_array($issue) && ($issue['state'] ?? null) === 'open')) : 0,
+            'openPulls' => is_array($repoPulls) ? count(array_filter($repoPulls, static fn ($pull) => is_array($pull) && ($pull['state'] ?? null) === 'open')) : 0,
             'provider' => [
                 'label' => $providerStatus['activeLabel'],
                 'model' => $providerStatus['activeModel'],
@@ -143,9 +153,19 @@ final class KernelController
             return [
                 'key' => 'publish',
                 'title' => 'Create the draft PR',
-                'detail' => 'Checks passed in the isolated sandbox. Publishing needs your explicit go-ahead.',
+                'detail' => 'Fixture checks passed. Publishing needs your explicit go-ahead.',
                 'href' => '/issues',
                 'cta' => 'Review and publish',
+            ];
+        }
+
+        if ($state['hasSuggestion'] && $state['hasReport'] && !$state['verified']) {
+            return [
+                'key' => 'verify',
+                'title' => 'Review the check results',
+                'detail' => 'The fixture checks did not pass. Inspect the results before proceeding.',
+                'href' => '/issues',
+                'cta' => 'Open check results',
             ];
         }
 
@@ -253,9 +273,9 @@ final class KernelController
 
         $verifyDetail = 'Not checked yet.';
         if ($lastVerification !== null) {
-            $verifyDetail = $lastVerification['decision'] === 'VERIFIED'
-                ? 'Verified'.(($lastVerification['isSimulated'] ?? null) === false ? ' in the isolated sandbox.' : ' (host run).')
-                : 'Last run: '.$lastVerification['decision'].'.';
+            $verifyDetail = $state['verified']
+                ? 'Fixture checks passed.'
+                : 'Fixture checks not confirmed.';
         }
         $verify = [
             'key' => 'verify',

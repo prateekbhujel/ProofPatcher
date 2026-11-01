@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace ProofPatch\Support;
 
-use ProofPatch\Models\AutoReviewResult;
 
 /**
  * Local usage telemetry in the spirit of an LLM observability dashboard:
@@ -42,9 +41,11 @@ final class Telemetry
      *     ledgerFound: bool
      * }
      */
-    public static function collect(?string $ledgerPath = null): array
+    public static function collect(?string $ledgerPath = null, ?array $authorizedRepositories = null, bool $includeLedger = true, ?\Hari\Registry $hari = null): array
     {
-        $rawAttempts = self::readLedger($ledgerPath ?? self::defaultLedgerPath());
+        // The shared local ledger is not attributed to a GitHub user. Web
+        // callers omit it; CLI callers keep the existing machine-wide view.
+        $rawAttempts = $includeLedger ? self::readLedger($ledgerPath ?? self::defaultLedgerPath()) : null;
         $ledgerFound = $rawAttempts !== null;
         $attempts = $rawAttempts ?? [];
 
@@ -92,10 +93,30 @@ final class Telemetry
         $reviews = ['total' => 0, 'completed' => 0, 'failed' => 0, 'skippedPrivate' => 0, 'skippedBudget' => 0];
         $models = [];
         try {
-            $rows = AutoReviewResult::orderByDesc('id')->limit(500)->get();
-            foreach ($rows as $row) {
+            $registry = $hari ?? \Hari\Hari::registry();
+            $base = [];
+            if ($authorizedRepositories !== null) {
+                $validRepos = array_values(array_filter($authorizedRepositories, static fn (mixed $repo): bool =>
+                    is_string($repo) && preg_match('~\A[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}\z~', $repo) === 1));
+                if ($validRepos === []) {
+                    $base = ['__empty__' => true];
+                } else {
+                    $base['repositories'] = $validRepos;
+                }
+            }
+            $fetch = static function (int $limit) use ($registry, $base): array {
+                if (isset($base['__empty__'])) {
+                    return [];
+                }
+                $outcome = $registry->resolve('review.result', 1, 'telemetry')->invoke($base + ['limit' => $limit]);
+                return is_array($outcome['rows'] ?? null) ? $outcome['rows'] : [];
+            };
+            foreach ($fetch(500) as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
                 $reviews['total']++;
-                match ($row->status) {
+                match ((string) ($row['status'] ?? '')) {
                     'completed' => $reviews['completed']++,
                     'failed' => $reviews['failed']++,
                     'skipped_private' => $reviews['skippedPrivate']++,
@@ -103,11 +124,11 @@ final class Telemetry
                     default => null,
                 };
 
-                if ($row->status === 'completed') {
-                    $model = is_string($row->model) && $row->model !== '' ? $row->model : 'unknown';
+                if (($row['status'] ?? null) === 'completed') {
+                    $model = is_string($row['model'] ?? null) && $row['model'] !== '' ? $row['model'] : 'unknown';
                     $models[$model] ??= ['model' => $model, 'reviews' => 0, 'promptTokens' => 0, 'completionTokens' => 0];
                     $models[$model]['reviews']++;
-                    $usage = $row->usage;
+                    $usage = is_array($row['usage'] ?? null) ? $row['usage'] : null;
                     if (is_array($usage) && is_int($usage['prompt_tokens'] ?? null) && is_int($usage['completion_tokens'] ?? null)) {
                         $models[$model]['promptTokens'] += $usage['prompt_tokens'];
                         $models[$model]['completionTokens'] += $usage['completion_tokens'];
@@ -115,17 +136,20 @@ final class Telemetry
                 }
             }
 
-            foreach (AutoReviewResult::orderByDesc('id')->limit(25)->get() as $row) {
-                $usage = $row->usage;
+            foreach ($fetch(25) as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $usage = is_array($row['usage'] ?? null) ? $row['usage'] : null;
                 $reviewTokens = (is_array($usage) && is_int($usage['prompt_tokens'] ?? null) && is_int($usage['completion_tokens'] ?? null))
                     ? $usage['prompt_tokens'] + $usage['completion_tokens']
                     : null;
-                $at = $row->reviewed_at?->toIso8601String() ?? $row->created_at?->toIso8601String() ?? '';
+                $at = $row['reviewed_at'] ?? $row['created_at'] ?? '';
                 $feed[] = [
-                    'at' => $at,
+                    'at' => is_string($at) ? $at : '',
                     'kind' => 'review',
-                    'status' => (string) $row->status,
-                    'detail' => $row->repository.'#'.$row->pull_number.($row->recommendation ? ' · '.str_replace('_', ' ', (string) $row->recommendation) : ''),
+                    'status' => (string) ($row['status'] ?? ''),
+                    'detail' => ($row['repository'] ?? '?').'#'.($row['pull_number'] ?? '?').(!empty($row['recommendation']) ? ' · '.str_replace('_', ' ', (string) $row['recommendation']) : ''),
                     'micros' => null,
                     'tokens' => $reviewTokens,
                 ];
@@ -152,6 +176,7 @@ final class Telemetry
             'feed' => $feed,
             'generatedAt' => gmdate(DATE_ATOM),
             'ledgerFound' => $ledgerFound,
+            'ledgerAvailable' => $includeLedger,
         ];
     }
 

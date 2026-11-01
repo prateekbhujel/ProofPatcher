@@ -23,7 +23,7 @@ final class KernelCli
     {
         return [
             'ProofPatcher Kernel ' . self::VERSION . ' — terminal shell',
-            'One verification pipeline for every patch target.',
+            'Review pull requests and check supported patches.',
         ];
     }
 
@@ -179,7 +179,7 @@ final class KernelCli
         if (is_array($auth['repositories'] ?? null)) {
             foreach ($auth['repositories'] as $repo) {
                 if (is_array($repo) && is_string($repo['fullName'] ?? null) && trim($repo['fullName']) !== '') {
-                    $repos[] = ['fullName' => trim($repo['fullName'])];
+                    $repos[] = ['fullName' => trim($repo['fullName']), 'isPrivate' => is_bool($repo['isPrivate'] ?? null) ? $repo['isPrivate'] : null];
                 }
             }
         }

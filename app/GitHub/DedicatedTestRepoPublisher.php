@@ -141,24 +141,36 @@ final readonly class DedicatedTestRepoPublisher
             throw new \InvalidArgumentException('Publication refused: the test oracle is not isolated from untrusted candidates.');
         }
 
-        // Boundary 5b: Cryptographically verify model provenance if claimed
+        // Boundary 5b: Cryptographically verify model provenance if claimed.
+        // Private dedicated claims require owner-scoped provenance only; a
+        // public record for the same bytes is not a substitute binding.
         $proposalOrigin = $context['proposalOrigin'] ?? null;
         if ($proposalOrigin === 'muse' || !empty($context['model'])) {
-            $proposalStore = new \ProofPatch\Agent\ServerHeldModelProposal();
-            $serverProposal = $proposalStore->lookup($candidateSha);
-            if ($serverProposal === null) {
-                throw new \InvalidArgumentException(
-                    'Publication refused: Candidate claims Muse model provenance but has no verified server-held model proposal.'
+            if (($context['isPrivateDedicated'] ?? false) === true) {
+                $privateRecord = $this->verifyPrivateProvenance(
+                    $context,
+                    $candidateSha,
+                    (string) ($verificationReport['baseSha256'] ?? ''),
+                    $githubToken ?: $this->resolveToken()
                 );
+                $context['usage'] = $privateRecord['usage'];
+            } else {
+                $proposalStore = new \ProofPatch\Agent\ServerHeldModelProposal();
+                $serverProposal = $proposalStore->lookup($candidateSha);
+                if ($serverProposal === null) {
+                    throw new \InvalidArgumentException(
+                        'Publication refused: Candidate claims Muse model provenance but has no verified server-held model proposal.'
+                    );
+                }
+                if ($serverProposal['model'] !== ($context['model'] ?? 'meta-models/muse-spark-open-1026')) {
+                    throw new \InvalidArgumentException('Publication refused: Model name mismatch against server-held proposal.');
+                }
+                if (!hash_equals($serverProposal['sourceSha256'], (string) ($verificationReport['baseSha256'] ?? ''))) {
+                    throw new \InvalidArgumentException('Publication refused: Target file source hash mismatch against model proposal source.');
+                }
+                // Bind usage to verified server-held usage
+                $context['usage'] = $serverProposal['usage'];
             }
-            if ($serverProposal['model'] !== ($context['model'] ?? 'meta-models/muse-spark-open-1026')) {
-                throw new \InvalidArgumentException('Publication refused: Model name mismatch against server-held proposal.');
-            }
-            if (!hash_equals($serverProposal['sourceSha256'], (string) ($verificationReport['baseSha256'] ?? ''))) {
-                throw new \InvalidArgumentException('Publication refused: Target file source hash mismatch against model proposal source.');
-            }
-            // Bind usage to verified server-held usage
-            $context['usage'] = $serverProposal['usage'];
         }
 
         // Boundary 6: Revalidate base fixture and test harness digests from disk
@@ -584,6 +596,46 @@ Zero-quantity items now contribute 0 to the total order price instead of chargin
 - **Bound Base Commit**: `{$baseCommit}`
 - **Target Branch**: `main`
 MARKDOWN;
+    }
+
+    /**
+     * Verifies owner-scoped private provenance against live GitHub access.
+     *
+     * Rechecks the token identity and repository access with read-only API
+     * calls, then requires an encrypted record for the exact binding. A
+     * forged flag, revoked access, or changed bytes all fail closed.
+     *
+     * @return array{usage: array{prompt_tokens: int, completion_tokens: int}, model: string}
+     */
+    private function verifyPrivateProvenance(array $context, string $candidateSha, string $baseSha, ?string $githubToken): array
+    {
+        if ($githubToken === null || trim($githubToken) === '') {
+            throw new \InvalidArgumentException('Publication refused: private model provenance requires the authorized GitHub session.');
+        }
+        $client = $this->getHttpClient();
+        $user = $this->apiCall($client, 'GET', 'https://api.github.com/user', $githubToken);
+        $userId = $user['id'] ?? null;
+        if (!is_int($userId) || $userId < 1) {
+            throw new \InvalidArgumentException('Publication refused: GitHub identity could not be verified.');
+        }
+        $repo = DedicatedTestRepo::requireName();
+        $repoData = $this->apiCall($client, 'GET', 'https://api.github.com/repos/' . $repo, $githubToken);
+        if (!is_string($repoData['full_name'] ?? null) || strcasecmp($repoData['full_name'], $repo) !== 0) {
+            throw new \InvalidArgumentException('Publication refused: repository access could not be verified.');
+        }
+        $record = \ProofPatch\Agent\PrivateProposalStore::forRuntime()->lookup(
+            ['githubUserId' => $userId, 'repository' => $repo,
+                'issueNumber' => self::AUTHORIZED_ISSUE_NUMBER, 'baseCommit' => DedicatedTestRepo::requireBaseCommit(),
+                'path' => self::AUTHORIZED_FILE_PATH, 'sourceSha256' => $baseSha, 'candidateSha256' => $candidateSha],
+            ['userId' => $userId, 'repositories' => [strtolower($repo) => true]]
+        );
+        if ($record === null) {
+            throw new \InvalidArgumentException('Publication refused: no private model provenance matches this change and current access.');
+        }
+        if (($record['model'] ?? null) !== ($context['model'] ?? 'meta-models/muse-spark-open-1026')) {
+            throw new \InvalidArgumentException('Publication refused: Model name mismatch against private proposal.');
+        }
+        return $record;
     }
 
     /**

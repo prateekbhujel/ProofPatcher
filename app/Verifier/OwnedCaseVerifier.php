@@ -318,7 +318,12 @@ final readonly class OwnedCaseVerifier
         $negativeControlSource = "<?php\n\ndeclare(strict_types=1);\n\nfunction orderTotal(array \$items): int\n{\n    return 0;\n}\n";
 
         // Determine if isolated microVM runner is available
-        $isolatedAvailable = $this->isolatedRunner !== null && $this->isolatedRunner->isAvailable()['available'];
+        // Refuse the concrete experimental runner even when manually injected:
+        // its harness is readable by candidates, so an attestation is not proof.
+        // Independently implemented test doubles may still exercise the protocol.
+        $isolatedAvailable = $this->isolatedRunner !== null
+            && !($this->isolatedRunner instanceof TrustedOracleRunner)
+            && $this->isolatedRunner->isAvailable()['available'];
         $usedIsolatedRunner = false;
         $isGenuineProvider = false;
 
@@ -402,9 +407,10 @@ final readonly class OwnedCaseVerifier
                 $usedIsolatedRunner = false;
                 $isGenuineProvider = false;
             }
-        } elseif (!$isAllowedCandidate) {
-            // The current harness and candidate share PHP globals. Sandbox isolation
-            // protects the host, but does not protect the test oracle from a candidate.
+        } elseif (!$isAllowedCandidate && !$this->isTrustedOracle($isolatedAvailable)) {
+            // Sandbox isolation alone protects the host, but does not protect
+            // the test oracle from a candidate. Arbitrary candidates require
+            // the attested trusted-oracle protocol, which stays opt-in.
             $log = 'ABORTED: Untrusted candidates cannot be verified until the test oracle is isolated from the candidate.';
             file_put_contents($evidence . '/candidate/run.log', $log . "\n");
             $candidateLogSha = hash('sha256', $log . "\n");
@@ -564,6 +570,13 @@ final readonly class OwnedCaseVerifier
         }
 
         return $report;
+    }
+
+    private function isTrustedOracle(bool $isolatedAvailable): bool
+    {
+        return $isolatedAvailable
+            && $this->isolatedRunner instanceof TrustedOracleInterface
+            && $this->isolatedRunner->oracleProtocolVersion() === TrustedOracleRunner::PROTOCOL;
     }
 
     private function runBaselineTest(string $baseSource, string $testSource): array

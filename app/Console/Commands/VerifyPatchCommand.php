@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace ProofPatch\Console\Commands;
 
+use Hari\Hari;
+use Hari\Registry;
 use Illuminate\Console\Command;
-use ProofPatch\Patch\CssPatch;
 use ProofPatch\Verifier\CheckoutVerifier;
 
 final class VerifyPatchCommand extends Command
@@ -13,6 +14,11 @@ final class VerifyPatchCommand extends Command
     protected $signature = 'review:verify {patch : Path to JSON patch file (maximum 16 KB)}';
 
     protected $description = 'Run isolated 4-gate verification on a candidate CSS patch in a detached git worktree';
+
+    public function __construct(private ?Registry $hari = null)
+    {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
@@ -30,8 +36,11 @@ final class VerifyPatchCommand extends Command
             }
 
             $project = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
-            $verifier = new CheckoutVerifier($project);
-            $result = $verifier->verify(CssPatch::fromArray($input));
+            $skill = ($this->hari ?? Hari::registry())->resolve('verify.patch', 1, 'kernel-cli');
+            if (!$skill instanceof \ProofPatch\Abilities\VerifyPatchSkill) {
+                throw new \RuntimeException('Patch verification skill is unavailable.');
+            }
+            $result = $skill->withVerifier(new CheckoutVerifier($project))->invoke(['patch' => $input]);
 
             $this->line(json_encode($result, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
 

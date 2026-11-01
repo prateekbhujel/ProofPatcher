@@ -13,7 +13,6 @@ use ProofPatch\Agent\ModelProposal;
 use ProofPatch\Agent\PullRequestReview;
 use ProofPatch\Agent\RequestBudget;
 use ProofPatch\Agent\SingleUseReviewApproval;
-use ProofPatch\Evidence\Receipt;
 use ProofPatch\Evidence\RunEvidence;
 use ProofPatch\GitHub\DiffHunkParser;
 use ProofPatch\GitHub\GitHubAppClient;
@@ -22,7 +21,6 @@ use ProofPatch\GitHub\PullRequestReader;
 use ProofPatch\GitHub\PullRequestSnapshot;
 use ProofPatch\GitHub\PublicPatchPreview;
 use ProofPatch\GitHub\DedicatedTestRepo;
-use ProofPatch\GitHub\ManualInlineCommentPublisher;
 use ProofPatch\GitHub\PrivatePullSession;
 use ProofPatch\Patch\CssPatch;
 use ProofPatch\Support\LocalProcess;
@@ -41,6 +39,7 @@ final class DashboardController
     public function __construct(
         private ?GitHubAppClient $gitHubAppClient = null,
         private ?GitHubDeviceFlow $deviceFlowClient = null,
+        private ?\Hari\Registry $hari = null,
     ) {
         $this->project = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
         $this->runsDir = $this->project.'/artifacts/runs';
@@ -77,19 +76,13 @@ final class DashboardController
             $id = basename($file, '.json');
             try {
                 $saved = $store->load($id);
-                $pull = $saved['snapshot']['pullRequest'] ?? null;
-                if (!is_array($pull) || !is_string($pull['repository'] ?? null) || !is_int($pull['number'] ?? null)
-                    || !is_string($pull['title'] ?? null) || !is_string($pull['state'] ?? null)
-                    || !is_string($pull['headSha'] ?? null) || !is_string($saved['snapshot']['capturedAt'] ?? null)) {
-                    continue;
-                }
-                // Fail-closed security check: do not expose private or unknown-visibility snapshots on the public overview
-                if (!$this->isExplicitlyPublicSnapshot($saved)) {
+                $entry = \ProofPatch\Application\Repository\OverviewSnapshotPolicy::recentEntry($saved, $id);
+                if ($entry === null) {
                     continue;
                 }
                 $totalSnapshots++;
-                $key = $pull['repository'].'#'.$pull['number'];
-                $recent[$key] ??= ['id' => $id, 'pull' => $pull, 'capturedAt' => $saved['snapshot']['capturedAt']];
+                $key = $entry['pull']['repository'].'#'.$entry['pull']['number'];
+                $recent[$key] ??= $entry;
             } catch (\Throwable) {
                 continue;
             }
@@ -102,7 +95,7 @@ final class DashboardController
             try {
                 $run = (new RunEvidence())->read(dirname($rf));
                 // Existing private GitHub evidence has no account ownership.
-                if (!$this->isPublicCheckRun($run['report'])) {
+                if (!\ProofPatch\Application\Evidence\PublicCheckRunPolicy::isPublic($run['report'])) {
                     continue;
                 }
                 $totalRuns++;
@@ -128,6 +121,13 @@ final class DashboardController
                 $url = (string) $request->input('url');
                 if (strlen($url) > 512 || trim($url) === '') {
                     throw new \InvalidArgumentException('Enter a GitHub pull request URL or shorthand.');
+                }
+                // The dedicated private test repo must use the authenticated,
+                // session-only capture path rather than the public reader.
+                $target = \ProofPatch\Application\Repository\CaptureRoutePolicy::privateTestRepoTarget($url, DedicatedTestRepo::name());
+                if ($target !== null) {
+                    $request->merge(['repository' => $target['repository'], 'number' => $target['number']]);
+                    return $this->captureInstalledPullRequest($request);
                 }
                 $pullRequest = (new PullRequestReader(HttpClient::create()))->read($url);
                 if (($pullRequest['isPrivate'] ?? false) === true) {
@@ -166,7 +166,7 @@ final class DashboardController
                 $saved = (new PullRequestSnapshot($this->snapshotsDir))->load($snapshotId);
                 $pull = $saved['snapshot']['pullRequest'] ?? null;
 
-                if (!$this->isAuthorizedForSnapshot($request, $saved)) {
+                if (!\ProofPatch\Application\Repository\SnapshotVisibilityPolicy::isExplicitlyPublic($saved)) {
                     $pull = null;
                     $snapshot = null;
                     $this->forgetSession($request, 'pullRequest', 'pullRequestSnapshot', 'pr_review', 'review_drafts', 'patch_preview');
@@ -181,7 +181,7 @@ final class DashboardController
                         $this->forgetSession($request, 'pr_review', 'review_drafts');
                     }
                     $cachedPatchPreview = $this->getSession($request, 'patch_preview');
-                    if (isset($cachedPatchPreview['headSha']) && !hash_equals((string) $cachedPatchPreview['headSha'], (string) ($pull['headSha'] ?? ''))) {
+                    if (isset($cachedPatchPreview['headSha']) && !\ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead((string) $cachedPatchPreview['headSha'], $pull['headSha'] ?? null)) {
                         $this->forgetSession($request, 'patch_preview');
                     }
                 }
@@ -196,7 +196,7 @@ final class DashboardController
         $patchPreview = null;
         $patchPreviewError = null;
         $cachedPreview = $this->getSession($request, 'patch_preview');
-        if (is_array($cachedPreview) && is_array($pull) && !hash_equals((string) ($cachedPreview['headSha'] ?? ''), (string) ($pull['headSha'] ?? ''))) {
+        if (is_array($cachedPreview) && is_array($pull) && !\ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead((string) ($cachedPreview['headSha'] ?? ''), $pull['headSha'] ?? null)) {
             $cachedPreview = null;
             $this->forgetSession($request, 'patch_preview');
         }
@@ -207,7 +207,7 @@ final class DashboardController
         if (!is_array($cachedPreview) && $diskPreviewFile && is_file($diskPreviewFile)) {
             try {
                 $diskData = json_decode((string) file_get_contents($diskPreviewFile), true, 64, JSON_THROW_ON_ERROR);
-                if (is_array($diskData) && hash_equals($diskData['headSha'] ?? '', (string) ($pull['headSha'] ?? ''))) {
+                if (is_array($diskData) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($diskData['headSha'] ?? null, $pull['headSha'] ?? null)) {
                     $cachedPreview = $diskData;
                     $this->putSession($request, 'patch_preview', $diskData);
                 }
@@ -216,7 +216,7 @@ final class DashboardController
 
         if ($request->query('preview') === '1' && is_array($pull) && is_array($snapshot)) {
             try {
-                if (is_array($cachedPreview) && hash_equals($cachedPreview['headSha'] ?? '', (string) ($pull['headSha'] ?? ''))) {
+                if (is_array($cachedPreview) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($cachedPreview['headSha'] ?? null, $pull['headSha'] ?? null)) {
                     $patchPreview = $cachedPreview;
                 } else {
                     // Deliberately unauthenticated: private PR content must never be previewed here.
@@ -227,20 +227,17 @@ final class DashboardController
                     }
                 }
             } catch (\Throwable) {
-                if (is_array($cachedPreview) && hash_equals($cachedPreview['headSha'] ?? '', (string) ($pull['headSha'] ?? ''))) {
+                if (is_array($cachedPreview) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($cachedPreview['headSha'] ?? null, $pull['headSha'] ?? null)) {
                     $patchPreview = $cachedPreview;
                 } else {
                     $patchPreviewError = 'Unable to preview this public pull request. It may have changed, be private, or be unavailable. Capture it again and retry.';
                 }
             }
-        } elseif (is_array($cachedPreview) && is_array($pull) && hash_equals($cachedPreview['headSha'] ?? '', (string) ($pull['headSha'] ?? ''))) {
+        } elseif (is_array($cachedPreview) && is_array($pull) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($cachedPreview['headSha'] ?? null, $pull['headSha'] ?? null)) {
             $patchPreview = $cachedPreview;
         }
 
-        $budget = null;
-        try {
-            $budget = $this->budget()->status();
-        } catch (\Throwable) {}
+        $budget = $this->hariBudget();
         try {
             $modelKeyAvailable = strlen(Credentials::activeKey()) >= 16;
         } catch (\Throwable) {
@@ -248,8 +245,7 @@ final class DashboardController
         }
 
         $reviewPreview = null;
-        if ($patchPreview !== null && ($patchPreview['isPrivate'] ?? true) === false
-            && is_array($pull) && ($pull['isPrivate'] ?? true) === false) {
+        if (\ProofPatch\Application\Review\ReviewPreviewEligibility::allows($patchPreview, $pull)) {
             try {
                 $reviewAgent = new PullRequestReview(HttpClient::create(), $this->budget());
                 $reviewPreview = $reviewAgent->preview($pull, $patchPreview);
@@ -278,14 +274,15 @@ final class DashboardController
 
         if ($review === null && is_array($pull) && isset($pull['repository'], $pull['number'], $pull['headSha'], $pull['baseSha'])) {
             try {
-                $savedAuto = \ProofPatch\Models\AutoReviewResult::findForRevision(
-                    (string) $pull['repository'],
-                    (int) $pull['number'],
-                    (string) $pull['headSha'],
-                    (string) $pull['baseSha']
-                );
-                if ($savedAuto !== null && $savedAuto->status === 'completed' && is_array($savedAuto->raw_review)) {
-                    $review = array_merge($savedAuto->raw_review, ['source' => 'automatic']);
+                $outcome = ($this->hari ?? \Hari\Hari::registry())->resolve('review.result', 1, 'web')->invoke([
+                    'repository' => (string) $pull['repository'],
+                    'pull_number' => (int) $pull['number'],
+                    'head_sha' => (string) $pull['headSha'],
+                    'base_sha' => (string) $pull['baseSha'],
+                ]);
+                $savedReview = \ProofPatch\Application\Review\SavedAutoReview::firstCompletedReview($outcome);
+                if ($savedReview !== null) {
+                    $review = $savedReview;
                 }
             } catch (\Throwable) {}
         }
@@ -300,11 +297,11 @@ final class DashboardController
                 try {
                     $candData = (new PullRequestSnapshot($this->snapshotsDir))->load(basename($candFile, '.json'));
                     // Strictly fail closed: never leak private or unknown-visibility snapshot metadata into unauthenticated triage
-                    if (!$this->isAuthorizedForSnapshot($request, $candData)) {
+                    if (!\ProofPatch\Application\Repository\SnapshotVisibilityPolicy::isExplicitlyPublic($candData)) {
                         continue;
                     }
                     $candPull = $candData['snapshot']['pullRequest'] ?? null;
-                    if (is_array($candPull) && (($candPull['number'] ?? null) !== ($pull['number'] ?? null) || ($candPull['repository'] ?? '') !== ($pull['repository'] ?? ''))) {
+                    if (\ProofPatch\Application\Repository\TriageCandidates::isDifferentPull($candPull, $pull)) {
                         $candidatePulls[] = $candPull;
                     }
                 } catch (\Throwable) {}
@@ -315,52 +312,33 @@ final class DashboardController
         $githubAuth = $this->getSession($request, 'github_auth');
         $deviceFlow = $this->getSession($request, 'github_device_flow');
         $clientIdConfigured = (bool) (getenv('PROOFPATCH_GITHUB_CLIENT_ID') || getenv('GITHUB_APP_CLIENT_ID'));
+        $selectedRepo = $this->getSession($request, 'selected_github_repo');
+        $access = $request->attributes->get('proofpatch_github_access');
 
-        $githubConnection = [
-            'isConfigured' => $clientIdConfigured,
+        $githubConnection = \ProofPatch\Application\Settings\GitHubConnectionProjection::build([
+            'auth' => $githubAuth,
+            'deviceFlow' => $deviceFlow,
+            'clientIdConfigured' => $clientIdConfigured,
             'clientId' => getenv('PROOFPATCH_GITHUB_CLIENT_ID') ?: getenv('GITHUB_APP_CLIENT_ID') ?: null,
-            'isConnected' => is_array($githubAuth) && isset($githubAuth['token']),
-            'user' => is_array($githubAuth) ? ($githubAuth['user'] ?? null) : null,
-            'repositories' => is_array($githubAuth) ? ($githubAuth['repositories'] ?? []) : [],
-            'repositoriesStatus' => is_array($githubAuth) ? ($githubAuth['repositoriesStatus'] ?? null) : null,
-            'selectedRepo' => $this->getSession($request, 'selected_github_repo'),
-            'canCapturePrivateTestRepo' => is_array($request->attributes->get('proofpatch_github_access'))
-                && is_int($request->attributes->get('proofpatch_github_access')['userId'] ?? null)
-                && DedicatedTestRepo::name() !== null
-                && is_string($this->getSession($request, 'selected_github_repo'))
-                && strcasecmp((string) $this->getSession($request, 'selected_github_repo'), (string) DedicatedTestRepo::name()) === 0
-                && isset($request->attributes->get('proofpatch_github_access')['repositories'][strtolower((string) DedicatedTestRepo::name())])
-                && PrivatePullSession::usesServerSession(),
-            'repoPulls' => $this->getSession($request, 'github_repo_pulls') ?? [],
-            'repoPullsStatus' => $this->getSession($request, 'github_repo_pulls_status') ?? null,
-            'deviceFlow' => is_array($deviceFlow) ? [
-                'userCode' => (string) ($deviceFlow['userCode'] ?? ''),
-                'verificationUri' => (string) ($deviceFlow['verificationUri'] ?? ''),
-                'expiresAt' => (int) ($deviceFlow['expiresAt'] ?? 0),
-                'interval' => (int) ($deviceFlow['interval'] ?? 5),
-            ] : null,
+            'selectedRepo' => $selectedRepo,
             'statusMessage' => session('github_status') ?? $this->getSession($request, 'github_status'),
             'errorMessage' => session('github_error') ?? $this->getSession($request, 'github_error'),
-        ];
+            'extras' => [
+                'canCapturePrivateTestRepo' => \ProofPatch\Application\Repository\PrivateCapturePolicy::canCapturePrivateTestRepo(
+                    $access, $selectedRepo, DedicatedTestRepo::name(), PrivatePullSession::usesServerSession()
+                ),
+                'repoPulls' => $this->getSession($request, 'github_repo_pulls') ?? [],
+                'repoPullsStatus' => $this->getSession($request, 'github_repo_pulls_status') ?? null,
+            ],
+        ]);
         $this->forgetSession($request, 'github_status', 'github_error');
 
-        $commentApprovals = [];
-        $access = $request->attributes->get('proofpatch_github_access');
-        $repoName = is_array($pull) ? ($pull['repository'] ?? null) : null;
-        $configured = DedicatedTestRepo::name();
-        $drafts = $this->getSession($request, 'review_drafts', []);
-        if (is_array($access) && is_int($access['userId'] ?? null) && is_string($repoName)
-            && is_string($configured) && strcasecmp($repoName, $configured) === 0
-            && isset($access['repositories'][strtolower($repoName)]) && is_int($pull['number'] ?? null)
-            && is_string($pull['headSha'] ?? null) && is_string($pull['baseSha'] ?? null) && is_array($drafts)) {
-            foreach ($drafts as $draft) {
-                if (is_array($draft) && is_string($draft['id'] ?? null) && ($draft['commentable'] ?? false) === true) {
-                    $commentApprovals[$draft['id']] = ManualInlineCommentPublisher::digest(
-                        $access['userId'], $repoName, $pull['number'], $pull['headSha'], $pull['baseSha'], $draft
-                    );
-                }
-            }
-        }
+        $commentApprovals = \ProofPatch\Application\Review\CommentApprovalDigests::forDrafts(
+            $access,
+            $pull,
+            $this->getSession($request, 'review_drafts', []),
+            DedicatedTestRepo::name()
+        );
 
         $autoReview = $this->scopedAutoReviewProps($request);
 
@@ -386,15 +364,9 @@ final class DashboardController
 
     public function checks(Request $request): InertiaResponse|\Illuminate\Http\RedirectResponse
     {
-        $validId = static fn(string $id): bool => (bool) preg_match('/\A\d{8}T\d{6}Z-[a-f0-9]{12}\z/', $id);
-        $runDir = function (string $id) use ($validId): ?string {
-            if (!$validId($id) || is_link($this->runsDir) || is_link($this->runsDir.'/'.$id)) {
-                return null;
-            }
-            $base = realpath($this->runsDir);
-            $path = realpath($this->runsDir.'/'.$id);
-            return $base !== false && $path !== false && dirname($path) === $base && is_dir($path) ? $path : null;
-        };
+        $runsDir = $this->runsDir;
+        $validId = static fn(string $id): bool => \ProofPatch\Application\Evidence\CheckRunImage::isValidRunId($id);
+        $runDir = static fn(string $id): ?string => \ProofPatch\Application\Evidence\CheckRunDirectory::resolve($runsDir, $id);
 
         if ($request->isMethod('post')) {
             try {
@@ -406,7 +378,7 @@ final class DashboardController
                         throw new \InvalidArgumentException('Select a run with a reproduced baseline first.');
                     }
                     $sourceReport = json_decode((string) file_get_contents($dir.'/result.json'), true, 64, JSON_THROW_ON_ERROR);
-                    if (!$this->isPublicCheckRun($sourceReport)) {
+                    if (!\ProofPatch\Application\Evidence\PublicCheckRunPolicy::isPublic($sourceReport)) {
                         throw new \InvalidArgumentException('This run is unavailable.');
                     }
                     if (($sourceReport['proposal']['file'] ?? null) !== $request->input('fixture')) {
@@ -433,15 +405,15 @@ final class DashboardController
                     'replace' => $request->input('replace'),
                 ]);
                 $generated = $this->getSession($request, 'proposal');
-                $provenance = null;
-                if (is_array($generated) && ($generated['patch'] ?? null) === $patch->toArray()
-                    && ($generated['sourceRunId'] ?? null) === $request->input('source_run')) {
-                    $provenance = [
-                        'origin' => 'model', 'model' => $generated['model'], 'usage' => $generated['usage'],
-                        'sourceRunId' => $generated['sourceRunId'], 'sourceReceiptSha256' => $generated['sourceReceiptSha256'],
-                    ];
+                $provenance = \ProofPatch\Application\Evidence\ModelProvenancePolicy::forPatch(
+                    $generated, $patch->toArray(), $request->input('source_run')
+                );
+                $skill = ($this->hari ?? \Hari\Hari::registry())->resolve('verify.patch', 1, 'web');
+                if (!$skill instanceof \ProofPatch\Abilities\VerifyPatchSkill) {
+                    throw new \RuntimeException('Patch verification skill is unavailable.');
                 }
-                $report = (new CheckoutVerifier($this->project))->verify($patch, $provenance);
+                $report = $skill->withVerifier(new CheckoutVerifier($this->project))
+                    ->invoke(['patch' => $patch->toArray(), 'provenance' => $provenance]);
 
                 return redirect('/checks?run='.rawurlencode($report['id']));
             } catch (\Throwable $exception) {
@@ -471,7 +443,7 @@ final class DashboardController
             }
             try {
                 $run = (new RunEvidence())->read(dirname($file));
-                if (!$this->isPublicCheckRun($run['report'])) {
+                if (!\ProofPatch\Application\Evidence\PublicCheckRunPolicy::isPublic($run['report'])) {
                     continue;
                 }
                 $runPath = dirname($file);
@@ -486,57 +458,36 @@ final class DashboardController
         $history = array_slice($history, 0, 20, true);
 
         // Find the latest verified run with visual screenshots
-        foreach ($history as $id => $item) {
-            if (!empty($item['hasVisual']) && ($item['decision'] ?? '') === 'VERIFIED') {
-                $latestVisualRunId = $id;
-                break;
-            }
-        }
-        if ($latestVisualRunId === null) {
-            foreach ($history as $id => $item) {
-                if (!empty($item['hasVisual'])) {
-                    $latestVisualRunId = $id;
-                    break;
-                }
-            }
-        }
+        $latestVisualRunId = \ProofPatch\Application\Evidence\CheckRunSelection::latestVisualRunId($history);
 
         if ($runId === '' && $history !== []) {
             // Default to the latest verified visual checkout run if present, or first verified run
-            $runId = $latestVisualRunId;
-            if (!$runId) {
-                foreach ($history as $id => $item) {
-                    if (($item['decision'] ?? '') === 'VERIFIED') {
-                        $runId = $id;
-                        break;
-                    }
-                }
-            }
-            $runId = $runId ?: array_key_first($history);
+            $runId = \ProofPatch\Application\Evidence\CheckRunSelection::defaultRunId($history, $latestVisualRunId);
         }
         $report = $history[$runId] ?? null;
         $selectedHasVisual = $report !== null && is_file($this->runsDir.'/'.$runId.'/baseline/checkout.png') && is_file($this->runsDir.'/'.$runId.'/candidate/checkout.png');
         $currentHead = trim(LocalProcess::output(['git', '-C', $this->project, 'rev-parse', 'HEAD']));
         $baselineReady = $report !== null && ($report['integrityValid'] ?? false) && ($report['baseCommit'] ?? null) === $currentHead
             && ($report['runs']['baseline']['exitCode'] ?? null) === 1;
-        $budgetStatus = null;
-        try {
-            $budgetStatus = RequestBudget::forRuntime()->status();
-        } catch (\Throwable) {}
+        $budgetStatus = $this->hariBudget();
 
         $proposal = $this->getSession($request, 'proposal');
         if (!is_array($proposal) || ($proposal['sourceRunId'] ?? null) !== $runId) {
             $proposal = null;
         }
-        $fixture = $request->input('fixture') ?? $proposal['patch']['file'] ?? $report['proposal']['file'] ?? CssPatch::FILE;
-        if (!is_string($fixture) || !in_array($fixture, CssPatch::FILES, true)) {
-            $fixture = CssPatch::FILE;
-        }
+        $fixture = \ProofPatch\Application\Evidence\CheckRunSelection::fixture($request->input('fixture'), $proposal, $report);
         $receipt = null;
         $receiptError = null;
         if ($report !== null && $runDir($runId) !== null) {
             try {
-                $receipt = (new Receipt())->verify($runDir($runId));
+                $outcome = ($this->hari ?? \Hari\Hari::registry())
+                    ->resolve('evidence.verify', 1, 'web')
+                    ->invoke(['directory' => $runDir($runId)]);
+                if (is_array($outcome) && ($outcome['valid'] ?? null) === true && is_array($outcome['receipt'] ?? null)) {
+                    $receipt = $outcome['receipt'];
+                } else {
+                    $receiptError = is_string($outcome['reason'] ?? null) ? $outcome['reason'] : 'Receipt is invalid.';
+                }
             } catch (\Throwable $exception) {
                 $receiptError = $exception->getMessage();
             }
@@ -570,19 +521,12 @@ final class DashboardController
         }
 
         try {
-            if (!$request->boolean('confirm')) {
-                throw new \InvalidArgumentException('You must review and explicitly approve the request before sending.');
-            }
+            \ProofPatch\Application\Review\ManualReviewGuards::validate(
+                $request->boolean('confirm'), $request->input('digest', ''), $request->input('approval_token', '')
+            );
 
             $digest = (string) $request->input('digest', '');
-            if (!preg_match('/\A[a-f0-9]{64}\z/', $digest)) {
-                throw new \InvalidArgumentException('A valid preview digest is required.');
-            }
-
             $approvalToken = (string) $request->input('approval_token', '');
-            if (!preg_match('/\A[a-f0-9]{64}\z/', $approvalToken)) {
-                throw new \InvalidArgumentException('A valid server-held approval token is required.');
-            }
 
             // ATOMIC SERVER-HELD SINGLE-USE CONSUMPTION BEFORE PROVIDER CALL
             // Strictly consumes the approval token and fails closed on replays or duplicates.
@@ -597,7 +541,7 @@ final class DashboardController
             $this->forgetSession($request, 'review_approval_token');
 
             $cachedPreview = $this->getSession($request, 'patch_preview');
-            if (is_array($cachedPreview) && hash_equals($cachedPreview['headSha'] ?? '', (string) ($pull['headSha'] ?? ''))) {
+            if (is_array($cachedPreview) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($cachedPreview['headSha'] ?? null, $pull['headSha'] ?? null)) {
                 $patchPreview = $cachedPreview;
             } else {
                 $patchPreview = (new PublicPatchPreview(HttpClient::create()))->fetch($pull);
@@ -642,34 +586,26 @@ final class DashboardController
         $pull = $this->getSession($request, 'pullRequest');
         $access = $request->attributes->get('proofpatch_github_access');
         $expectedHead = (string) $request->input('head_sha', '');
-        if ($request->input('confirmed') !== true || !is_array($auth) || !is_string($auth['token'] ?? null)
-            || !is_array($pull) || !is_array($access)) {
-            return redirect('/repositories')->with('error', 'Connect GitHub, load the pull request and confirm the action.');
+        $guardError = \ProofPatch\Application\Repository\PullActionState::guardError($request->input('confirmed'), $auth, $pull, $access);
+        if ($guardError !== null) {
+            return redirect('/repositories')->with('error', $guardError);
         }
         try {
             $actions = new \ProofPatch\GitHub\PullRequestActions(HttpClient::create());
             $number = (int) ($pull['number'] ?? 0);
             if ($action === 'merge') {
                 $result = $actions->merge($auth['token'], $access, $pull, $expectedHead);
-                $pull['state'] = 'merged';
-                $pull['isMerged'] = true;
+                $pull = \ProofPatch\Application\Repository\PullActionState::appliedPull($pull, $action);
                 $message = "Pull request #{$number} was merged (commit ".substr($result['sha'], 0, 7).').';
             } else {
                 $actions->close($auth['token'], $access, $pull, $expectedHead);
-                $pull['state'] = 'closed';
+                $pull = \ProofPatch\Application\Repository\PullActionState::appliedPull($pull, $action);
                 $message = "Pull request #{$number} was closed without merging.";
             }
             $this->putSession($request, 'pullRequest', $pull);
             $repoPulls = $this->getSession($request, 'github_repo_pulls');
             if (is_array($repoPulls)) {
-                foreach ($repoPulls as &$rp) {
-                    if (is_array($rp) && ($rp['number'] ?? null) === $number) {
-                        $rp['state'] = $pull['state'];
-                        $rp['isMerged'] = $pull['state'] === 'merged';
-                    }
-                }
-                unset($rp);
-                $this->putSession($request, 'github_repo_pulls', $repoPulls);
+                $this->putSession($request, 'github_repo_pulls', \ProofPatch\Application\Repository\PullActionState::syncedRepoPulls($repoPulls, $number, $pull['state']));
             }
             $this->addNotification($request, 'success', $action === 'merge' ? 'Merged' : 'Closed', $message);
 
@@ -691,26 +627,13 @@ final class DashboardController
         }
 
         try {
-            $path = (string) $request->input('path', '');
-            $comment = trim((string) $request->input('comment', ''));
-            $headSha = (string) $request->input('headSha', '');
-            $lineRaw = $request->input('line');
-            $line = is_numeric($lineRaw) ? (int) $lineRaw : null;
-            $side = (string) $request->input('side', 'RIGHT');
-
-            if ($path === '' || strlen($path) > 4096) {
-                throw new \InvalidArgumentException('A valid file path is required.');
-            }
-            if ($comment === '' || strlen($comment) > 2000 || str_contains($comment, "\0")) {
-                throw new \InvalidArgumentException('Draft comment must be between 1 and 2000 characters.');
-            }
-            if (!preg_match('/\A[a-f0-9]{40}\z/', $headSha)) {
-                throw new \InvalidArgumentException('A valid 40-character head SHA is required.');
-            }
-
-            if (!hash_equals($pull['headSha'] ?? '', $headSha)) {
-                throw new \InvalidArgumentException('Cannot anchor comment: draft head SHA does not match current captured head SHA.');
-            }
+            $input = \ProofPatch\Application\Review\SaveDraftCommentInput::fromRaw([
+                'path' => (string) $request->input('path', ''),
+                'comment' => (string) $request->input('comment', ''),
+                'headSha' => (string) $request->input('headSha', ''),
+                'line' => $request->input('line'),
+                'side' => (string) $request->input('side', 'RIGHT'),
+            ], $pull);
 
             $cachedPreview = $this->getSession($request, 'patch_preview');
             $snapshot = $this->getSession($request, 'pullRequestSnapshot');
@@ -718,14 +641,14 @@ final class DashboardController
             if (!is_array($cachedPreview) && $diskPreviewFile && is_file($diskPreviewFile)) {
                 try {
                     $diskData = json_decode((string) file_get_contents($diskPreviewFile), true, 64, JSON_THROW_ON_ERROR);
-                    if (is_array($diskData) && hash_equals($diskData['headSha'] ?? '', (string) ($pull['headSha'] ?? ''))) {
+                    if (is_array($diskData) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($diskData['headSha'] ?? null, $pull['headSha'] ?? null)) {
                         $cachedPreview = $diskData;
                         $this->putSession($request, 'patch_preview', $diskData);
                     }
                 } catch (\Throwable) {}
             }
 
-            if (is_array($cachedPreview) && hash_equals($cachedPreview['headSha'] ?? '', (string) ($pull['headSha'] ?? ''))) {
+            if (is_array($cachedPreview) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($cachedPreview['headSha'] ?? null, $pull['headSha'] ?? null)) {
                 $patchPreview = $cachedPreview;
             } else {
                 if (($pull['isPrivate'] ?? false) === true) {
@@ -734,51 +657,25 @@ final class DashboardController
                 $patchPreview = (new PublicPatchPreview(HttpClient::create()))->fetch($pull);
                 $this->putSession($request, 'patch_preview', $patchPreview);
             }
-            $filePatch = null;
-            foreach ($patchPreview['files'] ?? [] as $f) {
-                if (($f['name'] ?? null) === $path) {
-                    $filePatch = $f['patch'] ?? null;
-                    break;
-                }
+            $outcome = (new \ProofPatch\Application\Review\SaveDraftCommentUseCase())
+                ->execute($input->withPreview($patchPreview));
+            if (!$outcome->ok) {
+                throw new \InvalidArgumentException($outcome->error);
             }
 
-            $anchorResult = DiffHunkParser::validateAnchor($filePatch, $line, $headSha, $pull['headSha'], $side);
-
-            // A positive lineHint alone is not proof it is commentable:
-            // if a line number is specified, it MUST be commentable within the captured diff hunk!
-            if ($line !== null && !$anchorResult['commentable']) {
-                throw new \InvalidArgumentException("Line {$line} is not commentable on {$side} side: {$anchorResult['message']}");
-            }
-
-            $draftId = hash('sha256', $path.':'.($line ?? 'file').':'.$headSha);
             $drafts = $this->getSession($request, 'review_drafts', []);
-            $drafts[$draftId] = [
-                'id' => $draftId,
-                'path' => $path,
-                'line' => $line,
-                'side' => $side,
-                'comment' => $comment,
-                'headSha' => $headSha,
-                'status' => $anchorResult['status'],
-                'valid' => $anchorResult['valid'],
-                'commentable' => $anchorResult['commentable'],
-                'lineType' => $anchorResult['lineType'],
-                'message' => $anchorResult['message'],
-                'updatedAt' => gmdate(DATE_ATOM),
-            ];
+            $drafts[$outcome->draft['id']] = $outcome->draft;
             $this->putSession($request, 'review_drafts', $drafts);
             $message = ($pull['isPrivate'] ?? false) === true
-                ? 'Draft comment saved.' : "Draft comment saved on {$path}".($line ? ":{$line}" : '');
+                ? 'Draft comment saved.' : "Draft comment saved on {$input->path}".($input->line ? ":{$input->line}" : '');
             $this->addNotification($request, 'success', 'Draft Saved', $message);
 
-            $snapshotQuery = is_array($snapshot) && isset($snapshot['id']) ? '&snapshot='.$snapshot['id'] : '';
-            return redirect('/repositories?preview=1'.$snapshotQuery);
+            return redirect(\ProofPatch\Application\Review\ReviewPreviewRedirect::to($snapshot));
         } catch (\Throwable $exception) {
             $snapshot = $this->getSession($request, 'pullRequestSnapshot');
-            $snapshotQuery = is_array($snapshot) && isset($snapshot['id']) ? '&snapshot='.$snapshot['id'] : '';
             $message = ($pull['isPrivate'] ?? false) === true ? 'Could not save this draft. Check the selected line.' : $exception->getMessage();
             $this->putSession($request, 'review_error', $message);
-            return redirect('/repositories?preview=1'.$snapshotQuery)->with('review_error', $message);
+            return redirect(\ProofPatch\Application\Review\ReviewPreviewRedirect::to($snapshot))->with('review_error', $message);
         }
     }
 
@@ -792,8 +689,7 @@ final class DashboardController
             $this->addNotification($request, 'info', 'Draft Removed', 'Draft comment was removed.');
         }
         $snapshot = $this->getSession($request, 'pullRequestSnapshot');
-        $snapshotQuery = is_array($snapshot) && isset($snapshot['id']) ? '&snapshot='.$snapshot['id'] : '';
-        return redirect('/repositories?preview=1'.$snapshotQuery);
+        return redirect(\ProofPatch\Application\Review\ReviewPreviewRedirect::to($snapshot));
     }
 
     public function clearDraftComments(Request $request = null): \Illuminate\Http\RedirectResponse
@@ -801,18 +697,15 @@ final class DashboardController
         $this->forgetSession($request, 'review_drafts');
         $this->addNotification($request, 'info', 'Drafts Cleared', 'All draft review comments were cleared.');
         $snapshot = $this->getSession($request, 'pullRequestSnapshot');
-        $snapshotQuery = is_array($snapshot) && isset($snapshot['id']) ? '&snapshot='.$snapshot['id'] : '';
-        return redirect('/repositories?preview=1'.$snapshotQuery);
+        return redirect(\ProofPatch\Application\Review\ReviewPreviewRedirect::to($snapshot));
     }
 
     public function initiateDeviceFlow(Request $request): \Illuminate\Http\RedirectResponse
     {
         try {
-            $clientId = (string) ($request->input('client_id') ?: getenv('PROOFPATCH_GITHUB_CLIENT_ID') ?: getenv('GITHUB_APP_CLIENT_ID') ?: '');
-            $clientId = trim($clientId);
-            if ($clientId === '') {
-                throw new \InvalidArgumentException('A GitHub App Client ID is required. Set PROOFPATCH_GITHUB_CLIENT_ID or provide it in the form.');
-            }
+            $clientId = \ProofPatch\Application\Settings\DeviceFlowClientId::resolve(
+                $request->input('client_id'), getenv('PROOFPATCH_GITHUB_CLIENT_ID'), getenv('GITHUB_APP_CLIENT_ID')
+            );
 
             $flow = $this->getDeviceFlowClient();
             $initData = $flow->initiate($clientId);
@@ -839,11 +732,12 @@ final class DashboardController
     public function pollDeviceFlow(Request $request): \Illuminate\Http\RedirectResponse
     {
         $flow = $this->getSession($request, 'github_device_flow');
-        if (!is_array($flow) || !isset($flow['clientId'], $flow['deviceCode'])) {
+        $sessionState = \ProofPatch\Application\Settings\DeviceFlowSession::check($flow, time());
+        if ($sessionState === 'missing') {
             return redirect('/repositories')->with('github_error', 'No active device flow session. Please initiate first.');
         }
 
-        if (time() > ($flow['expiresAt'] ?? 0)) {
+        if ($sessionState === 'expired') {
             $this->forgetSession($request, 'github_device_flow');
             return redirect('/repositories')->with('github_error', 'Verification code expired. Please initiate connection again.');
         }
@@ -851,8 +745,9 @@ final class DashboardController
         try {
             $deviceFlow = $this->getDeviceFlowClient();
             $result = $deviceFlow->poll((string) $flow['clientId'], (string) $flow['deviceCode']);
+            $outcome = \ProofPatch\Application\Settings\DeviceFlowPoll::outcome($result);
 
-            if ($result['status'] === 'authorized' && isset($result['accessToken'])) {
+            if ($outcome === 'authorized') {
                 $token = (string) $result['accessToken'];
                 $client = $this->getGitHubAppClient();
                 $user = $client->getCurrentUser($token);
@@ -886,22 +781,22 @@ final class DashboardController
                 return redirect('/repositories')->with('github_status', 'Successfully connected to GitHub as @'.$user['login'].'.');
             }
 
-            if ($result['status'] === 'pending') {
+            if ($outcome === 'pending') {
                 return redirect('/repositories')->with('github_status', 'Authorization pending. Enter user code '.$flow['userCode'].' at '.$flow['verificationUri'].'.');
             }
 
-            if ($result['status'] === 'slow_down') {
+            if ($outcome === 'slow_down') {
                 $flow['interval'] = $result['interval'] ?? 10;
                 $this->putSession($request, 'github_device_flow', $flow);
                 return redirect('/repositories')->with('github_status', 'Rate limited by GitHub. Please wait a few seconds before checking again.');
             }
 
-            if ($result['status'] === 'expired') {
+            if ($outcome === 'expired') {
                 $this->forgetSession($request, 'github_device_flow');
                 return redirect('/repositories')->with('github_error', 'Verification code expired. Please initiate connection again.');
             }
 
-            if ($result['status'] === 'denied') {
+            if ($outcome === 'denied') {
                 $this->forgetSession($request, 'github_device_flow');
                 return redirect('/repositories')->with('github_error', 'Authorization was declined on GitHub.');
             }
@@ -919,6 +814,11 @@ final class DashboardController
 
     public function disconnectDeviceFlow(?Request $request = null): \Illuminate\Http\RedirectResponse
     {
+        $auth = $this->getSession($request, 'github_auth');
+        $userId = is_array($auth) ? ($auth['user']['id'] ?? null) : null;
+        if (is_int($userId) && $userId > 0 && \Illuminate\Support\Facades\Schema::hasTable('automatic_inline_settings')) {
+            \ProofPatch\Models\AutomaticInlineSetting::revokeAllForUser($userId);
+        }
         $currentPull = $this->getSession($request, 'pullRequest');
         if (is_array($currentPull) && (($currentPull['isPrivate'] ?? false) === true)) {
             $this->forgetSession(
@@ -946,10 +846,9 @@ final class DashboardController
         \ProofPatch\GitHub\GitHubTokenStore::clear();
         $this->addNotification($request, 'info', 'GitHub Disconnected', 'Disconnected from GitHub device session.');
 
-        $redirectTo = $request !== null ? (string) $request->input('redirect_to', '') : '';
-        $target = in_array($redirectTo, ['/issues', '/repositories', '/settings', '/checks'], true)
-            ? $redirectTo
-            : '/repositories';
+        $target = \ProofPatch\Application\Settings\DisconnectRedirect::target(
+            $request !== null ? $request->input('redirect_to', '') : ''
+        );
 
         return redirect($target)->with('github_status', 'Disconnected from GitHub.');
     }
@@ -963,13 +862,10 @@ final class DashboardController
 
         $repoName = trim((string) $request->input('repository', ''));
         $authorizedRepos = $auth['repositories'] ?? [];
-        $found = null;
-        foreach ($authorizedRepos as $r) {
-            if (is_array($r) && ($r['fullName'] ?? '') === $repoName) {
-                $found = $r;
-                break;
-            }
-        }
+        $found = \ProofPatch\Application\Repository\AuthorizedRepository::find(
+            is_array($authorizedRepos) ? $authorizedRepos : [],
+            $repoName
+        );
 
         if ($found === null) {
             return redirect('/repositories')->with('github_error', 'Selected repository is not authorized for this installation.');
@@ -1031,13 +927,10 @@ final class DashboardController
         }
 
         $authorizedRepos = $auth['repositories'] ?? [];
-        $foundRepo = null;
-        foreach ($authorizedRepos as $r) {
-            if (is_array($r) && ($r['fullName'] ?? '') === $repoName) {
-                $foundRepo = $r;
-                break;
-            }
-        }
+        $foundRepo = \ProofPatch\Application\Repository\AuthorizedRepository::find(
+            is_array($authorizedRepos) ? $authorizedRepos : [],
+            $repoName
+        );
 
         if ($foundRepo === null) {
             $this->putSession($request, 'github_error', 'Selected repository is not authorized for this installation.');
@@ -1046,15 +939,17 @@ final class DashboardController
 
         $private = ($foundRepo['isPrivate'] ?? true) !== false;
         $access = $request->attributes->get('proofpatch_github_access');
-        $configured = DedicatedTestRepo::name();
-        if ($private && (!PrivatePullSession::usesServerSession() || !is_array($access)
-            || !is_int($access['userId'] ?? null) || $access['userId'] < 1
-            || ($auth['user']['id'] ?? null) !== $access['userId']
-            || !is_array($access['repositories'] ?? null) || !isset($access['repositories'][strtolower($repoName)])
-            || !is_string($configured) || strcasecmp($configured, $repoName) !== 0)) {
-            $msg = 'Private repository capture is disabled. ProofPatch operates strictly on public repositories to prevent proprietary code leakage in shared local snapshot stores.';
-            $this->putSession($request, 'github_error', $msg);
-            return redirect('/repositories')->with('github_error', $msg);
+        $denial = \ProofPatch\Application\Repository\PrivateCapturePolicy::denial(
+            $private,
+            PrivatePullSession::usesServerSession(),
+            is_array($access) ? $access : null,
+            $auth['user']['id'] ?? null,
+            $repoName,
+            DedicatedTestRepo::name()
+        );
+        if ($denial !== null) {
+            $this->putSession($request, 'github_error', $denial);
+            return redirect('/repositories')->with('github_error', $denial);
         }
 
         try {
@@ -1071,29 +966,7 @@ final class DashboardController
             }
 
             // Construct pull request record strictly from authoritative GitHub metadata, rejecting untrusted client inputs
-            $pull = [
-                'repository' => $repoName,
-                'number' => $number,
-                'title' => $patchPreview['title'],
-                'body' => $patchPreview['body'] ?? '',
-                'state' => $patchPreview['state'],
-                'isMerged' => $patchPreview['isMerged'] ?? false,
-                'isDraft' => ($patchPreview['isDraft'] ?? false) === true,
-                'head' => $patchPreview['head'],
-                'base' => $patchPreview['base'],
-                'headSha' => $patchPreview['headSha'],
-                'baseSha' => $patchPreview['baseSha'],
-                'url' => $patchPreview['url'],
-                'user' => $patchPreview['user'] ?? 'unknown',
-                'isPrivate' => $private,
-                'changedFiles' => $patchPreview['changedFiles'],
-                'files' => array_map(static fn(array $f): array => [
-                    'name' => $f['name'],
-                    'status' => $f['status'],
-                    'additions' => (int) ($f['additions'] ?? 0),
-                    'deletions' => (int) ($f['deletions'] ?? 0),
-                ], $patchPreview['files']),
-            ];
+            $pull = \ProofPatch\Application\Repository\PullRecordProjection::fromPatchPreview($patchPreview, $repoName, $number, $private);
 
             if ($private) {
                 $this->forgetSession($request, ...PrivatePullSession::KEYS);
@@ -1126,29 +999,18 @@ final class DashboardController
         $deviceFlow = $this->getSession($request, 'github_device_flow');
         $clientIdConfigured = (bool) (getenv('PROOFPATCH_GITHUB_CLIENT_ID') || getenv('GITHUB_APP_CLIENT_ID'));
 
-        $githubConnection = [
-            'isConfigured' => $clientIdConfigured,
+        $githubConnection = \ProofPatch\Application\Settings\GitHubConnectionProjection::build([
+            'auth' => $githubAuth,
+            'deviceFlow' => $deviceFlow,
+            'clientIdConfigured' => $clientIdConfigured,
             'clientId' => getenv('PROOFPATCH_GITHUB_CLIENT_ID') ?: getenv('GITHUB_APP_CLIENT_ID') ?: null,
-            'isConnected' => is_array($githubAuth) && isset($githubAuth['token']),
-            'user' => is_array($githubAuth) ? ($githubAuth['user'] ?? null) : null,
-            'repositories' => is_array($githubAuth) ? ($githubAuth['repositories'] ?? []) : [],
-            'repositoriesStatus' => is_array($githubAuth) ? ($githubAuth['repositoriesStatus'] ?? null) : null,
             'selectedRepo' => $this->getSession($request, 'selected_github_repo'),
-            'deviceFlow' => is_array($deviceFlow) ? [
-                'userCode' => (string) ($deviceFlow['userCode'] ?? ''),
-                'verificationUri' => (string) ($deviceFlow['verificationUri'] ?? ''),
-                'expiresAt' => (int) ($deviceFlow['expiresAt'] ?? 0),
-                'interval' => (int) ($deviceFlow['interval'] ?? 5),
-            ] : null,
             'statusMessage' => session('github_status') ?? $this->getSession($request, 'github_status'),
             'errorMessage' => session('github_error') ?? $this->getSession($request, 'github_error'),
-        ];
+        ]);
         $this->forgetSession($request, 'github_status', 'github_error');
 
-        $budget = null;
-        try {
-            $budget = $this->budget()->status();
-        } catch (\Throwable) {}
+        $budget = $this->hariBudget();
 
         $policyFile = $this->project.'/.proofpatchrc.json';
         $policy = is_file($policyFile) ? json_decode((string) file_get_contents($policyFile), true) ?? [] : [];
@@ -1170,12 +1032,7 @@ final class DashboardController
         $autopilotCaps = null;
         try {
             $row = \ProofPatch\Models\AutopilotBudget::current();
-            $autopilotCaps = $row === null ? null : [
-                'maxAttempts' => $row->max_attempts,
-                'maxReservedDollars' => $row->max_reserved_micros === null
-                    ? null
-                    : round($row->max_reserved_micros / 1000000, 2),
-            ];
+            $autopilotCaps = $row === null ? null : \ProofPatch\Application\Settings\AutopilotBudgetProjection::fromRow($row->max_attempts, $row->max_reserved_micros);
         } catch (\Throwable) {}
 
         return Inertia::render('Settings', [
@@ -1193,42 +1050,19 @@ final class DashboardController
     public function saveAutopilotBudget(Request $request): \Illuminate\Http\RedirectResponse
     {
         try {
-            $rawAttempts = $request->input('maxAttempts');
-            $rawDollars = $request->input('maxDollars');
+            $input = \ProofPatch\Application\Settings\SaveAutopilotBudgetInput::fromRaw(
+                ['maxAttempts' => $request->input('maxAttempts'), 'maxDollars' => $request->input('maxDollars')],
+                \ProofPatch\Models\AutopilotBudget::MAX_ATTEMPTS_CEILING,
+                \ProofPatch\Models\AutopilotBudget::MAX_MICROS_CEILING
+            );
+            $outcome = (new \ProofPatch\Application\Settings\SaveAutopilotBudgetUseCase())->execute($input);
 
-            $maxAttempts = null;
-            if ($rawAttempts !== null && trim((string) $rawAttempts) !== '') {
-                if (!preg_match('/\A[1-9][0-9]{0,5}\z/D', trim((string) $rawAttempts))) {
-                    throw new \InvalidArgumentException('Attempt cap must be a whole number of at least 1.');
-                }
-                $maxAttempts = min((int) trim((string) $rawAttempts), \ProofPatch\Models\AutopilotBudget::MAX_ATTEMPTS_CEILING);
-            }
-
-            $maxMicros = null;
-            if ($rawDollars !== null && trim((string) $rawDollars) !== '') {
-                if (!is_numeric(trim((string) $rawDollars)) || (float) trim((string) $rawDollars) <= 0) {
-                    throw new \InvalidArgumentException('Spend cap must be a positive dollar amount.');
-                }
-                $maxMicros = (int) min(
-                    round((float) trim((string) $rawDollars) * 1000000),
-                    \ProofPatch\Models\AutopilotBudget::MAX_MICROS_CEILING
-                );
-            }
-
-            if ($maxAttempts === null && $maxMicros === null) {
+            if ($outcome->clears) {
                 \ProofPatch\Models\AutopilotBudget::clearCaps();
-                $msg = 'Autopilot caps cleared. Automatic reviews are bounded only by the local request budget.';
             } else {
-                \ProofPatch\Models\AutopilotBudget::saveCaps($maxAttempts, $maxMicros);
-                $parts = [];
-                if ($maxAttempts !== null) {
-                    $parts[] = "{$maxAttempts} attempts";
-                }
-                if ($maxMicros !== null) {
-                    $parts[] = '$'.number_format($maxMicros / 1000000, 2);
-                }
-                $msg = 'Autopilot cap set: '.implode(' and ', $parts).' of spend. Autopilot reviews stop there.';
+                \ProofPatch\Models\AutopilotBudget::saveCaps($outcome->maxAttempts, $outcome->maxMicros);
             }
+            $msg = $outcome->message;
             $this->putSession($request, 'status', $msg);
 
             return redirect('/settings')->with('status', $msg);
@@ -1306,19 +1140,6 @@ final class DashboardController
         NotificationHelper::add($request, $type, $title, $message, $link);
     }
 
-    private function isExplicitlyPublicSnapshot(array $savedSnapshot): bool
-    {
-        return PullRequestSnapshot::isExplicitlyPublic($savedSnapshot);
-    }
-
-    private function isAuthorizedForSnapshot(Request $request, array $savedSnapshot): bool
-    {
-        // Fail closed for private or unknown saved snapshots everywhere:
-        // ProofPatch operates strictly on explicitly public repositories.
-        // Cached session permissions cannot guarantee remote authorization integrity after revocation.
-        return $this->isExplicitlyPublicSnapshot($savedSnapshot);
-    }
-
     private function budget(): RequestBudget
     {
         return RequestBudget::forRuntime();
@@ -1326,16 +1147,18 @@ final class DashboardController
 
     private function scopedAutoReviewProps(Request $request): array
     {
-        return \ProofPatch\Support\AutoReviewPanelProps::forRequest($request);
+        return \ProofPatch\Support\AutoReviewPanelProps::forRequest($request, 10, $this->hari);
     }
 
-    /** Backend evidence may contain private repository names and is not yet bound to a user. */
-    private function isPublicCheckRun(array $report): bool
+    /** @return array<string, mixed>|null */
+    private function hariBudget(): ?array
     {
-        if (($report['kind'] ?? null) === 'owned_backend' || array_key_exists('context', $report)) {
-            return ($report['isSynthetic'] ?? false) === true;
+        try {
+            $status = ($this->hari ?? \Hari\Hari::registry())->resolve('budget.status', 1, 'web')->invoke([]);
+        } catch (\Throwable) {
+            return null;
         }
-        return true; // Local checkout verifier; not sourced from a GitHub task.
+        return is_array($status) ? $status : null;
     }
 
     private function approvalStore(): SingleUseReviewApproval
@@ -1358,34 +1181,33 @@ final class DashboardController
 
     private function serveImage(string $runId, string $imageType): Response
     {
-        $validId = (bool) preg_match('/\A\d{8}T\d{6}Z-[a-f0-9]{12}\z/', $runId);
-        $folder = match ($imageType) {
-            'before', 'baseline' => 'baseline',
-            'after', 'candidate' => 'candidate',
-            default => null,
-        };
-        if (!$validId || $folder === null) {
-            return response('Image unavailable.', 404, ['Content-Type' => 'text/plain', 'Cache-Control' => 'no-store']);
+        $folder = \ProofPatch\Application\Evidence\CheckRunImage::folderFor($imageType);
+        if (!\ProofPatch\Application\Evidence\CheckRunImage::isValidRunId($runId) || $folder === null) {
+            return $this->missingImage();
         }
         $reportPath = $this->runsDir.'/'.$runId.'/result.json';
         try {
             $report = json_decode((string) file_get_contents($reportPath), true, 64, JSON_THROW_ON_ERROR);
-            if (!is_array($report) || !$this->isPublicCheckRun($report)) {
+            if (!is_array($report) || !\ProofPatch\Application\Evidence\PublicCheckRunPolicy::isPublic($report)) {
                 throw new \RuntimeException('Image unavailable.');
             }
         } catch (\Throwable) {
-            return response('Image unavailable.', 404, ['Content-Type' => 'text/plain', 'Cache-Control' => 'no-store']);
+            return $this->missingImage();
         }
-        $path = realpath($this->runsDir.'/'.$runId.'/'.$folder.'/checkout.png');
-        $base = realpath($this->runsDir);
-        if ($path === false || $base === false || !str_starts_with($path, $base) || !is_file($path)) {
-            return response('Image unavailable.', 404, ['Content-Type' => 'text/plain', 'Cache-Control' => 'no-store']);
+        $path = \ProofPatch\Application\Evidence\CheckRunImage::resolvePath($this->runsDir, $runId, $folder);
+        if ($path === null) {
+            return $this->missingImage();
         }
 
         return response(file_get_contents($path) ?: '', 200, [
             'Content-Type' => 'image/png',
             'Cache-Control' => 'no-store',
         ]);
+    }
+
+    private function missingImage(): Response
+    {
+        return response('Image unavailable.', 404, ['Content-Type' => 'text/plain', 'Cache-Control' => 'no-store']);
     }
 
     private function getSession(?Request $request, string $key, mixed $default = null): mixed

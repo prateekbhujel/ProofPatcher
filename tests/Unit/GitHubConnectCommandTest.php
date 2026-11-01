@@ -160,6 +160,22 @@ final class GitHubConnectCommandTest extends TestCase
         $this->assertNull(KernelCli::getSelectedRepo());
     }
 
+    public function testForcedReconnectDoesNotRestorePreviousAutomaticPostingConsent(): void
+    {
+        GitHubTokenStore::save('old-token', ['id' => 1, 'login' => 'octocat'], [['fullName' => 'acme/repo']]);
+        \ProofPatch\Models\AutomaticInlineSetting::setForOwner(1, 'octocat/repo', true);
+        $http = new MockHttpClient([
+            $this->initiateResponse(),
+            self::jsonResponse(['access_token' => 'new-token-value', 'token_type' => 'bearer']),
+            ...$this->identityResponses(),
+        ]);
+
+        $result = $this->runCommand($http, ['--client-id' => 'test-client', '--interval' => '0', '--force' => true]);
+        $this->assertSame(0, $result['exit']);
+        $this->assertSame('new-token-value', GitHubTokenStore::getToken());
+        $this->assertFalse(\ProofPatch\Models\AutomaticInlineSetting::enabled(1, 'octocat/repo'));
+    }
+
     public function testDeniedFailsClosedWithoutStoring(): void
     {
         $http = new MockHttpClient([

@@ -129,6 +129,16 @@ final class GitHubConnectCommand extends Command
         }
 
         try {
+            // Reconnection is a new grant. Do not revive old posting consent,
+            // including if a previous token disappeared before the worker saw it.
+            if (\Illuminate\Support\Facades\Schema::hasTable('automatic_inline_settings')) {
+                $previous = GitHubTokenStore::get();
+                $oldId = $previous['user']['id'] ?? null;
+                if (is_int($oldId) && $oldId > 0) {
+                    \ProofPatch\Models\AutomaticInlineSetting::revokeAllForUser($oldId);
+                }
+                \ProofPatch\Models\AutomaticInlineSetting::revokeAllForUser($user['id']);
+            }
             GitHubTokenStore::save($token, $user, $repos, $reposStatus);
         } catch (\Throwable $e) {
             $this->error(KernelCli::report('github:connect · failed to store the token', $e->getMessage(), 'check the token store is writable, then re-run github:connect'));

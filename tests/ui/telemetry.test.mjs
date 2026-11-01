@@ -40,6 +40,7 @@ const filled = {
   ],
   generatedAt: '2026-10-31T12:00:00+00:00',
   ledgerFound: true,
+  ledgerAvailable: true,
 };
 
 const empty = {
@@ -51,6 +52,7 @@ const empty = {
   feed: [],
   generatedAt: '2026-10-31T12:00:00+00:00',
   ledgerFound: false,
+  ledgerAvailable: true,
 };
 
 test('telemetry shows totals, models, daily bars, and the request feed', () => {
@@ -73,4 +75,11 @@ test('telemetry without data states what is missing instead of zeros alone', () 
   assert.match(html, /No model usage recorded yet/);
   assert.match(html, /No daily activity yet/);
   assert.match(html, /Nothing recorded yet/);
+});
+
+test('web telemetry explains when the shared ledger cannot be shown', () => {
+  const html = renderToStaticMarkup(React.createElement(telemetry.default, { telemetry: { ...empty, ledgerAvailable: false } }));
+  assert.match(html, /shared ledger cannot be scoped to this account/);
+  assert.match(html, /Available in the local terminal/);
+  assert.doesNotMatch(html, /No request ledger found yet/);
 });

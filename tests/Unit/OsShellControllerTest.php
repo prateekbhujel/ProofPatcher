@@ -74,6 +74,51 @@ final class OsShellControllerTest extends TestCase
         $this->assertStringContainsString('not connected', $payload['output']);
     }
 
+    public function testTerminalDoesNotUseGlobalCredentialsOrExposeResultsWithoutVerifiedSession(): void
+    {
+        \ProofPatch\Models\AutoReviewResult::create([
+            'repository' => 'private-owner/private-repo', 'pull_number' => 1,
+            'head_sha' => str_repeat('a', 40), 'base_sha' => str_repeat('b', 40),
+            'status' => 'completed', 'summary' => 'private finding',
+        ]);
+
+        foreach (['reviews', 'repos', 'telemetry'] as $command) {
+            $request = $this->request('/terminal/run', 'POST', ['command' => $command], [
+                'github_auth' => ['token' => 'unverified', 'repositories' => [['fullName' => 'private-owner/private-repo']]],
+            ]);
+            $payload = json_decode((string) (new TerminalController())->run($request)->getContent(), true);
+            $this->assertSame(1, $payload['exit'], $command);
+            $this->assertStringNotContainsString('private-owner', $payload['output']);
+            $this->assertStringNotContainsString('private finding', $payload['output']);
+        }
+        $request = $this->request('/terminal/run', 'POST', ['command' => 'status --json']);
+        $result = json_decode((string) (new TerminalController())->run($request)->getContent(), true);
+        $this->assertFalse(json_decode($result['output'], true)['connected']);
+    }
+
+    public function testTerminalReviewsAreScopedToVerifiedGrant(): void
+    {
+        foreach (['Owner/Allowed' => 'allowed finding', 'other/private' => 'secret finding'] as $repo => $summary) {
+            \ProofPatch\Models\AutoReviewResult::create([
+                'repository' => $repo, 'pull_number' => 1,
+                'head_sha' => str_repeat('a', 40), 'base_sha' => str_repeat('b', 40),
+                'status' => 'completed', 'summary' => $summary,
+            ]);
+        }
+        $request = $this->request('/terminal/run', 'POST', ['command' => 'reviews']);
+        $request->attributes->set('proofpatch_github_access', ['userId' => 5, 'repositories' => ['owner/allowed' => true]]);
+        $payload = json_decode((string) (new TerminalController())->run($request)->getContent(), true);
+        $this->assertSame(0, $payload['exit']);
+        $this->assertStringContainsString('allowed finding', $payload['output']);
+        $this->assertStringNotContainsString('secret finding', $payload['output']);
+
+        $request = $this->request('/terminal/run', 'POST', ['command' => 'reviews --repository other/private']);
+        $request->attributes->set('proofpatch_github_access', ['userId' => 5, 'repositories' => ['owner/allowed' => true]]);
+        $payload = json_decode((string) (new TerminalController())->run($request)->getContent(), true);
+        $this->assertSame(1, $payload['exit']);
+        $this->assertStringNotContainsString('secret finding', $payload['output']);
+    }
+
     public function testOsStatusReportsDisconnectedStateWithConnectNext(): void
     {
         $response = (new OsStatusController())->show($this->request('/os/status', 'GET'));

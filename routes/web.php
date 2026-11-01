@@ -5,10 +5,12 @@ declare(strict_types=1);
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use ProofPatch\Http\Controllers\AutoReviewController;
+use ProofPatch\Http\Controllers\AutomaticInlineSettingController;
 use ProofPatch\Http\Controllers\DashboardController;
 use ProofPatch\Http\Controllers\CardPreviewController;
 use ProofPatch\Http\Controllers\CardProposalController;
 use ProofPatch\Http\Controllers\IssueWorkbenchController;
+use ProofPatch\Http\Controllers\IssueScreenshotController;
 use ProofPatch\Http\Controllers\KernelController;
 use ProofPatch\Http\Controllers\LocalTaskCardController;
 use ProofPatch\Http\Controllers\LocalTaskImageController;
@@ -29,6 +31,8 @@ Route::post('/issues/tasks/{cardId}/model-send', [CardProposalController::class,
 Route::post('/issues/tasks/{cardId}/assign', [LocalTaskCardController::class, 'assign'])->whereNumber('cardId');
 Route::post('/issues/tasks/{cardId}/image', [LocalTaskImageController::class, 'store'])->whereNumber('cardId');
 Route::get('/issues/tasks/{cardId}/image', [LocalTaskImageController::class, 'show'])->whereNumber('cardId');
+Route::post('/issues/screenshot', [IssueScreenshotController::class, 'store']);
+Route::get('/issues/screenshot', [IssueScreenshotController::class, 'show']);
 Route::post('/issues/preview', [IssueWorkbenchController::class, 'capture']);
 Route::post('/issues/load-owned', [IssueWorkbenchController::class, 'loadOwnedCase']);
 Route::post('/issues/load-dedicated', [IssueWorkbenchController::class, 'loadDedicatedCase']);
@@ -55,6 +59,8 @@ Route::post('/repositories/pull/close', [DashboardController::class, 'closePull'
 Route::post('/repositories/auto-review/toggle', [AutoReviewController::class, 'toggle']);
 Route::get('/repositories/auto-review/status', [AutoReviewController::class, 'status']);
 Route::get('/repositories/auto-review/results', [AutoReviewController::class, 'results']);
+Route::get('/repositories/auto-comments', [AutomaticInlineSettingController::class, 'status']);
+Route::post('/repositories/auto-comments', [AutomaticInlineSettingController::class, 'toggle']);
 
 // GitHub App Device Flow (Local Desktop Connection per RFC 8628)
 Route::post('/github/device/initiate', [DashboardController::class, 'initiateDeviceFlow']);

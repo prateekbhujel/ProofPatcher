@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
 
 interface Line {
@@ -24,6 +24,7 @@ function xsrfToken(): string | null {
 
 /** The kernel shell in the browser: allowlisted read-only commands only. */
 export default function Terminal() {
+  const { props } = usePage();
   const [lines, setLines] = useState<Line[]>(BOOT_LINES);
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
@@ -55,7 +56,11 @@ export default function Terminal() {
         'X-Requested-With': 'XMLHttpRequest',
       };
       const token = xsrfToken();
-      if (token) headers['X-XSRF-TOKEN'] = token;
+      if (typeof props.csrf_token === 'string' && props.csrf_token !== '') {
+        headers['X-CSRF-TOKEN'] = props.csrf_token;
+      } else if (token) {
+        headers['X-XSRF-TOKEN'] = token;
+      }
       const res = await fetch('/terminal/run', {
         method: 'POST',
         headers,
@@ -64,8 +69,8 @@ export default function Terminal() {
       const data: unknown = await res.json().catch(() => null);
       const output = typeof data === 'object' && data !== null && typeof (data as { output?: unknown }).output === 'string'
         ? ((data as { output: string }).output !== '' ? (data as { output: string }).output : '(no output)')
-        : 'request failed — reload the page and retry.';
-      const failed = typeof data === 'object' && data !== null && (data as { exit?: unknown }).exit === 1;
+        : `Request failed (HTTP ${res.status}). Reload the page and try again.`;
+      const failed = !res.ok || (typeof data === 'object' && data !== null && (data as { exit?: unknown }).exit === 1);
       setLines((prev) => [...prev, { kind: failed ? 'err' : 'out', text: output }]);
     } catch {
       setLines((prev) => [...prev, { kind: 'err', text: 'request failed — reload the page and retry.' }]);

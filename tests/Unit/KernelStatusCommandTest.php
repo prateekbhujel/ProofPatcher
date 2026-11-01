@@ -101,6 +101,16 @@ final class KernelStatusCommandTest extends TestCase
         $this->assertStringContainsString('kernel:autopilot', $result['display']);
     }
 
+    public function testPrivateSelectionDoesNotSuggestEnablingUnsupportedAutomaticReview(): void
+    {
+        $this->connect('maintainer', [['fullName' => 'acme/private', 'isPrivate' => true]]);
+        KernelCli::setSelectedRepo('acme/private');
+
+        $result = $this->runCommand();
+        $this->assertStringContainsString('Automatic reviews currently support public repositories', $result['display']);
+        $this->assertStringNotContainsString('--enable-review', $result['display']);
+    }
+
     public function testStatsCountOnlyAuthorizedRepos(): void
     {
         $this->connect('maintainer', [['fullName' => 'acme/repo']]);

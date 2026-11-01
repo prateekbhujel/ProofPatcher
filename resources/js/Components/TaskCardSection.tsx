@@ -234,7 +234,7 @@ export function FocusedLocalTaskView({
               onClick={() => router.post('/issues/load-dedicated')}
               className="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs hover:bg-slate-800 transition"
             >
-              Run Local 5-Gate Verifier
+              Load dedicated test case
             </button>
             <button
               type="button"

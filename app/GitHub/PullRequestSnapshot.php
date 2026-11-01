@@ -62,22 +62,7 @@ final readonly class PullRequestSnapshot
 
     public static function isExplicitlyPublic(array $savedSnapshot): bool
     {
-        $pull = $savedSnapshot['snapshot']['pullRequest'] ?? null;
-        if (!is_array($pull)) {
-            return false;
-        }
-
-        // Must explicitly have isPrivate === false
-        if (!array_key_exists('isPrivate', $pull) || $pull['isPrivate'] !== false) {
-            return false;
-        }
-
-        // If visibility key exists, it must be 'public'
-        if (array_key_exists('visibility', $pull) && $pull['visibility'] !== 'public') {
-            return false;
-        }
-
-        return true;
+        return \ProofPatch\Application\Repository\SnapshotVisibilityPolicy::isExplicitlyPublic($savedSnapshot);
     }
 
     private function verifiedDocument(string $id, ?string $expectedDigest): array

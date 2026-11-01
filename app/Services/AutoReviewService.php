@@ -10,7 +10,9 @@ use ProofPatch\Agent\RequestBudget;
 use ProofPatch\GitHub\GitHubAppClient;
 use ProofPatch\GitHub\GitHubTokenStore;
 use ProofPatch\GitHub\PublicPatchPreview;
+use ProofPatch\GitHub\AutomaticInlineCommentPublisher;
 use ProofPatch\Models\AutoReviewResult;
+use ProofPatch\Models\AutomaticInlineSetting;
 use ProofPatch\Models\RepositoryAutoReviewSetting;
 use Symfony\Component\HttpClient\HttpClient;
 
@@ -22,6 +24,7 @@ final class AutoReviewService
         private ?PullRequestReview $reviewAgent = null,
         private ?RequestBudget $budget = null,
         private ?string $basetenKey = null,
+        private ?AutomaticInlineCommentPublisher $automaticCommentPublisher = null,
     ) {
         $this->github ??= new GitHubAppClient(HttpClient::create());
         $this->patchPreviewer ??= new PublicPatchPreview(HttpClient::create());
@@ -72,12 +75,34 @@ final class AutoReviewService
 
             $status = [];
             $selectedRepos = $this->github->listSelectedRepositories($token, $status);
+            if (($status['truncated'] ?? true) || !empty($status['errors'])) {
+                throw new \RuntimeException('GitHub repository permissions could not be verified.');
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('automatic_inline_settings')) {
+                AutomaticInlineSetting::retainOnlyAuthorizedPublic($user['id'], $selectedRepos);
+            }
             foreach ($selectedRepos as $repo) {
                 if (is_array($repo) && is_string($repo['fullName'] ?? null)) {
                     $authorizedRepos[strtolower($repo['fullName'])] = $repo;
                 }
             }
         } catch (\Throwable $e) {
+            // A CLI worker can observe a revoked token without any web session.
+            // Only the identity stored alongside this *same* token may lose its
+            // consent; an arbitrary failed token must not affect another user.
+            $consentCleanupFailed = false;
+            try {
+                $stored = GitHubTokenStore::get();
+                $storedToken = $stored['token'] ?? null;
+                $storedUser = $stored['user']['id'] ?? null;
+                if (is_string($storedToken) && hash_equals(trim($storedToken), $token)
+                    && is_int($storedUser) && $storedUser > 0
+                    && \Illuminate\Support\Facades\Schema::hasTable('automatic_inline_settings')) {
+                    AutomaticInlineSetting::revokeAllForUser($storedUser);
+                }
+            } catch (\Throwable) {
+                $consentCleanupFailed = true;
+            }
             return [
                 'status' => 'auth_revoked',
                 'reposChecked' => 0,
@@ -87,7 +112,8 @@ final class AutoReviewService
                 'reviewsFailed' => 0,
                 'budgetExhausted' => false,
                 'details' => [],
-                'errors' => ['GitHub authorization check failed: '.$e->getMessage()],
+                'errors' => array_merge(['GitHub authorization check failed: '.$e->getMessage()],
+                    $consentCleanupFailed ? ['Automatic comment consent could not be cleared; reconnect and review settings before resuming.'] : []),
             ];
         }
 
@@ -227,6 +253,10 @@ final class AutoReviewService
                 $outcome = $this->reviewPullRevision($repoName, $prNumber, $headSha, $baseSha, $title);
                 if ($outcome['status'] === 'completed') {
                     $summary['reviewsCompleted']++;
+                    $publication = $this->publishAutomaticComment($token, (int) $user['id'], $repoName, $prNumber, $headSha, $baseSha);
+                    if ($publication !== null) {
+                        $outcome['automaticComment'] = $publication;
+                    }
                 } elseif ($outcome['status'] === 'skipped_budget') {
                     $summary['reviewsSkipped']++;
                     $summary['budgetExhausted'] = true;
@@ -241,6 +271,32 @@ final class AutoReviewService
         }
 
         return $summary;
+    }
+
+    /** Posting is a separate, owner-bound opt-in and cannot change review status. */
+    private function publishAutomaticComment(string $token, int $userId, string $repo, int $number, string $head, string $base): ?array
+    {
+        try {
+            if (!AutomaticInlineSetting::enabled($userId, $repo)) return null;
+            $record = AutoReviewResult::findForRevision($repo, $number, $head, $base);
+            if ($record === null || $record->status !== 'completed' || $record->is_public !== true
+                || !is_array($record->file_findings)) return null;
+            $publisher = $this->automaticCommentPublisher ?? new AutomaticInlineCommentPublisher(
+                \Illuminate\Support\Facades\DB::connection()->getPdo(), HttpClient::create()
+            );
+            $result = $publisher->publish($token, $userId,
+                ['repository' => $repo, 'number' => $number, 'headSha' => $head, 'baseSha' => $base],
+                $record->file_findings,
+                is_string($record->recommendation) ? $record->recommendation : null);
+            if ($result === null) return null;
+            $record->update(['published_status' => 'one_inline_comment']);
+            return ['status' => 'posted', 'url' => $result['url']];
+        } catch (\Throwable $error) {
+            // Never retry an ambiguous result or mark the local review failed.
+            $unknown = str_contains($error->getMessage(), 'outcome is unknown');
+            return ['status' => $unknown ? 'unknown' : 'failed',
+                'message' => $unknown ? 'Check GitHub before another attempt.' : 'Automatic comment could not be posted.'];
+        }
     }
 
     /**

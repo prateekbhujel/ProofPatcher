@@ -6,7 +6,6 @@ namespace ProofPatch\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use ProofPatch\Agent\RequestBudget;
 use ProofPatch\Support\AutoReviewPanelProps;
 use ProofPatch\Support\SessionHelper;
 
@@ -17,6 +16,10 @@ use ProofPatch\Support\SessionHelper;
  */
 final class OsStatusController
 {
+    public function __construct(private ?\Hari\Registry $hari = null)
+    {
+    }
+
     public function show(Request $request): JsonResponse
     {
         $auth = SessionHelper::get($request, 'github_auth');
@@ -32,7 +35,7 @@ final class OsStatusController
 
         $budgetText = null;
         try {
-            $budget = RequestBudget::forRuntime()->status();
+            $budget = ($this->hari ?? \Hari\Hari::registry())->resolve('budget.status', 1, 'web')->invoke([]);
             if (is_array($budget)) {
                 $budgetText = '$' . number_format(((int) ($budget['remainingMicros'] ?? 0)) / 1000000, 2) . ' left';
             }
@@ -41,7 +44,7 @@ final class OsStatusController
         $worker = ['isLive' => false, 'status' => 'offline'];
         $findingsCount = 0;
         try {
-            $autoReview = AutoReviewPanelProps::forRequest($request, 1);
+            $autoReview = AutoReviewPanelProps::forRequest($request, 1, $this->hari);
             $worker = [
                 'isLive' => (bool) ($autoReview['worker']['isLive'] ?? false),
                 'status' => is_string($autoReview['worker']['status'] ?? null) ? $autoReview['worker']['status'] : 'offline',

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Plus, MessageSquare, Sparkles, Edit3 } from 'lucide-react';
+import { Plus, MessageSquare } from 'lucide-react';
 import { DiffLine, ReviewFinding, CommentDraft } from './types';
 import { InlineCommentEditor } from './InlineCommentEditor';
+import { FindingCard } from './FindingCard';
 import { InlineDraft } from './InlineDraft';
 
 interface UnifiedDiffTableProps {
@@ -152,79 +153,15 @@ export function UnifiedDiffTable({
 
                 {/* ================= CODERABBIT-STYLE BOT FINDING CARD ================= */}
                 {matchingFinding && (
-                  <tr>
-                    <td colSpan={5} className="p-3 bg-[#f6f8fa] border-y border-[#d0d7de]">
-                      <div className="rounded-lg bg-white border border-[#d0d7de] shadow-2xs p-3.5 space-y-3 font-sans dark:bg-[#141821]">
-                        {/* Bot Header */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-accent-700 text-white flex items-center justify-center text-xs font-bold">
-                              <Sparkles className="w-3.5 h-3.5" />
-                            </div>
-                            <span className="text-xs font-semibold text-[#1f2328]">Muse suggestion</span>
-                            <span className="text-slate-300">·</span>
-                            <span
-                              className={`px-2 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                matchingFinding.status === 'approval'
-                                  ? 'bg-[#dafbe1] text-[#1a7f37]'
-                                  : matchingFinding.status === 'concern'
-                                  ? 'bg-amber-100 text-amber-900 dark:text-amber-200'
-                                  : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
-                              }`}
-                            >
-                              {matchingFinding.status === 'concern'
-                                ? 'Quality · Review Finding'
-                                : matchingFinding.status}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                isEditorOpen
-                                  ? closeEditor()
-                                  : openEditorForLine(
-                                      lineKey,
-                                      matchingDraft?.comment || matchingFinding.comment
-                                    )
-                              }
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-accent-700 hover:text-accent-900 underline dark:text-accent-300"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>
-                                {isEditorOpen
-                                  ? 'Close Editor'
-                                  : matchingDraft
-                                  ? 'Edit Local Draft'
-                                  : 'Adopt into Review Draft'}
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Finding Markdown Text */}
-                        <div className="text-xs text-[#1f2328] leading-relaxed font-normal whitespace-pre-wrap">
-                          {matchingFinding.comment}
-                        </div>
-
-                        {/* Collapsible AI Prompt & Context */}
-                        <details className="group/details text-[11px] text-slate-500 border-t border-slate-100 pt-2 dark:border-slate-800 dark:text-slate-400">
-                          <summary className="cursor-pointer hover:text-slate-800 font-medium select-none flex items-center gap-1 text-slate-600 dark:text-slate-400">
-                            <span>▶ Diff context & anchor verification</span>
-                            <span className="text-2xs text-slate-400 font-mono">
-                              ({matchingFinding.path}:{matchingFinding.lineHint} · SHA:{' '}
-                              {headSha.slice(0, 8)})
-                            </span>
-                          </summary>
-                          <p className="mt-1.5 p-2 rounded bg-slate-50 border border-slate-200 text-slate-700 font-mono text-[11px] leading-relaxed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300">
-                            This suggestion matches line {matchingFinding.lineHint} in the captured patch.
-                            Review its content before posting.
-                          </p>
-                        </details>
-                      </div>
-                    </td>
-                  </tr>
+                  <FindingCard
+                    finding={matchingFinding}
+                    headSha={headSha}
+                    matchingDraft={matchingDraft}
+                    isEditorOpen={isEditorOpen}
+                    lineKey={lineKey}
+                    openEditorForLine={openEditorForLine}
+                    closeEditor={closeEditor}
+                  />
                 )}
 
                 {/* ================= GITHUB-STYLE INLINE COMMENT EDITOR ================= */}

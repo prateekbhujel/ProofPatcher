@@ -85,4 +85,17 @@ final class KernelReviewsCommandTest extends TestCase
 
         $this->assertStringContainsString('No automatic review findings yet.', $this->runCommand([]));
     }
+
+    public function testInvalidStatusReportsUsageNotStoreFailure(): void
+    {
+        $command = new KernelReviewsCommand();
+        $command->setLaravel($this->app);
+        $tester = new CommandTester($command);
+
+        self::assertSame(1, $tester->execute(['--status' => 'bogus']));
+        $output = $tester->getDisplay();
+        self::assertStringContainsString('invalid status', $output);
+        self::assertStringContainsString('--status=', $output);
+        self::assertStringNotContainsString('store unavailable', $output);
+    }
 }

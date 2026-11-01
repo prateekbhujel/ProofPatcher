@@ -133,6 +133,33 @@ final class PrivateTestPullSessionTest extends TestCase
         self::assertSame([], glob($this->directory.'/*'));
     }
 
+    public function testInspectFormUsesAuthenticatedCaptureForTheDedicatedPrivateRepo(): void
+    {
+        foreach (['owner/private-test#3', 'https://github.com/owner/private-test/pull/3'] as $target) {
+            $session = app('session')->driver('array');
+            $session->flush();
+            $session->put('github_auth', ['token' => 'mock-token', 'user' => ['id' => 1]]);
+            $request = $this->request('POST', '/repositories', ['url' => $target], $session);
+            $client = $this->client();
+            (new AuthorizeGithubTasks($client))->handle($request, fn (Request $request) => (new DashboardController($client))->repositories($request));
+            self::assertSame('owner/private-test', $session->get('pullRequest')['repository'] ?? null);
+            self::assertNull($session->get('pullRequestSnapshot'));
+            self::assertSame([], glob($this->directory.'/*'));
+        }
+    }
+
+    public function testInspectFormDoesNotCapturePrivateRepoWithoutGrant(): void
+    {
+        $this->grant = false;
+        $session = app('session')->driver('array');
+        $session->put('github_auth', ['token' => 'mock-token', 'user' => ['id' => 1]]);
+        $request = $this->request('POST', '/repositories', ['url' => 'owner/private-test#3'], $session);
+        $client = $this->client();
+        (new AuthorizeGithubTasks($client))->handle($request, fn (Request $request) => (new DashboardController($client))->repositories($request));
+        self::assertNull($session->get('pullRequest'));
+        self::assertSame([], glob($this->directory.'/*'));
+    }
+
     public function testReviewPageReportsKeyAvailabilityWithoutExposingTheKey(): void
     {
         $previous = getenv('BASETEN_API_KEY');

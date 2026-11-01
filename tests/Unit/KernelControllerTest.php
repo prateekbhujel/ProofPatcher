@@ -114,6 +114,11 @@ final class KernelControllerTest extends TestCase
             'id' => '20261031T100000Z-abcdef123456',
             'decision' => 'VERIFIED',
             'isSimulated' => false,
+            'isolated' => true,
+            'genuineProviderEvidence' => true,
+            'oracleVerified' => true,
+            'gates' => ['baselineReproduced' => true, 'negativeControlCaught' => true, 'candidatePassed' => true,
+                'candidateStaticSafetyPassed' => true, 'allowlistIntegrityIntact' => true],
             'receipt' => ['sha256' => str_repeat('d', 64)],
             'context' => ['repository' => 'acme/repo'],
         ];
@@ -128,6 +133,17 @@ final class KernelControllerTest extends TestCase
         $this->assertSame('active', $publish['stages'][3]['state']);
         $this->assertSame('VERIFIED', $publish['lastVerification']['decision']);
         $this->assertSame(str_repeat('d', 64), $publish['lastVerification']['receiptSha256']);
+
+        $failedGate = $report;
+        $failedGate['gates']['candidatePassed'] = false;
+        $failed = $this->propsFor($base + [
+            'issue_context' => ['repository' => 'acme/repo', 'issueNumber' => 1],
+            'issue_suggestion' => ['path' => 'src/Fix.php'],
+            'issue_verification_report' => $failedGate,
+            'issue_is_dedicated_test_repo' => true,
+        ]);
+        $this->assertSame('verify', $failed['nextStep']['key']);
+        $this->assertNotSame('done', $failed['stages'][2]['state']);
 
         // A simulated run must never become a publish step.
         $simulated = $this->propsFor($base + [

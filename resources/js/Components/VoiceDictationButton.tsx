@@ -20,6 +20,8 @@ export function VoiceDictationButton({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const mountedRef = useRef(false);
+  const transcriptionRef = useRef<AbortController | null>(null);
 
   function cleanupMedia() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -38,10 +40,14 @@ export function VoiceDictationButton({
   }
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
+      transcriptionRef.current?.abort();
+      chunksRef.current = [];
       if (recognitionRef.current) {
         try {
-          recognitionRef.current.stop();
+          recognitionRef.current.abort();
         } catch {
           // ignore
         }
@@ -64,6 +70,10 @@ export function VoiceDictationButton({
     try {
       setStatusMessage('Requesting microphone access for local transcription…');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       mediaStreamRef.current = stream;
       chunksRef.current = [];
 
@@ -71,7 +81,7 @@ export function VoiceDictationButton({
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (ev) => {
-        if (ev.data && ev.data.size > 0) {
+        if (mountedRef.current && ev.data && ev.data.size > 0) {
           chunksRef.current.push(ev.data);
         }
       };
@@ -81,6 +91,8 @@ export function VoiceDictationButton({
           track.stop();
         }
         mediaStreamRef.current = null;
+
+        if (!mountedRef.current) return;
 
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
         if (blob.size === 0) {
@@ -97,6 +109,8 @@ export function VoiceDictationButton({
           const xsrf = match ? decodeURIComponent(match[1]) : '';
           const form = new FormData();
           form.append('audio', blob, 'voice.webm');
+          const controller = new AbortController();
+          transcriptionRef.current = controller;
 
           const res = await fetch('/issues/voice-transcribe', {
             method: 'POST',
@@ -105,8 +119,10 @@ export function VoiceDictationButton({
               'X-XSRF-TOKEN': xsrf,
             },
             body: form,
+            signal: controller.signal,
           });
           const data = await res.json();
+          if (!mountedRef.current || controller.signal.aborted) return;
           if (res.ok && data?.status === 'ok' && typeof data.transcript === 'string' && data.transcript.trim()) {
             const text = data.transcript.trim();
             onTranscript(text);
@@ -117,8 +133,11 @@ export function VoiceDictationButton({
             setStatusMessage('Speech recognition service is currently unavailable. Click Voice to retry or type directly.');
           }
         } catch {
+          if (!mountedRef.current) return;
           setState('error');
           setStatusMessage('Speech recognition service is currently unavailable. Click Voice to retry or type directly.');
+        } finally {
+          transcriptionRef.current = null;
         }
       };
 
@@ -126,6 +145,7 @@ export function VoiceDictationButton({
       setState('listening');
       setStatusMessage('Recording locally… speak now, then click Listening to transcribe.');
     } catch {
+      if (!mountedRef.current) return;
       setState('error');
       setStatusMessage('Microphone permission was denied. Allow mic access in browser settings.');
     }
@@ -168,11 +188,13 @@ export function VoiceDictationButton({
       recognition.lang = 'en-US';
 
       recognition.onstart = () => {
+        if (!mountedRef.current) return;
         setState('listening');
         setStatusMessage('Listening… speak now (click Mic to stop).');
       };
 
       recognition.onresult = (event: any) => {
+        if (!mountedRef.current) return;
         const transcript = Array.from(event.results || [])
           .map((res: any) => res[0]?.transcript ?? '')
           .join(' ')
@@ -184,6 +206,7 @@ export function VoiceDictationButton({
       };
 
       recognition.onerror = (event: any) => {
+        if (!mountedRef.current) return;
         const code = event?.error || 'unknown';
         if (code === 'network' || code === 'service-not-allowed') {
           // Automatically fall back to local on-device Whisper recording when browser cloud speech is unavailable
@@ -201,6 +224,7 @@ export function VoiceDictationButton({
       };
 
       recognition.onend = () => {
+        if (!mountedRef.current) return;
         setState((prev) => (prev === 'listening' && (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') ? 'idle' : prev));
       };
 

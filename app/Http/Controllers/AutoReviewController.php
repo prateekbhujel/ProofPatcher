@@ -6,14 +6,15 @@ namespace ProofPatch\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use ProofPatch\Models\AutoReviewResult;
 use ProofPatch\Models\RepositoryAutoReviewSetting;
 use ProofPatch\Support\WorkerStatusService;
 
 final class AutoReviewController
 {
-    public function __construct(private ?WorkerStatusService $workerStatus = null)
-    {
+    public function __construct(
+        private ?WorkerStatusService $workerStatus = null,
+        private ?\Hari\Registry $hari = null,
+    ) {
         $this->workerStatus ??= new WorkerStatusService();
     }
 
@@ -90,12 +91,22 @@ final class AutoReviewController
         $settings = RepositoryAutoReviewSetting::whereIn('repository', $authorizedList)
             ->get(['repository', 'enabled', 'public_only', 'updated_at']);
 
+        $counts = [];
+        $validRepos = array_values(array_filter($authorizedList, static fn (mixed $repo): bool =>
+            is_string($repo) && preg_match('~\A[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}\z~', $repo) === 1));
+        if ($validRepos !== []) {
+            $outcome = ($this->hari ?? \Hari\Hari::registry())->resolve('review.result', 1, 'web')->invoke([
+                'stats_for' => $validRepos,
+                'match' => 'exact',
+            ]);
+            $counts = is_array($outcome['stats'] ?? null) ? $outcome['stats'] : [];
+        }
         $stats = [
-            'totalReviews' => AutoReviewResult::whereIn('repository', $authorizedList)->count(),
-            'completed' => AutoReviewResult::whereIn('repository', $authorizedList)->where('status', 'completed')->count(),
-            'failed' => AutoReviewResult::whereIn('repository', $authorizedList)->where('status', 'failed')->count(),
-            'skippedPrivate' => AutoReviewResult::whereIn('repository', $authorizedList)->where('status', 'skipped_private')->count(),
-            'skippedBudget' => AutoReviewResult::whereIn('repository', $authorizedList)->where('status', 'skipped_budget')->count(),
+            'totalReviews' => (int) ($counts['total'] ?? 0),
+            'completed' => (int) ($counts['completed'] ?? 0),
+            'failed' => (int) ($counts['failed'] ?? 0),
+            'skippedPrivate' => (int) ($counts['skipped_private'] ?? 0),
+            'skippedBudget' => (int) ($counts['skipped_budget'] ?? 0),
         ];
 
         return response()->json([
@@ -120,8 +131,8 @@ final class AutoReviewController
             ], 401);
         }
 
-        $query = AutoReviewResult::query();
         $authorizedList = array_keys($authorizedRepos);
+        $input = [];
 
         if ($request->filled('repository')) {
             $repo = trim((string) $request->input('repository'));
@@ -131,21 +142,38 @@ final class AutoReviewController
                     'error' => 'Access denied: repository is not authorized in your GitHub session.',
                 ], 403);
             }
-            $query->where('repository', $repo);
+            if (!preg_match('~\A[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}\z~', $repo)) {
+                return response()->json(['results' => []]);
+            }
+            $input['repository'] = $repo;
         } else {
-            $query->whereIn('repository', $authorizedList);
+            $validRepos = array_values(array_filter($authorizedList, static fn (mixed $candidate): bool =>
+                is_string($candidate) && preg_match('~\A[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}\z~', $candidate) === 1));
+            if ($validRepos === []) {
+                return response()->json(['results' => []]);
+            }
+            $input['repositories'] = $validRepos;
         }
 
         if ($request->filled('pull_number')) {
-            $query->where('pull_number', (int) $request->input('pull_number'));
+            $pullNumber = (int) $request->input('pull_number');
+            if ($pullNumber < 1) {
+                return response()->json(['results' => []]);
+            }
+            $input['pull_number'] = $pullNumber;
         }
 
         if ($request->filled('status')) {
-            $query->where('status', trim((string) $request->input('status')));
+            $status = trim((string) $request->input('status'));
+            if (!in_array($status, \ProofPatch\Abilities\ReviewResultSkill::STATUSES, true)) {
+                return response()->json(['results' => []]);
+            }
+            $input['status'] = $status;
         }
 
-        $limit = min(100, max(1, (int) $request->input('limit', 25)));
-        $results = $query->latest('id')->limit($limit)->get();
+        $input['limit'] = min(100, max(1, (int) $request->input('limit', 25)));
+        $outcome = ($this->hari ?? \Hari\Hari::registry())->resolve('review.result', 1, 'web')->invoke($input);
+        $results = is_array($outcome['rows'] ?? null) ? $outcome['rows'] : [];
 
         return response()->json([
             'results' => $results,

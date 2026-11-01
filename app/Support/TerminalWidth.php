@@ -16,7 +16,7 @@ final class TerminalWidth
         try {
             if (extension_loaded('terminal') && class_exists(\Io\Terminal\Terminal::class)) {
                 $size = \Io\Terminal\Terminal::create()->getSize();
-                if ($size !== false && isset($size->cols) && $size->cols >= 60) {
+                if ($size !== false && isset($size->cols) && $size->cols >= 4) {
                     return min(200, (int) $size->cols);
                 }
             }

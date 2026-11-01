@@ -73,7 +73,7 @@ test('automatic reviews show the real worker state and only enable public reposi
   assert.match(html, /Autopilot offline/);
   assert.match(html, /php artisan review:poll --daemon/);
   assert.match(html, /Automatic review for owner\/private[^>]*disabled/);
-  assert.match(html, /not posted to GitHub automatically/);
+  assert.match(html, /Automatic comments require a separate opt-in/);
   const running = render(AutoReviewPanel, { ...props, autoReview: {
     worker: { isLive: true, status: 'running' },
     settings: {
@@ -87,6 +87,18 @@ test('automatic reviews show the real worker state and only enable public reposi
   assert.match(running, /Off \(Private\)/);
   assert.doesNotMatch(running, /Automatic review for owner\/private[^>]*checked/);
   assert.doesNotMatch(running, /Start the local worker/);
+});
+
+test('an uncertain automatic comment is never presented as not posted', () => {
+  const props = { connected: true, repositories: [{ fullName: 'owner/public', isPrivate: false }],
+    pendingRepo: null, error: null, onToggle() {}, onRefresh() {}, autoReview: {
+      worker: { isLive: false, status: 'offline' }, settings: {}, publicOnly: true,
+      recentResults: [{ id: 1, repository: 'owner/public', pull_number: 3, status: 'completed',
+        published_status: 'publication_unknown', reviewed_at: null }],
+    } };
+  const html = render(AutoReviewPanel, props);
+  assert.match(html, /Comment outcome unknown/);
+  assert.doesNotMatch(html, /Not posted to GitHub/);
 });
 
 test('pull request header renders Merge and Close controls for open PRs and disables Merge for drafts', () => {
@@ -139,7 +151,10 @@ const { VerificationPipelineCard } = component('../../resources/js/Components/wo
     if (id === '../ui/VerificationPipeline') return { VerificationPipeline };
     return require(id);
   });
-const { PrReviewTab } = component('../../resources/js/Components/repositories/PrReviewTab.tsx');
+const { loadTsModule } = await import('./helpers/loadTsModule.mjs');
+const budgetCopy = loadTsModule(new URL('../../resources/js/Components/ui/budgetCopy.ts', import.meta.url));
+const { PrReviewTab } = component('../../resources/js/Components/repositories/PrReviewTab.tsx',
+  (id) => (id === '../ui/budgetCopy' ? budgetCopy : require(id)));
 
 test('automatic reviews list recent findings with local-only provenance', () => {
   const repositories = [{ fullName: 'owner/public', isPrivate: false }];

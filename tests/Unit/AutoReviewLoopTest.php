@@ -95,7 +95,7 @@ final class AutoReviewLoopTest extends TestCase
                 'filename' => 'src/Calculator.php',
                 'additions' => 1,
                 'deletions' => 1,
-                'patch' => "@@ -10,3 +10,3 @@\n-  return round(\$val, 1);\n+  return round(\$val, 2);",
+                'patch' => "@@ -10,1 +10,1 @@\n-  return round(\$val, 1);\n+  return round(\$val, 2);",
             ],
         ];
 
@@ -212,6 +212,74 @@ final class AutoReviewLoopTest extends TestCase
         $this->assertCount(1, $record->file_findings);
         $this->assertSame('src/Calculator.php', $record->file_findings[0]['path']);
         $this->assertTrue($record->is_public);
+    }
+
+    public function testAutoCommentNeedsSeparateOwnerOptInAndPostsOnlyOnce(): void
+    {
+        RepositoryAutoReviewSetting::setRepoEnabled('acme/public-repo', true);
+        \ProofPatch\Models\AutomaticInlineSetting::setForOwner(12345, 'acme/public-repo', true);
+        $head = str_repeat('1', 40);
+        $base = str_repeat('2', 40);
+        $open = [[
+            'number' => 42, 'title' => 'Fix calculation', 'state' => 'open',
+            'head' => ['ref' => 'fix', 'sha' => $head],
+            'base' => ['ref' => 'main', 'sha' => $base, 'repo' => ['private' => false, 'visibility' => 'public']],
+            'user' => ['login' => 'contributor'],
+        ]];
+        $modelBody = json_encode([
+            'summary' => 'Please check rounding.', 'riskLevel' => 'medium', 'recommendation' => 'discuss',
+            'fileFindings' => [['path' => 'src/Calculator.php', 'status' => 'concern', 'lineHint' => 10, 'comment' => 'Could this handle null input?']],
+        ], JSON_THROW_ON_ERROR);
+        $model = new MockHttpClient([new MockResponse(json_encode([
+            'model' => PullRequestReview::MODEL,
+            'choices' => [['finish_reason' => 'stop', 'message' => ['content' => $modelBody]]],
+            'usage' => ['prompt_tokens' => 350, 'completion_tokens' => 95],
+        ]))]);
+        $posts = 0;
+        $http = new MockHttpClient(function (string $method, string $url) use (&$posts, $head, $base): MockResponse {
+            $path = parse_url($url, PHP_URL_PATH);
+            if ($method === 'POST') { ++$posts; return new MockResponse('{"id":321}', ['http_code' => 201]); }
+            if ($path === '/user') return new MockResponse('{"id":12345,"login":"acme"}');
+            if ($path === '/user/installations') return new MockResponse('{"installations":[{"id":101}]}');
+            if ($path === '/user/installations/101/repositories') return new MockResponse(json_encode(['repositories' => [[
+                'id' => 100, 'name' => 'public-repo', 'full_name' => 'acme/public-repo', 'owner' => ['login' => 'acme'],
+                'private' => false, 'visibility' => 'public', 'default_branch' => 'main',
+            ]]]));
+            if ($path === '/repos/acme/public-repo/pulls/42') return new MockResponse(json_encode([
+                'number' => 42, 'state' => 'open', 'changed_files' => 1, 'head' => ['sha' => $head],
+                'base' => ['sha' => $base, 'repo' => ['private' => false, 'visibility' => 'public']],
+            ]));
+            if ($path === '/repos/acme/public-repo/pulls/42/files') return new MockResponse(json_encode([[
+                'filename' => 'src/Calculator.php', 'additions' => 1, 'deletions' => 1,
+                'patch' => "@@ -10,1 +10,1 @@\n-  return round(\$val, 1);\n+  return round(\$val, 2);",
+            ]]));
+            throw new \RuntimeException('Unexpected request');
+        });
+        $publisher = new \ProofPatch\GitHub\AutomaticInlineCommentPublisher(
+            \Illuminate\Support\Facades\DB::connection()->getPdo(), $http, static fn (string $token): bool => true
+        );
+        $service = new AutoReviewService(
+            github: $this->mockGitHubClient($open), patchPreviewer: $this->mockPatchPreviewer(),
+            reviewAgent: new PullRequestReview($model, $this->budget), budget: $this->budget,
+            basetenKey: 'valid-test-baseten-key-123456789', automaticCommentPublisher: $publisher,
+        );
+        $result = $service->poll('mock-token-xyz');
+        self::assertSame(1, $result['reviewsCompleted']);
+        self::assertSame(1, $posts, json_encode($result));
+        self::assertSame('posted', $result['details'][0]['automaticComment']['status']);
+        self::assertSame('one_inline_comment', AutoReviewResult::findForRevision('acme/public-repo', 42, $head, $base)->published_status);
+    }
+
+    public function testWorkerRevokesCommentConsentWhenRepositoryDisappearsFromGrant(): void
+    {
+        \ProofPatch\Models\AutomaticInlineSetting::setForOwner(12345, 'acme/lost-repo', true);
+        $service = new AutoReviewService(github: $this->mockGitHubClient(), budget: $this->budget);
+        self::assertSame('ok', $service->poll('mock-token-xyz')['status']);
+        self::assertFalse(\ProofPatch\Models\AutomaticInlineSetting::enabled(12345, 'acme/lost-repo'));
+        // Re-adding the grant later is not itself consent to post again.
+        $regranted = new AutoReviewService(github: $this->mockGitHubClient([], 'acme/lost-repo'), budget: $this->budget);
+        self::assertSame('ok', $regranted->poll('mock-token-xyz')['status']);
+        self::assertFalse(\ProofPatch\Models\AutomaticInlineSetting::enabled(12345, 'acme/lost-repo'));
     }
 
     public function testBaseShaChangeDetection(): void
@@ -658,6 +726,29 @@ final class AutoReviewLoopTest extends TestCase
         $this->assertSame(0, $anonProps['autoReview']['stats']['totalReviews']);
     }
 
+    public function testDurableAttemptLedgerReportsUnknownAfterLostResponseOrWorkerCrash(): void
+    {
+        $head = str_repeat('a', 40);
+        $base = str_repeat('b', 40);
+        $record = AutoReviewResult::create([
+            'repository' => 'acme/public-repo', 'pull_number' => 42, 'head_sha' => $head,
+            'base_sha' => $base, 'status' => 'completed', 'is_public' => true,
+            'published_status' => 'local_only',
+        ]);
+        $key = \ProofPatch\GitHub\AutomaticInlineCommentPublisher::revisionKey('ACME/PUBLIC-REPO', 42, $head, $base);
+        \Illuminate\Support\Facades\DB::table('automatic_inline_attempts')->insert([
+            'revision_key' => $key, 'user_id' => 7, 'repository' => 'acme/public-repo',
+            'pull_number' => 42, 'status' => 'uncertain',
+        ]);
+        self::assertSame('publication_unknown', $record->fresh()->published_status);
+        self::assertSame('publication_unknown', $record->fresh()->toArray()['published_status']);
+
+        // GitHub confirmation may be stored before the worker updates its review.
+        \Illuminate\Support\Facades\DB::table('automatic_inline_attempts')->where('revision_key', $key)
+            ->update(['status' => 'posted', 'comment_id' => 123]);
+        self::assertSame('one_inline_comment', $record->fresh()->published_status);
+    }
+
     public function testDashboardMarksAutomaticReviewSource(): void
     {
         $dashboard = new \ProofPatch\Http\Controllers\DashboardController();
@@ -837,6 +928,33 @@ final class AutoReviewLoopTest extends TestCase
         $this->assertSame('auth_revoked', $result['status']);
         $this->assertSame(0, $result['reviewsCompleted']);
         $this->assertNotEmpty($result['errors']);
+    }
+
+    public function testRevokedCliTokenClearsOnlyItsBoundOwnersConsentAndRegrantDoesNotRestoreIt(): void
+    {
+        \ProofPatch\GitHub\GitHubTokenStore::save('stored-revoked-token', ['id' => 12345, 'login' => 'maintainer'], []);
+        \ProofPatch\Models\AutomaticInlineSetting::setForOwner(12345, 'acme/public-repo', true);
+        \ProofPatch\Models\AutomaticInlineSetting::setForOwner(77, 'other/repo', true);
+
+        try {
+            $makeRevoked = fn () => new AutoReviewService(github: new GitHubAppClient(new MockHttpClient([
+                new MockResponse('{"message":"Bad credentials"}', ['http_code' => 401]),
+            ])), budget: $this->budget);
+
+            // A different failed token must never revoke the stored account's consent.
+            self::assertSame('auth_revoked', $makeRevoked()->poll('foreign-token')['status']);
+            self::assertTrue(\ProofPatch\Models\AutomaticInlineSetting::enabled(12345, 'acme/public-repo'));
+            self::assertSame('auth_revoked', $makeRevoked()->poll('stored-revoked-token')['status']);
+            self::assertFalse(\ProofPatch\Models\AutomaticInlineSetting::enabled(12345, 'acme/public-repo'));
+            self::assertTrue(\ProofPatch\Models\AutomaticInlineSetting::enabled(77, 'other/repo'));
+
+            // A successful later grant is not a fresh opt-in to publish comments.
+            $service = new AutoReviewService(github: $this->mockGitHubClient(), budget: $this->budget);
+            self::assertSame('ok', $service->poll('new-token')['status']);
+            self::assertFalse(\ProofPatch\Models\AutomaticInlineSetting::enabled(12345, 'acme/public-repo'));
+        } finally {
+            \ProofPatch\GitHub\GitHubTokenStore::clear();
+        }
     }
 
     public function testDeauthorizedRepositoryIsSkipped(): void

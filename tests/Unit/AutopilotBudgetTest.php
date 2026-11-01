@@ -37,7 +37,7 @@ final class AutopilotBudgetTest extends TestCase
 
         $this->assertNull(AutopilotBudget::blockingReason(9, 0, 50000));
         $this->assertSame(
-            'Autopilot attempt cap reached (10 attempts).',
+            'Autopilot request cap reached (10 model requests).',
             AutopilotBudget::blockingReason(10, 0, 50000)
         );
     }

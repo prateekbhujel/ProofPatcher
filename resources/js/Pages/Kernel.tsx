@@ -1,5 +1,5 @@
-import React from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Head, router } from '@inertiajs/react';
 import { MenuBar } from '../Components/os/MenuBar';
 import { OsDesktop } from '../Components/os/OsDesktop';
 import {
@@ -35,6 +35,21 @@ interface KernelProps {
  */
 export default function Kernel(props: KernelProps) {
   const { connected, user, nextStep } = props;
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshDesktop = useCallback(() => {
+    if (refreshTimer.current !== null) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      refreshTimer.current = null;
+      router.reload({ only: [
+        'connected', 'user', 'reposCount', 'selectedRepo', 'openIssues', 'openPulls',
+        'provider', 'budget', 'autopilotCaps', 'worker', 'autoStats', 'recentFindings',
+        'nextStep', 'stages', 'lastVerification', 'publishedPr',
+      ] });
+    }, 100);
+  }, []);
+  useEffect(() => () => {
+    if (refreshTimer.current !== null) clearTimeout(refreshTimer.current);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
@@ -62,6 +77,7 @@ export default function Kernel(props: KernelProps) {
           stages={props.stages}
           lastVerification={props.lastVerification}
           publishedPr={props.publishedPr}
+          onStatusChanged={refreshDesktop}
         />
       </main>
     </div>

@@ -72,7 +72,7 @@ final readonly class DedicatedTestRepoFetcher
 
         // 1. Fetch Issue #1
         $issueUrl = 'https://api.github.com/repos/' . DedicatedTestRepo::requireName() . '/issues/' . self::ISSUE_NUMBER;
-        $issueRes = $client->request('GET', $issueUrl, ['headers' => $headers, 'timeout' => 15]);
+        $issueRes = $client->request('GET', $issueUrl, ['headers' => $headers, 'timeout' => 15, 'max_duration' => 20, 'max_redirects' => 0]);
         $status = $issueRes->getStatusCode();
         if ($status !== 200) {
             throw new \RuntimeException("Failed to fetch issue from GitHub: HTTP {$status}. Check repository access token.");
@@ -95,7 +95,7 @@ final readonly class DedicatedTestRepoFetcher
 
         // 2. Fetch src/OrderTotal.php at base commit ref
         $srcApiUrl = 'https://api.github.com/repos/' . DedicatedTestRepo::requireName() . '/contents/' . self::SOURCE_PATH . '?ref=' . DedicatedTestRepo::requireBaseCommit();
-        $srcRes = $client->request('GET', $srcApiUrl, ['headers' => $headers, 'timeout' => 15]);
+        $srcRes = $client->request('GET', $srcApiUrl, ['headers' => $headers, 'timeout' => 15, 'max_duration' => 20, 'max_redirects' => 0]);
         if ($srcRes->getStatusCode() !== 200) {
             throw new \RuntimeException("Failed to fetch source file from GitHub at commit " . DedicatedTestRepo::requireBaseCommit());
         }
@@ -116,7 +116,7 @@ final readonly class DedicatedTestRepoFetcher
 
         // 3. Fetch tests/order_total.php at base commit ref
         $testApiUrl = 'https://api.github.com/repos/' . DedicatedTestRepo::requireName() . '/contents/' . self::TEST_PATH . '?ref=' . DedicatedTestRepo::requireBaseCommit();
-        $testRes = $client->request('GET', $testApiUrl, ['headers' => $headers, 'timeout' => 15]);
+        $testRes = $client->request('GET', $testApiUrl, ['headers' => $headers, 'timeout' => 15, 'max_duration' => 20, 'max_redirects' => 0]);
         if ($testRes->getStatusCode() !== 200) {
             throw new \RuntimeException("Failed to fetch test harness file from GitHub at commit " . DedicatedTestRepo::requireBaseCommit());
         }

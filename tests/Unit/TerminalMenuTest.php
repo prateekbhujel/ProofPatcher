@@ -63,6 +63,21 @@ final class TerminalMenuTest extends TestCase
         $this->assertStringContainsString('Quit', explode("\n", $frame)[2] ?? '');
     }
 
+    public function testWideDashboardShowsActionDetailsWithoutWrapping(): void
+    {
+        $options = [
+            ['key' => 'one', 'label' => 'Review', 'detail' => 'Review a public pull request'],
+            ['key' => 'two', 'label' => '使用状況', 'detail' => str_repeat('x', 80)],
+        ];
+        $wide = TerminalMenu::render($options, 0, 80);
+        $this->assertStringContainsString('Review a public pull request', $wide);
+        foreach (explode("\n", $wide) as $line) {
+            $plain = preg_replace('/\e\[[0-9;]*m/', '', $line) ?? $line;
+            $this->assertLessThanOrEqual(80, mb_strwidth($plain, 'UTF-8'));
+        }
+        $this->assertStringNotContainsString('Review a public pull request', TerminalMenu::render($options, 0, 40));
+    }
+
     public function testRenderEmptyOptions(): void
     {
         $this->assertSame('', TerminalMenu::render([], 0));
@@ -120,6 +135,9 @@ final class TerminalMenuTest extends TestCase
                     'down' => \Io\Terminal\Key::Down,
                     'enter' => \Io\Terminal\Key::Enter,
                     'esc' => \Io\Terminal\Key::Escape,
+                    'home' => \Io\Terminal\Key::Home,
+                    'end' => \Io\Terminal\Key::End,
+                    'resize' => \Io\Terminal\Key::Resize,
                     default => $next,
                 };
             }
@@ -173,12 +191,51 @@ final class TerminalMenuTest extends TestCase
         $this->assertSame('connect', $choice);
     }
 
+    public function testChooseReturnsToTheLastAction(): void
+    {
+        $this->requireTerminalExtension();
+        $term = $this->scriptedTerm(['enter']);
+
+        $this->assertSame('connect', TerminalMenu::choose($term, 'Actions', $this->options(), 'connect'));
+        $this->assertStringContainsString('❯ 2. Connect GitHub', implode('', $term->written));
+    }
+
     public function testChooseSupportsVimKeys(): void
     {
         $this->requireTerminalExtension();
 
         $this->assertSame('connect', TerminalMenu::choose($this->scriptedTerm(['j', 'enter']), 'Pick', $this->options()));
         $this->assertSame('quit', TerminalMenu::choose($this->scriptedTerm(['k', 'enter']), 'Pick', $this->options()));
+    }
+
+    public function testDashboardNavigationHandlesHomeEndAndResize(): void
+    {
+        $this->requireTerminalExtension();
+        $term = $this->scriptedTerm(['end', 'resize', 'home', 'down', 'enter']);
+
+        $this->assertSame('connect', TerminalMenu::choose($term, 'Actions', $this->options()));
+        $this->assertStringContainsString('PROOFPATCHER', implode('', $term->written));
+    }
+
+    public function testDisconnectedInputRestoresTerminal(): void
+    {
+        $term = new class {
+            public bool $restored = false;
+            public array $written = [];
+            public function enableRawMode(): object { return new \stdClass(); }
+            public function readKey(): bool { return false; }
+            public function write(string $data): void { $this->written[] = $data; }
+            public function restoreMode(mixed $token): void { $this->restored = true; }
+        };
+
+        try {
+            TerminalMenu::choose($term, 'Actions', $this->options());
+            $this->fail('Expected disconnected input to fail.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('input is unavailable', $e->getMessage());
+            $this->assertTrue($term->restored);
+            $this->assertStringContainsString("\e[?25h", implode('', $term->written));
+        }
     }
 
     public function testChooseQuitsOnQEscapeAndCtrlC(): void
@@ -188,5 +245,42 @@ final class TerminalMenuTest extends TestCase
         $this->assertNull(TerminalMenu::choose($this->scriptedTerm(['q']), 'Pick', $this->options()));
         $this->assertNull(TerminalMenu::choose($this->scriptedTerm(['esc']), 'Pick', $this->options()));
         $this->assertNull(TerminalMenu::choose($this->scriptedTerm(["\x03"]), 'Pick', $this->options()));
+    }
+
+    public function testChooseReportsWhenRawModeCannotStart(): void
+    {
+        $terminal = new class {
+            public function enableRawMode(): bool { return false; }
+        };
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Could not enable terminal input');
+        TerminalMenu::choose($terminal, 'Pick', $this->options());
+    }
+
+    public function testRenderTruncatesLongRowsAtNarrowWidth(): void
+    {
+        $options = [['key' => 'a', 'label' => str_repeat('x', 60)]];
+        $frame = TerminalMenu::render($options, 0, 20);
+        $plain = preg_replace('/\e\[[0-9;]*m/', '', $frame) ?? $frame;
+        foreach (explode("\n", $plain) as $line) {
+            $this->assertLessThanOrEqual(20, mb_strwidth($line, 'UTF-8'));
+        }
+        $this->assertStringContainsString('…', $frame);
+        $this->assertStringContainsString(str_repeat('x', 60), TerminalMenu::render($options, 0));
+        $wide = TerminalMenu::render([['key' => 'a', 'label' => str_repeat('界', 20)]], 0, 20);
+        $plainWide = preg_replace('/\e\[[0-9;]*m/', '', $wide) ?? $wide;
+        $this->assertLessThanOrEqual(20, mb_strwidth($plainWide, 'UTF-8'));
+    }
+
+    public function testFrameKeepsOneLinePerOptionAtNarrowWidth(): void
+    {
+        $options = [
+            ['key' => 'a', 'label' => str_repeat('y', 50)],
+            ['key' => 'b', 'label' => str_repeat('z', 50)],
+        ];
+        $frame = TerminalMenu::frame($options, 0, 24);
+        $this->assertSame(2, substr_count($frame, "\e[K"));
+        $this->assertStringContainsString('…', $frame);
     }
 }

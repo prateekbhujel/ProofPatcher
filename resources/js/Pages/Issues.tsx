@@ -26,10 +26,12 @@ import { DisconnectedOnboardingView } from '../Components/workbench/Disconnected
 import { WorkbenchSidebar } from '../Components/workbench/WorkbenchSidebar';
 import { GuidedStepBar } from '../Components/workbench/GuidedStepBar';
 import { IssueHeaderCard } from '../Components/workbench/IssueHeaderCard';
+import { WorkbenchScreenshot } from '../Components/workbench/WorkbenchScreenshot';
 import { ProposalDiffCard } from '../Components/workbench/ProposalDiffCard';
 import { VerificationPipelineCard } from '../Components/workbench/VerificationPipelineCard';
 import { TaskComposerFooter } from '../Components/workbench/TaskComposerFooter';
 import { COMPOSER_DRAFT_KEY } from '../Components/os/DesktopWindows';
+import { useKernelPrompt } from '../hooks/useKernelPrompt';
 
 export type { IssueTriage } from '../Components/workbench/types';
 
@@ -63,7 +65,9 @@ interface Props {
   cardProposalResult?: CardProposalResult | null;
   githubConnection?: GitHubConnectionData | null;
   modelContextAllowed?: boolean;
+  privateModelConsentRequired?: boolean;
   modelKeyAvailable?: boolean;
+  hasScreenshot?: boolean;
 }
 
 export default function Issues({
@@ -86,7 +90,9 @@ export default function Issues({
   cardProposalResult = null,
   githubConnection = null,
   modelContextAllowed = false,
+  privateModelConsentRequired = false,
   modelKeyAvailable = false,
+  hasScreenshot = false,
 }: Props) {
   const context = suppliedContext;
   const capture = useForm({ issue_url: '', path: '' });
@@ -106,7 +112,7 @@ export default function Issues({
   const [isSubmittingDevice, setIsSubmittingDevice] = useState(false);
   const [deviceClientIdInput, setDeviceClientIdInput] = useState(githubConnection?.clientId || '');
   const [copiedBotComment, setCopiedBotComment] = useState(false);
-  const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
+
 
   // Pre-fill file paths only when an issue's own title or body explicitly references a relative file path
   useEffect(() => {
@@ -174,6 +180,18 @@ export default function Issues({
     if (context) return 'workbench';
     if (localTasks.length > 0) return 'local-card';
     return 'new';
+  });
+
+  const { commandFeedback, activeOpenPull, executePrompt } = useKernelPrompt({
+    githubConnection,
+    context,
+    preview,
+    isDedicatedTestRepo,
+    isOwnedFixture,
+    setPublishingPr,
+    setVerifying,
+    setSending,
+    setViewMode,
   });
 
   const isConnected = Boolean(githubConnection?.isConnected && githubConnection.user);
@@ -323,12 +341,12 @@ export default function Issues({
     );
   }
 
-  function requestSuggestion(event: React.FormEvent, useOfflineReference = false) {
+  function requestSuggestion(event: React.FormEvent, useOfflineReference = false, privateConsent = false) {
     event.preventDefault();
     const canSubmit = !sending && Boolean(preview) && (
       useOfflineReference
         ? isDedicatedTestRepo || isOwnedFixture
-        : modelContextAllowed && Boolean(budget?.canRequest && modelKeyAvailable)
+        : modelContextAllowed && (!privateModelConsentRequired || privateConsent) && Boolean(budget?.canRequest && modelKeyAvailable)
     );
     if (!canSubmit) return;
     router.post(
@@ -338,6 +356,7 @@ export default function Issues({
         approved: true,
         approval_token: preview!.approvalToken,
         offline_reference: useOfflineReference,
+        private_consent: privateConsent,
       },
       {
         onStart: () => setSending(true),
@@ -479,120 +498,6 @@ export default function Issues({
     );
   }
 
-  const activeOpenPull = useMemo(() => {
-    const pulls = githubConnection?.repoPulls ?? [];
-    if (!context) return pulls.find((p) => p.state === 'open' && !(p as any).isDraft) || null;
-    return (
-      pulls.find(
-        (p) =>
-          p.state === 'open' &&
-          !(p as any).isDraft &&
-          (p.head.startsWith(`proofpatch/${context.issueNumber}-`) || p.title.includes(`#${context.issueNumber}`))
-      ) ||
-      pulls.find((p) => p.state === 'open' && !(p as any).isDraft) ||
-      null
-    );
-  }, [githubConnection?.repoPulls, context?.issueNumber]);
-
-  function handleExecutePrompt(promptText: string) {
-    const q = promptText.trim().toLowerCase();
-    if (!q) return;
-
-    if (/\bmerge\b/.test(q)) {
-      const prMatch = q.match(/#?(\d+)/);
-      const targetPr = prMatch
-        ? (githubConnection?.repoPulls ?? []).find((p) => p.number === Number(prMatch[1]))
-        : activeOpenPull;
-      if (targetPr && targetPr.state === 'open') {
-        setCommandFeedback(`Merging PR #${targetPr.number} (${targetPr.head})…`);
-        router.post(
-          '/repositories/pull/merge',
-          {
-            repository: context?.repository || githubConnection?.selectedRepo,
-            number: targetPr.number,
-            head_sha: targetPr.headSha,
-            method: 'squash',
-          },
-          { onFinish: () => setCommandFeedback(null) }
-        );
-        return;
-      }
-      setCommandFeedback('No open ready-to-merge PR found on this repository. Opening PR Dashboard…');
-      router.visit('/repositories');
-      return;
-    }
-
-    if (/\bclose\b/.test(q)) {
-      const prMatch = q.match(/#?(\d+)/);
-      const targetPr = prMatch
-        ? (githubConnection?.repoPulls ?? []).find((p) => p.number === Number(prMatch[1]))
-        : activeOpenPull;
-      if (targetPr && targetPr.state === 'open') {
-        setCommandFeedback(`Closing PR #${targetPr.number}…`);
-        router.post(
-          '/repositories/pull/close',
-          {
-            repository: context?.repository || githubConnection?.selectedRepo,
-            number: targetPr.number,
-            head_sha: targetPr.headSha,
-          },
-          { onFinish: () => setCommandFeedback(null) }
-        );
-        return;
-      }
-    }
-
-    if (/\b(create|open|publish)\b.*\b(pr|pull|draft)\b/.test(q)) {
-      setCommandFeedback('Publishing verified PR branch to GitHub…');
-      setPublishingPr(true);
-      router.post('/issues/publish-pr', {}, { onFinish: () => { setPublishingPr(false); setCommandFeedback(null); } });
-      return;
-    }
-
-    if (/\b(verify|check|test|gate)\b/.test(q)) {
-      setCommandFeedback('Running 5-Gate isolated verification checks…');
-      setVerifying(true);
-      router.post('/issues/verify', {}, { onFinish: () => { setVerifying(false); setCommandFeedback(null); } });
-      return;
-    }
-
-    if (/\b(propose|fix|repair|solve)\b/.test(q) && preview) {
-      setCommandFeedback('Generating candidate repair…');
-      router.post(
-        '/issues/propose',
-        {
-          digest: preview.digest,
-          approved: true,
-          approval_token: preview.approvalToken,
-          offline_reference: isDedicatedTestRepo || isOwnedFixture,
-        },
-        {
-          onStart: () => setSending(true),
-          onFinish: () => { setSending(false); setCommandFeedback(null); },
-        }
-      );
-      return;
-    }
-
-    // Otherwise create & open a new Automation Task from the user's prompt
-    if (githubConnection?.selectedRepo) {
-      setCommandFeedback('Creating automation task from prompt…');
-      router.post(
-        '/issues/tasks',
-        {
-          repository: githubConnection.selectedRepo,
-          title: promptText.trim().slice(0, 100),
-          description: promptText.trim(),
-        },
-        {
-          onSuccess: () => {
-            setCommandFeedback('Automation task created.');
-            setViewMode('local-card');
-          },
-        }
-      );
-    }
-  }
 
   return (
     <AppLayout activeNav="issues">
@@ -641,7 +546,9 @@ export default function Issues({
                           : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
                       }`}
                     >
-                      {modelContextAllowed
+                      {privateModelConsentRequired
+                        ? 'Private test · consent required'
+                        : modelContextAllowed
                         ? 'Public · Muse + 5-Gate Co-Maintainer'
                         : 'Private · Local Verification Only (No external model transmission)'}
                     </span>
@@ -720,6 +627,8 @@ export default function Issues({
                     completeness={completeness}
                   />
 
+                  <WorkbenchScreenshot hasScreenshot={hasScreenshot} />
+
                   {/* Proposal & Inline Diff */}
                   <ProposalDiffCard
                     context={context}
@@ -727,6 +636,7 @@ export default function Issues({
                     suggestion={suggestion}
                     sending={sending}
                     modelContextAllowed={modelContextAllowed}
+                    privateModelConsentRequired={privateModelConsentRequired}
                     modelKeyAvailable={modelKeyAvailable}
                     isDedicatedTestRepo={isDedicatedTestRepo}
                     isOwnedFixture={isOwnedFixture}
@@ -771,7 +681,7 @@ export default function Issues({
               onSaveDraft={handleSaveDraft}
               isSaving={draftForm.processing}
               draft={draft}
-              onExecutePrompt={handleExecutePrompt}
+              onExecutePrompt={executePrompt}
               activeOpenPull={activeOpenPull}
               commandFeedback={commandFeedback}
             />

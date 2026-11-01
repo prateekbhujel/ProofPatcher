@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppWindow as AppWindowIcon, ArrowRight } from 'lucide-react';
 import { applyThemePreference } from '../ThemeToggle';
+import { budgetShortLine, budgetStatusLine } from '../ui/budgetCopy';
 import { APP_FOLDERS, RAIL_APPS } from './apps';
 import { AppDock } from './AppDock';
 import { BootScreen } from './BootScreen';
@@ -106,13 +107,13 @@ export interface OsDesktopProps {
 export function bootLinesFor(props: {
   connected: boolean;
   reposCount: number;
-  provider: { model: string };
+  provider: { model: string; keyReady: boolean };
   worker: { isLive: boolean; status: string };
 }): string[] {
   return [
     `[ok] adapter    ${props.connected ? `github · ${props.reposCount} ${props.reposCount === 1 ? 'repo' : 'repos'}` : 'github · not connected'}`,
-    `[ok] muse       ${props.provider.model}`,
-    '[ok] verifier   sandbox receipts armed',
+    `${props.provider.keyReady ? '[ok]' : '[--]'} muse       ${props.provider.model} · ${props.provider.keyReady ? 'key configured' : 'key missing'}`,
+    '[--] verifier   fixture checks available',
     props.worker.isLive ? `[ok] autopilot  ${props.worker.status}` : '[--] autopilot  offline — start with review:poll --daemon',
   ];
 }
@@ -127,7 +128,7 @@ function terminalLinesFor(props: OsDesktopProps): TerminalLine[] {
       ? { text: `✓ muse      ${props.provider.label} · ${props.provider.model} · key ready`, tone: 'ok' }
       : { text: `! muse      ${props.provider.label} · ${props.provider.model} · key missing`, tone: 'warn' },
     props.budget
-      ? { text: `✓ budget    ${props.budget.attempts} of ${props.budget.maxAttempts} attempts · $${(props.budget.remainingMicros / 1000000).toFixed(2)} left`, tone: 'ok' }
+      ? { text: `✓ budget    ${budgetStatusLine(props.budget)}`, tone: 'ok' }
       : { text: '○ budget    unavailable', tone: 'muted' },
     props.worker.isLive
       ? { text: `● autopilot ${props.worker.status} — ${props.autoStats.completed} reviewed · ${props.autoStats.failed} failed`, tone: 'info' }
@@ -139,19 +140,27 @@ function terminalLinesFor(props: OsDesktopProps): TerminalLine[] {
 export interface AppFrameHooks {
   onOpenApp: (href: string) => void;
   onContextMenu: (x: number, y: number) => void;
+  onStatusChanged?: () => void;
 }
 
 /** An app window body: the page embedded chromeless so windows never nest. */
 export function AppFrame({ href, title, hooks }: { href: string; title: string; hooks?: AppFrameHooks }) {
   const src = href.includes('?') ? `${href}&embed=1` : `${href}?embed=1`;
+  const [loading, setLoading] = useState(true);
   return (
-    <iframe
-      src={src}
-      title={`${title} app`}
-      loading="lazy"
-      onLoad={hooks ? (event) => wireFrame(event.currentTarget, hooks) : undefined}
-      className="block h-full w-full border-0 bg-[var(--bg)]"
-    />
+    <div className="relative h-full w-full">
+      {loading && <div role="status" className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[var(--bg)] text-xs text-[var(--fg-muted)]">Loading {title}…</div>}
+      <iframe
+        src={src}
+        title={`${title} app`}
+        loading="lazy"
+        onLoad={(event) => {
+          setLoading(false);
+          if (hooks) wireFrame(event.currentTarget, hooks);
+        }}
+        className="block h-full w-full border-0 bg-[var(--bg)]"
+      />
+    </div>
   );
 }
 
@@ -160,9 +169,9 @@ export function AppFrame({ href, title, hooks }: { href: string; title: string; 
  * app windows instead of navigating inside the frame, and right-clicks
  * surface the desktop menu. Cross-origin frames keep native behavior.
  */
-function wireFrame(
+export function wireFrame(
   frame: HTMLIFrameElement | null,
-  hooks: { onOpenApp: (href: string) => void; onContextMenu: (x: number, y: number) => void },
+  hooks: AppFrameHooks,
 ) {
   if (!frame) return;
   let source: Document | null = null;
@@ -174,6 +183,11 @@ function wireFrame(
   if (!source || (source as Document & { __proofpatchWired?: boolean }).__proofpatchWired) return;
   try {
     (source as Document & { __proofpatchWired?: boolean }).__proofpatchWired = true;
+    // Inertia updates stay inside the same document, so iframe load alone does
+    // not tell the desktop when an embedded connect, logout or task completes.
+    // Refresh from the server; do not trust state supplied by the frame.
+    source.addEventListener('inertia:success', () => hooks.onStatusChanged?.());
+    hooks.onStatusChanged?.();
     source.addEventListener('click', (event) => {
       const anchor = (event.target as HTMLElement).closest?.('a[href]') as HTMLAnchorElement | null;
       if (!anchor) return;
@@ -200,7 +214,7 @@ function wireFrame(
  * every native window's content stacked (no-JS still reads everything);
  * desktop clients get the floating window manager.
  */
-export function OsDesktop(props: OsDesktopProps) {
+export function OsDesktop(props: OsDesktopProps & { onStatusChanged?: () => void }) {
   // Mission + console greet; findings + engine + notes are one click away in
   // the rail, taskbar, start menu, or right-click menu. Two windows read.
   const [snapshot] = useState<DesktopSnapshot>(readSnapshot);
@@ -300,7 +314,7 @@ export function OsDesktop(props: OsDesktopProps) {
   };
 
   const budgetText = props.budget
-    ? `$${(props.budget.remainingMicros / 1000000).toFixed(2)} left`
+    ? budgetShortLine(props.budget)
     : 'budget n/a';
   const statusLine = `${budgetText} · ${props.worker.isLive ? `autopilot ${props.worker.status}` : 'autopilot offline'} · ${
     props.connected ? `@${props.userLogin ?? '…'}` : 'not connected'
@@ -406,7 +420,7 @@ export function OsDesktop(props: OsDesktopProps) {
         key={`${href}:${themeNonce}`}
         href={href}
         title={appTitle(href)}
-        hooks={{ onOpenApp: openApp, onContextMenu: (x, y) => setCtx({ x, y }) }}
+        hooks={{ onOpenApp: openApp, onContextMenu: (x, y) => setCtx({ x, y }), onStatusChanged: props.onStatusChanged }}
       />,
       { flush: true, wide: true },
     );

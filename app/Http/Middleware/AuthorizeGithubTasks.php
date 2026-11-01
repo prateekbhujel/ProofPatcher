@@ -23,6 +23,7 @@ final class AuthorizeGithubTasks
     {
         $session = $request->session();
         $auth = $session->get('github_auth');
+        $previousUserId = is_int($auth['user']['id'] ?? null) ? $auth['user']['id'] : null;
         $token = is_array($auth) && is_string($auth['token'] ?? null) ? trim($auth['token']) : '';
         $userId = null;
         $repositories = [];
@@ -56,9 +57,15 @@ final class AuthorizeGithubTasks
                     }
                     $userId = $user['id'];
                     if (($auth['user']['id'] ?? null) !== $userId) {
+                        if ($previousUserId !== null && \Illuminate\Support\Facades\Schema::hasTable('automatic_inline_settings')) {
+                            \ProofPatch\Models\AutomaticInlineSetting::revokeAllForUser($previousUserId);
+                        }
                         $session->forget(array_merge(IssueWorkbenchController::CASE_SESSION_KEYS, [
                             'selected_github_repo', 'github_repo_issues', 'github_repo_pulls', 'notifications',
                         ]));
+                    }
+                    if (\Illuminate\Support\Facades\Schema::hasTable('automatic_inline_settings')) {
+                        \ProofPatch\Models\AutomaticInlineSetting::retainOnlyAuthorizedPublic($userId, $repositories);
                     }
                     $auth['user'] = $user;
                     $auth['repositories'] = $repositories;
@@ -66,6 +73,9 @@ final class AuthorizeGithubTasks
                     $auth['verified_at'] = time();
                     $session->put('github_auth', $auth);
                 } catch (\Throwable) {
+                    if ($previousUserId !== null && \Illuminate\Support\Facades\Schema::hasTable('automatic_inline_settings')) {
+                        \ProofPatch\Models\AutomaticInlineSetting::revokeAllForUser($previousUserId);
+                    }
                     $userId = null;
                     $repositories = [];
                     $auth['user'] = null;

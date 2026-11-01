@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
 """
-Modal Isolated Sandbox Runner for ProofPatch.
-Executes PHP candidate and harness tests in an isolated Modal microVM sandbox via gVisor.
-Protects the test oracle from untrusted candidate code via process-isolated per-case workers.
+Modal fixture experiment for ProofPatcher.
 
-Security boundaries & guarantees:
-- Standalone static script (syntax-checked, no dynamic code generation).
-- gVisor microVM runtime (`runtime='gvisor'`).
-- Outbound and inbound network blocked (`block_network=True`).
-- Zero credentials, secrets, volumes, or host environment mounted.
-- Bounded resources: CPU (0.25, 0.25), Memory (256, 256), timeout bound, output capped at 64KB.
-- Isolated test oracle: The supervisor executes each test case against the candidate in
-  a separate, unprivileged worker process with JSON IPC and output trapping (`ob_start`).
-  The candidate cannot modify test cases, forge passing results, tamper with assertions,
-  or terminate the harness early.
-- Private result channel: Results written strictly on host, not writable by sandbox code.
-- Guaranteed teardown: `sb.terminate(wait=True)` in `finally:`.
+Only pinned source and harness hashes are accepted. The supervisor selects
+predefined cases; it does not independently run the original test harness.
+Candidate and supervisor share a sandbox and candidate-controlled output can
+forge results. Neither the oracle boundary nor cleanup is verified, and output
+is bounded only after collection. Therefore a passing fixture experiment must
+not authorize a verified result or a GitHub publication. The requested gVisor
+runtime and network restrictions are configuration, not independent proof.
 """
 
 import argparse
@@ -73,6 +66,16 @@ def validate_pinned_spec(source_b64: str, harness_b64: str, target: str, harness
 
 # Backwards compatibility alias
 validate_execution_spec = validate_pinned_spec
+
+
+def classify_fixture_result(exit_code: int, truncated: bool, timed_out: bool, stdout: str, stderr: str, token: str) -> tuple[bool, bool]:
+    """Return (fixture checks passed, oracle verified); the latter is not established."""
+    sentinel = f"[PROOFPATCH_ORACLE_SUCCESS:{token}]"
+    passed = (
+        exit_code == 0 and not truncated and not timed_out
+        and sentinel in stdout and "[PROOFPATCH_ORACLE_ABORT]" not in stderr
+    )
+    return passed, False
 
 
 def get_worker_script() -> str:
@@ -398,19 +401,13 @@ def main() -> int:
         # Fail closed on output flood
         exit_code = 1
 
-    # Oracle verification check:
-    # 1. Container exit status must be 0
-    # 2. Not timed out and not truncated
-    # 3. Output must contain the supervisor success sentinel.
-    # 4. Stderr must NOT contain the premature exit abort marker
-    oracle_sentinel = f"[PROOFPATCH_ORACLE_SUCCESS:{oracle_token}]"
-    oracle_verified = (
-        exit_code == 0
-        and not truncated
-        and not timed_out
-        and (oracle_sentinel in stdout_data)
-        and ("[PROOFPATCH_ORACLE_ABORT]" not in stderr_data)
+    # These signals indicate only that this experimental supervisor reported
+    # success. They do not establish an isolated oracle or run the real harness.
+    fixture_checks_passed, oracle_verified = classify_fixture_result(
+        exit_code, truncated, timed_out, stdout_data, stderr_data, oracle_token
     )
+    if fixture_checks_passed:
+        stderr_data += "\nFixture checks passed, but the original test oracle is not isolated or verified.\n"
 
     if not oracle_verified and exit_code == 0:
         exit_code = 1
@@ -420,6 +417,7 @@ def main() -> int:
         "sandbox_id": sandbox_id,
         "exit_code": exit_code,
         "oracle_verified": oracle_verified,
+        "fixture_checks_passed": fixture_checks_passed,
         "oracle_token": oracle_token,
         "stdout": stdout_data,
         "stderr": stderr_data,

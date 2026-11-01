@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
 import { copyText } from '../Components/ui/copyText';
+import { budgetStatusLine, sharedBudgetNote } from '../Components/ui/budgetCopy';
 import { ThemeToggle } from '../Components/ThemeToggle';
 import {
   Shield,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import { SettingsProps } from '../Components/settings/types';
 import { AutoReviewPanel } from '../Components/settings/AutoReviewPanel';
+import { AutomaticCommentsPanel } from '../Components/settings/AutomaticCommentsPanel';
 import { AutopilotBudgetCard } from '../Components/settings/AutopilotBudgetCard';
 
 export default function Settings({
@@ -316,6 +318,9 @@ export default function Settings({
               pendingRepo={pendingReviewRepo} error={autoReviewError} onToggle={handleAutoReview}
               onRefresh={() => router.reload({ only: ['autoReview'] })} />
 
+            <AutomaticCommentsPanel connected={githubConnection.isConnected} login={githubConnection.user?.login ?? null}
+              repositories={repositories} csrf={String(props.csrf_token || '')} />
+
             {providerConfig && (
               <section
                 aria-labelledby="muse-provider-config-heading"
@@ -512,8 +517,8 @@ export default function Settings({
                     <>
                     <div className="mt-5 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">
                       <h3 className="font-medium">Local request budget</h3>
-                      <p className="mt-1 text-slate-500 dark:text-slate-400">{budget.attempts} of {budget.maxAttempts} attempts · ${(budget.remainingMicros / 1000000).toFixed(2)} estimated remaining</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Local estimates are not provider balances or billing limits.</p>
+                      <p className="mt-1 text-slate-500 dark:text-slate-400">{budgetStatusLine(budget)}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Local estimates are not provider balances or billing limits. {sharedBudgetNote}</p>
                     </div>
                     <AutopilotBudgetCard
                       caps={autopilotBudget ?? null}

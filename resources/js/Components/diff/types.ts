@@ -3,6 +3,7 @@ export interface ReviewFinding {
   status: 'note' | 'concern' | 'approval';
   lineHint: number | null;
   comment: string;
+  suggestion?: string | null;
   commentable?: boolean;
   anchorStatus?: 'anchored' | 'hint_only' | 'stale';
   anchorMessage?: string;

@@ -7,7 +7,6 @@ namespace ProofPatch\Console\Commands;
 use Illuminate\Console\Command;
 use ProofPatch\GitHub\GitHubAppClient;
 use ProofPatch\GitHub\GitHubTokenStore;
-use ProofPatch\Models\AutoReviewResult;
 use ProofPatch\Models\RepositoryAutoReviewSetting;
 use ProofPatch\Services\AutoReviewService;
 use ProofPatch\Support\KernelCli;
@@ -28,7 +27,7 @@ final class KernelReviewCommand extends Command
 
     private AutoReviewService $service;
 
-    public function __construct(?GitHubAppClient $github = null, ?AutoReviewService $service = null)
+    public function __construct(?GitHubAppClient $github = null, ?AutoReviewService $service = null, private ?\Hari\Registry $hari = null)
     {
         parent::__construct();
         $this->github = $github ?? new GitHubAppClient(HttpClient::create());
@@ -122,16 +121,16 @@ final class KernelReviewCommand extends Command
         $summary = null;
         $findingsCount = 0;
         try {
-            $record = AutoReviewResult::findForRevision(
-                $repo,
-                $number,
-                (string) ($outcome['headSha'] ?? ''),
-                (string) ($outcome['baseSha'] ?? '')
-            );
-            if ($record !== null) {
-                $summary = is_string($record->summary) ? $record->summary : null;
-                $findings = $record->file_findings;
-                $findingsCount = is_array($findings) ? count($findings) : 0;
+            $outcome2 = ($this->hari ?? \Hari\Hari::registry())->resolve('review.result', 1, 'kernel-cli')->invoke([
+                'repository' => $repo,
+                'pull_number' => $number,
+                'head_sha' => (string) ($outcome['headSha'] ?? ''),
+                'base_sha' => (string) ($outcome['baseSha'] ?? ''),
+            ]);
+            $record = is_array($outcome2['rows'] ?? null) ? ($outcome2['rows'][0] ?? null) : null;
+            if (is_array($record)) {
+                $summary = is_string($record['summary'] ?? null) ? $record['summary'] : null;
+                $findingsCount = (int) ($record['findings_count'] ?? 0);
             }
         } catch (\Throwable) {
         }

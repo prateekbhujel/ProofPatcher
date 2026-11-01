@@ -46,7 +46,27 @@ putenv('PROOFPATCH_PROVIDER_CONFIG_FILE=' . $suiteProviderConfig);
 $_ENV['PROOFPATCH_PROVIDER_CONFIG_FILE'] = $suiteProviderConfig;
 $_SERVER['PROOFPATCH_PROVIDER_CONFIG_FILE'] = $suiteProviderConfig;
 
-register_shutdown_function(static function () use ($suiteFallbackDb, $suiteFallbackDir, $suiteStorage, $suiteProviderConfig): void {
+// Boot the hari kernel global with a throwaway budget BEFORE any test runs,
+// so controllers/commands resolving through the default registry behave
+// deterministically and never touch the developer's real budget ledger.
+// Review reads go through each test's own isolated database as usual.
+$suiteBudgetDir = $suiteFallbackDir . '/budget';
+if (!is_dir($suiteBudgetDir)) {
+    mkdir($suiteBudgetDir, 0700, true);
+}
+\ProofPatch\Abilities\HariBoot::boot(
+    \Hari\Hari::registry(),
+    new \ProofPatch\Agent\RequestBudget($suiteBudgetDir, 500000, 10)
+);
+\Hari\Hari::registry()->freeze();
+
+register_shutdown_function(static function () use ($suiteFallbackDb, $suiteFallbackDir, $suiteStorage, $suiteProviderConfig, $suiteBudgetDir): void {
+    if (is_file($suiteBudgetDir . '/runtime-ledger.json')) {
+        @unlink($suiteBudgetDir . '/runtime-ledger.json');
+    }
+    if (is_dir($suiteBudgetDir)) {
+        @rmdir($suiteBudgetDir);
+    }
     if (is_dir($suiteStorage)) {
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($suiteStorage, FilesystemIterator::SKIP_DOTS),

@@ -39,9 +39,9 @@ export function OsShell({ appId, fullscreen = false, embed = false, children }: 
     return (
       <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
         {fullscreen ? (
-          <main className="min-h-screen w-full">{children}</main>
+          <main className="pp-page-enter min-h-screen w-full">{children}</main>
         ) : (
-          <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">{children}</main>
+          <main className="pp-page-enter mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">{children}</main>
         )}
       </div>
     );
@@ -65,9 +65,9 @@ export function OsShell({ appId, fullscreen = false, embed = false, children }: 
           loading={status === null}
         />
         {fullscreen ? (
-          <main className="min-h-screen w-full flex-1">{children}</main>
+          <main className="pp-page-enter min-h-screen w-full flex-1">{children}</main>
         ) : (
-          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
+          <main className="pp-page-enter mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
             <AppWindow title={appId}>{children}</AppWindow>
           </main>
         )}

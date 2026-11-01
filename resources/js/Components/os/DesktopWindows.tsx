@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { ArrowRight, Check, StickyNote } from 'lucide-react';
 import { KernelTerminal, TerminalLine } from './KernelTerminal';
+import { autopilotCapFragment, budgetStatusLine } from '../ui/budgetCopy';
 import { AlertBanner, EmptyState } from '../ui/AlertBanner';
 
 export interface KernelStage {
@@ -347,19 +348,14 @@ export function EngineContent({
         <div>
           <dt className="text-slate-500 dark:text-slate-400">Request budget</dt>
           <dd className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
-            {budget
-              ? `${budget.attempts} of ${budget.maxAttempts} attempts · $${(budget.remainingMicros / 1000000).toFixed(2)} left`
-              : 'Unavailable'}
+            {budget ? budgetStatusLine(budget) : 'Unavailable'}
           </dd>
           {budget && !budget.canRequest && (
             <dd className="mt-0.5 text-amber-700 dark:text-amber-400">Local limit reached</dd>
           )}
-          {autopilotCaps && (autopilotCaps.maxAttempts != null || autopilotCaps.maxReservedDollars != null) && (
+          {autopilotCaps && autopilotCapFragment(autopilotCaps.maxAttempts, autopilotCaps.maxReservedDollars) !== null && (
             <dd className="mt-0.5 text-slate-500 dark:text-slate-400">
-              Autopilot capped at
-              {autopilotCaps.maxAttempts != null ? ` ${autopilotCaps.maxAttempts} attempts` : ''}
-              {autopilotCaps.maxAttempts != null && autopilotCaps.maxReservedDollars != null ? ' and' : ''}
-              {autopilotCaps.maxReservedDollars != null ? ` $${autopilotCaps.maxReservedDollars.toFixed(2)}` : ''}
+              Autopilot capped at {autopilotCapFragment(autopilotCaps.maxAttempts, autopilotCaps.maxReservedDollars)}
             </dd>
           )}
         </div>

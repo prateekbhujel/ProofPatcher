@@ -6,12 +6,11 @@ namespace ProofPatch\Console\Commands;
 
 use Illuminate\Console\Command;
 use ProofPatch\Support\KernelCli;
-use ProofPatch\Support\TerminalMenu;
+use ProofPatch\Support\TerminalDashboard;
 
 /**
  * Interactive kernel shell: the terminal OS menu. Driven by the php-terminal
- * extension (raw single-key menu) with a cooked-mode numbered fallback, so
- * the shell stays instant and never depends on full-screen prompt redraws.
+ * extension (raw single-key menu) for an interactive terminal experience.
  * Thin by design — every action delegates to a directly-runnable,
  * unit-tested command, so scripts and tests never need this menu.
  */
@@ -21,19 +20,19 @@ final class KernelShellCommand extends Command
 
     protected $description = 'Open the interactive ProofPatcher Kernel shell';
 
-    /** @return list<array{key: string, label: string}> */
+    /** @return list<array{key: string, label: string, detail: string}> */
     private function menuOptions(): array
     {
         return [
-            ['key' => 'status', 'label' => 'Status dashboard'],
-            ['key' => 'connect', 'label' => 'Connect GitHub (device flow)'],
-            ['key' => 'select', 'label' => 'Select working repository'],
-            ['key' => 'review', 'label' => 'Review one pull request'],
-            ['key' => 'autopilot', 'label' => 'Run bounded autopilot'],
-            ['key' => 'findings', 'label' => 'Recent review findings'],
-            ['key' => 'telemetry', 'label' => 'Usage telemetry'],
-            ['key' => 'verify', 'label' => 'Verify a patch file'],
-            ['key' => 'quit', 'label' => 'Quit'],
+            ['key' => 'status', 'label' => 'Status dashboard', 'detail' => 'Connection, provider and review status'],
+            ['key' => 'connect', 'label' => 'Connect GitHub', 'detail' => 'Sign in with the GitHub device flow'],
+            ['key' => 'select', 'label' => 'Select repository', 'detail' => 'Choose a repository in your GitHub grant'],
+            ['key' => 'review', 'label' => 'Review a pull request', 'detail' => 'Request an advisory review'],
+            ['key' => 'autopilot', 'label' => 'Run autopilot', 'detail' => 'Poll for public PR reviews for a limited time'],
+            ['key' => 'findings', 'label' => 'Recent findings', 'detail' => 'See locally saved review results'],
+            ['key' => 'telemetry', 'label' => 'Usage', 'detail' => 'View local usage estimates'],
+            ['key' => 'verify', 'label' => 'Verify a patch', 'detail' => 'Run verification for a supported patch'],
+            ['key' => 'quit', 'label' => 'Quit', 'detail' => 'Close the terminal dashboard'],
         ];
     }
 
@@ -49,22 +48,43 @@ final class KernelShellCommand extends Command
         }
 
         $term = $this->openTerminal();
+        if ($term === null) {
+            $this->error(!extension_loaded('terminal') || !class_exists(\Io\Terminal\Terminal::class)
+                ? 'ProofPatcher requires the PHP terminal extension. Install and enable it for your CLI PHP.'
+                : 'The terminal extension could not open an ANSI-capable terminal. Check TERM and NO_COLOR, then try again.');
+            return self::FAILURE;
+        }
 
         foreach (KernelCli::bootLines() as $line) {
             $this->line($line);
         }
-        $this->line($term === null ? 'Extension missing: numbered menu mode.' : 'Extension terminal ' . $this->extensionVersion() . ' driving the menu.');
+        $this->line('Extension terminal ' . $this->extensionVersion() . ' driving the menu.');
         $this->line('');
 
+        $lastAction = null;
         while (true) {
-            $action = $term === null
-                ? TerminalMenu::choosePlain('What should the kernel do?', $this->menuOptions())
-                : TerminalMenu::choose($term, 'What should the kernel do?', $this->menuOptions());
+            try {
+                $state = KernelCli::connectState();
+                $repository = $state['connected'] ? KernelCli::getSelectedRepo() : null;
+                if ($repository !== null && !array_filter($state['repos'], static fn (array $repo): bool => strcasecmp($repo['fullName'], $repository) === 0)) {
+                    $repository = null;
+                }
+                $status = [
+                    'GitHub: '.($state['connected'] ? 'sign-in saved (not checked)' : 'not connected'),
+                    'Selected repository: '.($repository ?? 'none'),
+                ];
+                $action = TerminalDashboard::choose($term, $this->menuOptions(), $status, $lastAction);
+            } catch (\RuntimeException $e) {
+                $this->error($e->getMessage());
+                return self::FAILURE;
+            }
 
             if ($action === null || $action === 'quit') {
                 $this->line('Kernel shell closed.');
                 return self::SUCCESS;
             }
+
+            $lastAction = $action;
 
             // Instant acknowledgement: the shell answers on this frame, before
             // the (possibly slow) action runs, so Enter never feels dead.
@@ -82,6 +102,9 @@ final class KernelShellCommand extends Command
                 default => null,
             };
             $this->line('');
+            // The dashboard uses an alternate screen, so keep command output
+            // visible until the user is ready to return.
+            $this->promptLine('Press Enter to return');
         }
     }
 

@@ -26,7 +26,8 @@ final readonly class PullRequestReview
         .'"summary" (a concise 1-3 sentence summary of the changes and overall quality), '
         .'"riskLevel" (one of: "low", "medium", "high"), '
         .'"recommendation" (one of: "approve", "request_changes", "discuss"), '
-        .'"fileFindings" (an array of objects, each with "path" matching one of the reviewed files, "status" one of: "note", "concern", "approval", "lineHint" integer line number or null, "comment" concise string explaining the finding). '
+        .'"fileFindings" (an array of objects, each with "path" matching one of the reviewed files, "status" one of: "note", "concern", "approval", "lineHint" integer line number or null, "comment" concise string whose FIRST sentence states the concrete problem in under 20 words, followed by why it matters and the fix, and "suggestion" with the exact replacement code that resolves the finding, or null when no code change applies). '
+        .'Be specific to the diff: no generic praise, no filler, no restated code without a point. '
         .'Do not suggest executing shell commands, do not claim tests passed, and do not hallucinate files not in the diff.';
 
     public function __construct(private HttpClientInterface $http, private RequestBudget $budget) {}
@@ -62,6 +63,16 @@ final readonly class PullRequestReview
 
         if ($reviewableFiles === []) {
             throw new \InvalidArgumentException('No reviewable file diffs are available in this patch preview.');
+        }
+
+        // A partial diff cannot support a recommendation about the whole PR.
+        // Refuse the request rather than silently presenting missing coverage as
+        // a completed review, including when GitHub omitted a binary patch.
+        if (($patchPreview['filesTruncated'] ?? false) === true
+            || (isset($patchPreview['changedFiles']) && $patchPreview['changedFiles'] !== count($files))
+            || count($reviewableFiles) !== count($files)
+            || array_any($files, static fn ($file): bool => !is_array($file) || ($file['status'] ?? null) !== 'available')) {
+            throw new \InvalidArgumentException('The pull request diff is incomplete; a full review is unavailable.');
         }
 
         $userPayload = [
@@ -257,8 +268,8 @@ final readonly class PullRequestReview
             }
             $fKeys = array_keys($finding);
             sort($fKeys);
-            if ($fKeys !== ['comment', 'lineHint', 'path', 'status']) {
-                throw new \RuntimeException("fileFindings[$idx] must contain exactly comment, lineHint, path, and status.");
+            if ($fKeys !== ['comment', 'lineHint', 'path', 'status'] && $fKeys !== ['comment', 'lineHint', 'path', 'status', 'suggestion']) {
+                throw new \RuntimeException("fileFindings[$idx] must contain exactly comment, lineHint, path, and status, with an optional suggestion.");
             }
             if (!is_string($finding['path']) || !in_array($finding['path'], $allowedFiles, true)) {
                 throw new \RuntimeException("fileFindings[$idx].path must match one of the files in the reviewed diff.");
@@ -272,6 +283,11 @@ final readonly class PullRequestReview
             if (!is_string($finding['comment']) || trim($finding['comment']) === '' || strlen($finding['comment']) > 2000 || str_contains($finding['comment'], "\0")) {
                 throw new \RuntimeException("fileFindings[$idx].comment must be a valid nonempty string under 2000 characters without null bytes.");
             }
+            $suggestion = $finding['suggestion'] ?? null;
+            if ($suggestion !== null && (!is_string($suggestion) || trim($suggestion) === '' || strlen($suggestion) > 2000 || str_contains($suggestion, "\0"))) {
+                throw new \RuntimeException("fileFindings[$idx].suggestion must be null or a valid nonempty string under 2000 characters without null bytes.");
+            }
+            $data['fileFindings'][$idx]['suggestion'] = $suggestion === null ? null : trim($suggestion);
         }
 
         return [

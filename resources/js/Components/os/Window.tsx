@@ -88,8 +88,6 @@ export function Window({
     return () => window.removeEventListener('resize', apply);
   }, [floating, maximized]);
 
-  if (minimized) return null;
-
   const animate = floating && !reducedMotion && !dragging;
   const style: React.CSSProperties = floating && rect
     ? { zIndex, left: rect.x, top: rect.y, width: maximized ? '100%' : rect.w }
@@ -108,10 +106,11 @@ export function Window({
     <section
       ref={bodyRef}
       aria-label={`${title} window`}
+      hidden={minimized}
       data-window={id}
       data-maximized={maximized ? 'true' : undefined}
       onPointerDown={() => onFocus(id)}
-      style={style}
+      style={minimized ? { ...style, display: 'none' } : style}
       className={
         floating
           ? `absolute left-0 top-0 ${rect ? '' : widthClass} overflow-hidden rounded-xl border bg-white dark:bg-[#10141d] shadow-lg ${

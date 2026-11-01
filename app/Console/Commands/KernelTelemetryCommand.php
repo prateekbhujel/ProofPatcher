@@ -19,10 +19,15 @@ final class KernelTelemetryCommand extends Command
 
     protected $description = 'Show local model usage telemetry: requests, tokens, estimates, models, and recent activity';
 
+    public function __construct(private ?\Hari\Registry $hari = null)
+    {
+        parent::__construct();
+    }
+
     public function handle(): int
     {
         $ledger = $this->option('ledger');
-        $data = Telemetry::collect(is_string($ledger) && trim($ledger) !== '' ? trim($ledger) : null);
+        $data = Telemetry::collect(is_string($ledger) && trim($ledger) !== '' ? trim($ledger) : null, null, true, $this->hari);
         $width = $this->terminalWidth();
 
         $this->line('ProofPatcher Kernel telemetry (local estimates, generated '.$data['generatedAt'].')');
@@ -34,8 +39,8 @@ final class KernelTelemetryCommand extends Command
             ['Metric', 'Value'],
             [
                 ['Model requests', (string) $r['total']],
-                ['Received / uncertain', $r['received'].' / '.$r['uncertain']],
-                ['Estimated reserved', '$'.number_format($r['reservedMicros'] / 1000000, 4)],
+                ['Confirmed / unclear', $r['received'].' / '.$r['uncertain']],
+                ['Held for model calls', '$'.number_format($r['reservedMicros'] / 1000000, 4)],
                 ['Tokens in / out', $t['prompt'].' / '.$t['completion']],
                 ['Reviews completed', (string) $data['reviews']['completed'].' of '.$data['reviews']['total']],
                 ['Ledger', $data['ledgerFound'] ? 'found' : 'absent (zeros shown)'],
@@ -59,7 +64,7 @@ final class KernelTelemetryCommand extends Command
             foreach ($data['perDay'] as $day) {
                 $rows[] = [$day['day'], (string) $day['requests'], '$'.number_format($day['micros'] / 1000000, 4)];
             }
-            $this->table(['Day', 'Requests', 'Est. reserved'], $rows);
+            $this->table(['Day', 'Requests', 'Held'], $rows);
         }
 
         if ($data['feed'] !== []) {

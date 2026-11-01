@@ -56,6 +56,7 @@ const menu = loader.load(loader.resolveFile(HERE, '../../resources/js/Components
 const banners = loader.load(loader.resolveFile(HERE, '../../resources/js/Components/ui/AlertBanner.tsx'));
 
 const noop = () => {};
+
 const baseProps = {
   connected: true,
   userLogin: 'maintainer',
@@ -121,7 +122,8 @@ test('a window renders its chrome and hides when minimized', () => {
   assert.match(html, /Maximize console/);
 
   const hidden = renderToStaticMarkup(React.createElement(win.Window, { ...chrome, focused: false, minimized: true }));
-  assert.equal(hidden, '');
+  assert.match(hidden, /hidden=""/);
+  assert.match(hidden, /window body/);
 
   const maxed = renderToStaticMarkup(React.createElement(win.Window, { ...chrome, maximized: true }));
   assert.match(maxed, /data-maximized="true"/);
@@ -132,6 +134,24 @@ test('an app frame embeds its page chromeless', () => {
   const html = renderToStaticMarkup(React.createElement(desktop.AppFrame, { href: '/docs', title: 'docs' }));
   assert.match(html, /<iframe/);
   assert.match(html, /src="\/docs\?embed=1"/);
+  assert.match(html, /Loading docs/);
+});
+
+test('an embedded app refreshes desktop status after Inertia navigation', () => {
+  const doc = new EventTarget();
+  let refreshes = 0;
+  const frame = { contentDocument: doc };
+  const hooks = { onOpenApp: noop, onContextMenu: noop, onStatusChanged: () => refreshes++ };
+  desktop.wireFrame(frame, hooks);
+  assert.equal(refreshes, 1, 'opening a frame refreshes from the server');
+  doc.dispatchEvent(new Event('inertia:success'));
+  assert.equal(refreshes, 2, 'a completed embedded action refreshes the desktop');
+  desktop.wireFrame(frame, hooks);
+  doc.dispatchEvent(new Event('inertia:success'));
+  assert.equal(refreshes, 3, 'wiring again does not create duplicate listeners');
+  const inaccessible = { get contentDocument() { throw new Error('cross-origin'); } };
+  assert.doesNotThrow(() => desktop.wireFrame(inaccessible, hooks));
+  assert.equal(refreshes, 3, 'an inaccessible frame cannot trigger a refresh');
 });
 
 test('the start menu stays closed until opened, then lists apps, windows, and next', () => {

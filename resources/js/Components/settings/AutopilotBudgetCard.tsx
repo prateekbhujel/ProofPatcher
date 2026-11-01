@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { autopilotCapLine, autopilotSpendLine } from '../ui/budgetCopy';
 
 interface Props {
   caps: { maxAttempts: number | null; maxReservedDollars: number | null } | null;
@@ -16,14 +17,14 @@ export function AutopilotBudgetCard({ caps, spentAttempts, spentDollars, onSave,
     <div className="mt-5 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">
       <h3 className="font-medium">Autopilot spending cap</h3>
       <p className="mt-1 text-slate-500 dark:text-slate-400">
-        Spent so far: {spentAttempts} attempts · ${spentDollars.toFixed(2)} reserved.
+        {autopilotSpendLine(spentAttempts, spentDollars)}
         {caps == null || (caps.maxAttempts == null && caps.maxReservedDollars == null)
           ? ' No cap set: autopilot reviews are bounded only by the local request budget.'
-          : ` Capped at${caps.maxAttempts != null ? ` ${caps.maxAttempts} attempts` : ''}${caps.maxAttempts != null && caps.maxReservedDollars != null ? ' and' : ''}${caps.maxReservedDollars != null ? ` $${caps.maxReservedDollars.toFixed(2)}` : ''}.`}
+          : ` ${autopilotCapLine(caps.maxAttempts, caps.maxReservedDollars)}`}
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <label className="text-xs text-slate-500 dark:text-slate-400">
-          Max attempts
+          Max model requests
           <input
             type="number"
             min={1}
@@ -31,7 +32,7 @@ export function AutopilotBudgetCard({ caps, spentAttempts, spentDollars, onSave,
             value={attempts}
             onChange={(e) => setAttempts(e.target.value)}
             placeholder="No cap"
-            aria-label="Autopilot maximum attempts"
+            aria-label="Autopilot maximum model requests"
             className="mt-1 block w-36 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100"
           />
         </label>

@@ -78,7 +78,7 @@ final class AutopilotBudget extends Model
         }
 
         if ($caps->max_attempts !== null && $spentAttempts >= $caps->max_attempts) {
-            return "Autopilot attempt cap reached ({$caps->max_attempts} attempts).";
+            return "Autopilot request cap reached ({$caps->max_attempts} model requests).";
         }
 
         if ($caps->max_reserved_micros !== null

@@ -9,6 +9,7 @@
         "ext-json": "*",
         "inertiajs/inertia-laravel": "^3.5",
         "laravel/framework": "^13.0",
+        "laravel/mcp": "^1.1",
         "symfony/http-client": "^7.4",
         "symfony/panther": "^2.3",
         "symfony/process": "^7.4"
@@ -17,7 +18,7 @@
         "phpunit/phpunit": "^12.5",
         "dbrekelmans/bdi": "^1.4"
     },
-    "autoload": {"psr-4": {"ProofPatch\\": "app/", "App\\": "app/"}},
+    "autoload": {"psr-4": {"ProofPatch\\": "app/", "App\\": "app/", "Hari\\": "app/Hari/"}},
     "autoload-dev": {"psr-4": {"ProofPatch\\Tests\\": "tests/"}},
     "scripts": {
         "test": "phpunit",

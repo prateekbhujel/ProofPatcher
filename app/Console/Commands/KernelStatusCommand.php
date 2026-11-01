@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace ProofPatch\Console\Commands;
 
+use Hari\Hari;
+use Hari\Registry;
 use Illuminate\Console\Command;
 use ProofPatch\Agent\ProviderConfigStore;
-use ProofPatch\Agent\RequestBudget;
-use ProofPatch\Models\AutoReviewResult;
 use ProofPatch\Models\RepositoryAutoReviewSetting;
 use ProofPatch\Support\KernelCli;
 use ProofPatch\Support\WorkerStatusService;
@@ -30,8 +30,12 @@ final class KernelStatusCommand extends Command
         $state = KernelCli::connectState();
         $selected = $state['connected'] ? KernelCli::getSelectedRepo() : null;
         $authorized = [];
+        $selectedPrivate = false;
         foreach ($state['repos'] as $repo) {
             $authorized[strtolower($repo['fullName'])] = $repo['fullName'];
+            if ($selected !== null && strcasecmp($repo['fullName'], $selected) === 0 && ($repo['isPrivate'] ?? null) === true) {
+                $selectedPrivate = true;
+            }
         }
 
         $provider = $this->provider();
@@ -39,7 +43,7 @@ final class KernelStatusCommand extends Command
         $worker = $this->worker();
         $stats = $this->stats(array_keys($authorized));
         $enabled = $this->enabledRepositories();
-        $next = $this->nextStep($state['connected'], $authorized, $selected, $enabled, (bool) ($worker['isLive'] ?? false), $budget === null || (bool) ($budget['canRequest'] ?? false));
+        $next = $this->nextStep($state['connected'], $authorized, $selected, $enabled, (bool) ($worker['isLive'] ?? false), $budget === null || (bool) ($budget['canRequest'] ?? false), $selectedPrivate);
 
         if ((bool) $this->option('json')) {
             $this->line(json_encode([
@@ -105,11 +109,18 @@ final class KernelStatusCommand extends Command
         ];
     }
 
+    public function __construct(private ?Registry $hari = null)
+    {
+        parent::__construct();
+    }
+
     /** @return ?array{attempts: int, maxAttempts: int, remainingMicros: int, canRequest: bool} */
     private function budget(): ?array
     {
         try {
-            $status = RequestBudget::forRuntime()->status();
+            $status = ($this->hari ?? Hari::registry())
+                ->resolve('budget.status', 1, 'kernel-cli')
+                ->invoke([]);
         } catch (\Throwable) {
             return null;
         }
@@ -131,7 +142,7 @@ final class KernelStatusCommand extends Command
             return 'unavailable';
         }
 
-        return $budget['attempts'] . ' of ' . $budget['maxAttempts'] . ' attempts · $' . number_format($budget['remainingMicros'] / 1000000, 2) . ' left';
+        return $budget['attempts'] . ' of ' . $budget['maxAttempts'] . ' model requests used · $' . number_format($budget['remainingMicros'] / 1000000, 2) . ' left';
     }
 
     /** @return array{isLive: bool, status: string, workerPid: ?int, cycleCount: int} */
@@ -169,32 +180,28 @@ final class KernelStatusCommand extends Command
     private function stats(array $authorizedLower): array
     {
         $stats = ['total' => 0, 'completed' => 0, 'failed' => 0, 'skippedPrivate' => 0, 'skippedBudget' => 0];
-        if ($authorizedLower === []) {
+        $validRepos = array_values(array_filter($authorizedLower, static fn (mixed $repo): bool =>
+            is_string($repo) && preg_match('~\A[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}\z~', $repo) === 1));
+        if ($validRepos === []) {
             return $stats;
         }
-        $allowed = array_fill_keys($authorizedLower, true);
         try {
-            $rows = AutoReviewResult::selectRaw('repository, status, COUNT(*) AS aggregate')->groupBy('repository', 'status')->get();
+            $outcome = ($this->hari ?? Hari::registry())->resolve('review.result', 1, 'kernel-cli')->invoke([
+                'stats_for' => $validRepos,
+                'match' => 'lower',
+            ]);
+            $counts = is_array($outcome['stats'] ?? null) ? $outcome['stats'] : [];
         } catch (\Throwable) {
             return $stats;
         }
-        foreach ($rows as $row) {
-            $repo = strtolower((string) ($row->repository ?? ''));
-            if (!isset($allowed[$repo])) {
-                continue;
-            }
-            $count = (int) ($row->aggregate ?? 0);
-            $stats['total'] += $count;
-            match ((string) ($row->status ?? '')) {
-                'completed' => $stats['completed'] += $count,
-                'failed' => $stats['failed'] += $count,
-                'skipped_private' => $stats['skippedPrivate'] += $count,
-                'skipped_budget' => $stats['skippedBudget'] += $count,
-                default => null,
-            };
-        }
 
-        return $stats;
+        return [
+            'total' => (int) ($counts['total'] ?? 0),
+            'completed' => (int) ($counts['completed'] ?? 0),
+            'failed' => (int) ($counts['failed'] ?? 0),
+            'skippedPrivate' => (int) ($counts['skipped_private'] ?? 0),
+            'skippedBudget' => (int) ($counts['skipped_budget'] ?? 0),
+        ];
     }
 
     /** @return array<string, string> lower => display */
@@ -220,7 +227,7 @@ final class KernelStatusCommand extends Command
      * @param array<string, string> $enabled lower => display
      * @return array{title: string, command: string}
      */
-    private function nextStep(bool $connected, array $authorized, ?string $selected, array $enabled, bool $workerLive, bool $canRequest): array
+    private function nextStep(bool $connected, array $authorized, ?string $selected, array $enabled, bool $workerLive, bool $canRequest, bool $selectedPrivate): array
     {
         if (!$connected) {
             return ['title' => 'Connect GitHub to authorize repositories.', 'command' => 'php artisan github:connect'];
@@ -230,6 +237,9 @@ final class KernelStatusCommand extends Command
         }
         if ($selected === null || !isset($authorized[strtolower($selected)])) {
             return ['title' => 'Select a repository to work on.', 'command' => 'php artisan kernel:select-repo'];
+        }
+        if ($selectedPrivate) {
+            return ['title' => 'Automatic reviews currently support public repositories.', 'command' => 'Select a public repository to run autopilot.'];
         }
         if (!isset($enabled[strtolower($selected)])) {
             return ['title' => "Enable auto-review for {$selected}.", 'command' => "php artisan kernel:select-repo --enable-review {$selected}"];

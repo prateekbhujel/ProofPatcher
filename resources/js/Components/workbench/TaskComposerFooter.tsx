@@ -89,7 +89,7 @@ export function TaskComposerFooter({
             value={draftValue}
             onChange={(e) => onDraftChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a command (e.g. &quot;merge pr #10&quot;, &quot;verify checks&quot;, &quot;create draft pr&quot;, or a new automation task prompt) or save maintainer review notes…"
+            placeholder="Type a command (e.g. &quot;verify checks&quot; or &quot;create draft pr&quot;) or save maintainer review notes…"
             className="w-full h-auto min-h-[76px] max-h-[16rem] [field-sizing:content] rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 px-3 py-2 text-sm leading-relaxed text-slate-900 placeholder-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 dark:text-slate-100 resize-y transition"
           />
 

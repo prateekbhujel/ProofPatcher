@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace ProofPatch\Console\Commands;
 
+use Hari\Hari;
+use Hari\Registry;
 use Illuminate\Console\Command;
-use ProofPatch\Evidence\Receipt;
 
 final class CheckReceiptCommand extends Command
 {
     protected $signature = 'review:receipt {run : Run ID or path to evidence directory} {expected? : Optional expected SHA-256 digest}';
 
     protected $description = 'Verify the cryptographic integrity of a ProofPatcher evidence receipt';
+
+    public function __construct(private ?Registry $hari = null)
+    {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
@@ -25,12 +31,18 @@ final class CheckReceiptCommand extends Command
         }
 
         try {
-            $result = (new Receipt())->verify($directory, $expected);
-            $this->line(json_encode($result, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
-            return self::SUCCESS;
-        } catch (\Throwable $e) {
-            $this->error('Receipt check failed: '.$e->getMessage());
+            $result = ($this->hari ?? Hari::registry())
+                ->resolve('evidence.verify', 1, 'kernel-cli')
+                ->invoke(['directory' => $directory, 'expected' => $expected]);
+        } catch (\Throwable) {
+            $this->error('Receipt check failed: The evidence skill is unavailable.');
             return self::FAILURE;
         }
+        if (!is_array($result) || ($result['valid'] ?? null) !== true || !is_array($result['receipt'] ?? null)) {
+            $this->error('Receipt check failed: '.(is_string($result['reason'] ?? null) ? $result['reason'] : 'Receipt is invalid.'));
+            return self::FAILURE;
+        }
+        $this->line(json_encode($result['receipt'], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+        return self::SUCCESS;
     }
 }

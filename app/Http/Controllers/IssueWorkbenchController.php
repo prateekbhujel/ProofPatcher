@@ -30,6 +30,7 @@ final class IssueWorkbenchController
         'issue_published_pr',
         'issue_publication_token',
         'issue_approval_token',
+        'issue_approval_user_id',
         'issue_is_dedicated_test_repo',
         'issue_is_owned_fixture',
     ];
@@ -39,6 +40,7 @@ final class IssueWorkbenchController
         private ?RequestBudget $customBudget = null,
         private ?\ProofPatch\Verifier\IsolatedRunnerInterface $customRunner = null,
         private ?\ProofPatch\Agent\SingleUseReviewApproval $customApprovals = null,
+        private ?\Hari\Registry $hari = null,
     ) {}
 
     private function getHttpClient(): \Symfony\Contracts\HttpClient\HttpClientInterface
@@ -71,27 +73,36 @@ final class IssueWorkbenchController
         return TaskWorkflowHelper::resolveGitHubToken($request);
     }
 
-    /** Only an explicitly public repository with a current grant may be sent to a model. */
+    /** Public repositories and the dedicated private test case need a verified grant. */
     private function canSendModelContext(Request $request, array $context): bool
     {
-        if (($context['isSynthetic'] ?? false) === true) {
-            return true;
-        }
+        return \ProofPatch\Application\Workbench\ModelContextPolicy::canSend(
+            $request->session()->get('github_auth'),
+            $request->attributes->get('proofpatch_github_access'),
+            $context,
+            \ProofPatch\GitHub\PrivatePullSession::usesServerSession()
+        );
+    }
 
-        $access = $request->attributes->get('proofpatch_github_access');
-        $repo = $context['repository'] ?? null;
-        $auth = $request->session()->get('github_auth');
-        if (!is_array($access) || !is_int($access['userId'] ?? null) || !is_string($repo)
-            || !isset($access['repositories'][strtolower($repo)]) || !is_array($auth['repositories'] ?? null)) {
+    private function sessionTaskHasScreenshot(Request $request): bool
+    {
+        try {
+            $taskId = $request->session()->get('issue_task_id');
+            if (!is_int($taskId) && !ctype_digit((string) ($taskId ?? ''))) {
+                return false;
+            }
+            return WorkbenchTask::whereKey((int) $taskId)->whereNotNull('image_mime')->exists();
+        } catch (\Throwable) {
             return false;
         }
-        foreach ($auth['repositories'] as $repository) {
-            if (is_array($repository) && is_string($repository['fullName'] ?? null)
-                && strcasecmp($repository['fullName'], $repo) === 0) {
-                return ($repository['isPrivate'] ?? null) === false;
-            }
-        }
-        return false;
+    }
+
+    private function isPrivateDedicatedContext(Request $request, array $context): bool
+    {
+        return \ProofPatch\Application\Workbench\ModelContextPolicy::isPrivateDedicated(
+            $request->session()->get('github_auth'),
+            $context
+        );
     }
 
     public function show(Request $request): Response
@@ -102,6 +113,9 @@ final class IssueWorkbenchController
         }
         $context = $request->session()->get('issue_context');
         $modelContextAllowed = is_array($context) && $this->canSendModelContext($request, $context);
+        $privateModelConsentRequired = $modelContextAllowed && is_array($context)
+            && (bool) $request->session()->get('issue_is_dedicated_test_repo')
+            && $this->isPrivateDedicatedContext($request, $context);
         try {
             $modelKeyAvailable = strlen(Credentials::activeKey()) >= 16;
         } catch (\Throwable) {
@@ -110,7 +124,11 @@ final class IssueWorkbenchController
         $preview = null;
         $budget = null;
         try {
-            $budget = $this->budget()->status();
+            // An injected test budget is the caller's explicit ledger; the
+            // shared runtime ledger is read through the skill instead.
+            $budget = $this->customBudget !== null
+                ? $this->customBudget->status()
+                : ($this->hari ?? \Hari\Hari::registry())->resolve('budget.status', 1, 'workbench')->invoke([]);
             if (is_array($context)) {
                 $preview = (new IssueSuggestion($this->getHttpClient(), $this->budget()))->preview($context);
                 $budget['canRequest'] = $budget['canRequest'] && $budget['remainingMicros'] >= $preview['estimatedMicros'];
@@ -126,6 +144,9 @@ final class IssueWorkbenchController
                     );
                     $preview['approvalToken'] = $approval['token'];
                     $request->session()->put('issue_approval_token', $approval['token']);
+                    if ($privateModelConsentRequired) {
+                        $request->session()->put('issue_approval_user_id', $request->attributes->get('proofpatch_github_access')['userId']);
+                    }
                 } else {
                     $request->session()->forget('issue_approval_token');
                 }
@@ -269,7 +290,9 @@ final class IssueWorkbenchController
             'cardProposalResult' => CardProposalController::visible($request, 'card_proposal_result'),
             'githubConnection' => $githubConnection,
             'modelContextAllowed' => $modelContextAllowed,
+            'privateModelConsentRequired' => $privateModelConsentRequired,
             'modelKeyAvailable' => $modelKeyAvailable,
+            'hasScreenshot' => $this->sessionTaskHasScreenshot($request),
         ]);
     }
 
@@ -511,189 +534,45 @@ final class IssueWorkbenchController
             $expectedVersion = (int) ($task->version ?? 1);
             $expectedSourceSha = (string) ($context['sourceSha256'] ?? '');
 
-            if ($request->input('approved') !== true || !is_string($digest)) {
-                throw new \InvalidArgumentException('Review and approve the request first.');
+            $input = \ProofPatch\Application\Workbench\ProposeSuggestionInput::fromRaw(
+                [
+                    'digest' => $digest,
+                    'approved' => $request->input('approved'),
+                    'approval_token' => $request->input('approval_token'),
+                    'offline_reference' => $request->input('offline_reference'),
+                    'private_consent' => $request->input('private_consent'),
+                    'candidate_sha' => $request->input('candidate_sha'),
+                    'session_auth' => $request->session()->get('github_auth'),
+                    'verified_access' => $request->attributes->get('proofpatch_github_access'),
+                    'saved_approval_token' => $request->session()->get('issue_approval_token'),
+                    'approval_user_id' => $request->session()->get('issue_approval_user_id'),
+                    'github_token' => $this->resolveGitHubToken($request),
+                    'uses_server_session' => \ProofPatch\GitHub\PrivatePullSession::usesServerSession(),
+                ],
+                $context,
+                $isOwned,
+                $isDedicated
+            );
+            $useCase = new \ProofPatch\Application\Workbench\ProposeSuggestionUseCase(
+                new IssueSuggestion($this->getHttpClient(), $this->budget()),
+                $this->budget(),
+                $this->approvalStore(),
+                new \ProofPatch\Agent\ServerHeldModelProposal(),
+                \ProofPatch\Agent\PrivateProposalStore::forRuntime(),
+                $this->getHttpClient(),
+                base_path('tests/Fixtures/owned-review-case/src/OrderTotal.php')
+            );
+            $result = $useCase->execute($input);
+            if ($result->approvalConsumed) {
+                $request->session()->forget('issue_approval_token');
             }
-            $budgetCanRequest = (bool) $this->budget()->status()['canRequest'];
-            $service = new IssueSuggestion($this->getHttpClient(), $this->budget());
-            if (!hash_equals($service->preview($context)['digest'], $digest)) {
-                throw new \InvalidArgumentException('Review and approve the exact request first.');
+            if ($result->privateApprovalConsumed) {
+                $request->session()->forget('issue_approval_user_id');
             }
-
-            if ($isDedicated) {
-                if (($context['sourceSha256'] ?? '') !== \ProofPatch\GitHub\DedicatedTestRepoFetcher::EXPECTED_SOURCE_SHA256) {
-                    throw new \RuntimeException('The dedicated test repository source file was modified.');
-                }
-
-                $hasKey = false;
-                try {
-                    $key = Credentials::baseten();
-                    $hasKey = is_string($key) && strlen($key) >= 16;
-                } catch (\Throwable) {
-                    $hasKey = false;
-                }
-
-                if ($hasKey && $budgetCanRequest && !$request->boolean('offline_reference')) {
-                    if (!$this->canSendModelContext($request, $context)) {
-                        throw new \RuntimeException('Private or unverified repository content stays local and cannot be sent to a model.');
-                    }
-                    // The repository may have changed visibility since intake. Recheck
-                    // anonymously immediately before sending any content to a provider.
-                    $current = (new PublicIssueContext($this->getHttpClient()))->fetch($context['issueUrl'], $context['path']);
-                    if (!hash_equals($service->preview($current)['digest'], $digest)) {
-                        throw new \RuntimeException('The issue or repository changed. Preview the request again.');
-                    }
-                    $this->consumeProposalApproval($request, $context, $digest);
-                    $suggestion = $service->propose($context, $digest, Credentials::baseten());
-                    $suggestion['commit'] = $context['commit'] ?? \ProofPatch\GitHub\DedicatedTestRepo::requireBaseCommit();
-                    $suggestion['isSynthetic'] = false;
-                    $suggestion['isDedicated'] = true;
-                    $suggestion['provenance'] = 'Dedicated test repository';
-                } else {
-                    $proposalStore = new \ProofPatch\Agent\ServerHeldModelProposal();
-                    $requestedCandidateSha = $request->input('candidate_sha');
-                    $serverProposal = null;
-                    if (is_string($requestedCandidateSha) && preg_match('/\A[a-f0-9]{64}\z/', $requestedCandidateSha)) {
-                        $serverProposal = $proposalStore->lookup($requestedCandidateSha);
-                    }
-
-                    if ($serverProposal !== null && hash_equals($serverProposal['sourceSha256'], $context['sourceSha256'])) {
-                        // Candidate was genuinely proposed by Meta Muse Spark on public fixture with exact matching source SHA-256
-                        $candidateSource = $serverProposal['candidateSource'];
-                        $candidateSha = $serverProposal['candidateSha256'];
-                        $suggestion = [
-                            'status' => 'suggested',
-                            'isOfflineExample' => false,
-                            'isSynthetic' => false,
-                            'isDedicated' => true,
-                            'provenance' => 'Dedicated test repository (candidate generated via Meta Muse Spark on public fixture)',
-                            'repository' => $context['repository'],
-                            'issueNumber' => $context['issueNumber'],
-                            'commit' => $context['commit'] ?? \ProofPatch\GitHub\DedicatedTestRepo::requireBaseCommit(),
-                            'path' => $context['path'],
-                            'sourceSha256' => $context['sourceSha256'],
-                            'find' => $serverProposal['find'],
-                            'replace' => $serverProposal['replace'],
-                            'explanation' => $serverProposal['explanation'],
-                            'model' => $serverProposal['model'],
-                            'requestDigest' => $serverProposal['requestDigest'],
-                            'usage' => $serverProposal['usage'],
-                            'candidate' => [
-                                'status' => 'unverified_in_memory_preview',
-                                'source' => $candidateSource,
-                                'sha256' => $candidateSha,
-                                'applied' => false,
-                                'verified' => false,
-                            ],
-                        ];
-                    } else {
-                        // Offline reference proposal - strictly no model, no tokens, clearly labeled as offline reference
-                        $candidateSource = \ProofPatch\Agent\SingleFileCandidate::create(
-                            $context['source'],
-                            $context['sourceSha256'],
-                            "max(1, \$item['quantity'])",
-                            "\$item['quantity']",
-                        );
-                        $candidateSha = hash('sha256', $candidateSource);
-                        $suggestion = [
-                            'status' => 'offline_reference_example',
-                            'isOfflineExample' => true,
-                            'isSynthetic' => false,
-                            'isDedicated' => true,
-                            'provenance' => 'Dedicated test repository (offline reference example)',
-                            'repository' => $context['repository'],
-                            'issueNumber' => $context['issueNumber'],
-                            'commit' => $context['commit'] ?? \ProofPatch\GitHub\DedicatedTestRepo::requireBaseCommit(),
-                            'path' => $context['path'],
-                            'sourceSha256' => $context['sourceSha256'],
-                            'find' => "max(1, \$item['quantity'])",
-                            'replace' => "\$item['quantity']",
-                            'explanation' => "Offline reference example for OrderTotal zero-quantity bug. No external provider call was made.",
-                            'model' => null,
-                            'requestDigest' => $digest,
-                            'usage' => null,
-                            'candidate' => [
-                                'status' => 'unverified_in_memory_preview',
-                                'source' => $candidateSource,
-                                'sha256' => $candidateSha,
-                                'applied' => false,
-                                'verified' => false,
-                            ],
-                        ];
-                    }
-                }
-            } elseif ($isOwned) {
-                // Verify local fixture integrity
-                $fixturePath = base_path('tests/Fixtures/owned-review-case/src/OrderTotal.php');
-                if (!file_exists($fixturePath) || hash_file('sha256', $fixturePath) !== $context['sourceSha256']) {
-                    throw new \RuntimeException('The local fixture file was modified.');
-                }
-
-                $hasKey = false;
-                try {
-                    $key = Credentials::baseten();
-                    $hasKey = is_string($key) && strlen($key) >= 16;
-                } catch (\Throwable) {
-                    $hasKey = false;
-                }
-
-                if ($hasKey && $budgetCanRequest && !$request->boolean('offline_reference')) {
-                    if (!$this->canSendModelContext($request, $context)) {
-                        throw new \RuntimeException('Private or unverified repository content stays local and cannot be sent to a model.');
-                    }
-                    $this->consumeProposalApproval($request, $context, $digest);
-                    $suggestion = $service->propose($context, $digest, Credentials::baseten());
-                    $suggestion['commit'] = null;
-                    $suggestion['isSynthetic'] = true;
-                    $suggestion['provenance'] = 'Local checked-in test fixture (tests/Fixtures/owned-review-case)';
-                } else {
-                    // Safe offline deterministic proposal clearly marked as an offline reference example
-                    $candidateSource = \ProofPatch\Agent\SingleFileCandidate::create(
-                        $context['source'],
-                        $context['sourceSha256'],
-                        "max(1, \$item['quantity'])",
-                        "\$item['quantity']",
-                    );
-                    $suggestion = [
-                        'status' => 'offline_reference_example',
-                        'isOfflineExample' => true,
-                        'isSynthetic' => true,
-                        'provenance' => 'Local checked-in test fixture (tests/Fixtures/owned-review-case)',
-                        'repository' => $context['repository'],
-                        'issueNumber' => $context['issueNumber'],
-                        'commit' => null,
-                        'path' => $context['path'],
-                        'sourceSha256' => $context['sourceSha256'],
-                        'find' => "max(1, \$item['quantity'])",
-                        'replace' => "\$item['quantity']",
-                        'explanation' => "Offline reference example for OrderTotal boundary calculation. No external provider call was made.",
-                        'model' => null,
-                        'requestDigest' => $digest,
-                        'usage' => null,
-                        'candidate' => [
-                            'status' => 'unverified_in_memory_preview',
-                            'source' => $candidateSource,
-                            'sha256' => hash('sha256', $candidateSource),
-                            'applied' => false,
-                            'verified' => false,
-                        ],
-                    ];
-                }
-            } else {
-                if (!$this->canSendModelContext($request, $context)) {
-                    throw new \RuntimeException('Private or unverified repository content stays local and cannot be sent to a model.');
-                }
-                if (!$budgetCanRequest) {
-                    throw new \RuntimeException('The local model request allowance is exhausted.');
-                }
-                // Refetch without credentials to verify the issue, public visibility and commit still match.
-                $current = (new PublicIssueContext($this->getHttpClient()))->fetch($context['issueUrl'], $context['path']);
-                if (!hash_equals($service->preview($current)['digest'], $digest)) {
-                    throw new \RuntimeException('The issue or repository changed. Preview the request again.');
-                }
-                $this->consumeProposalApproval($request, $current, $digest);
-                $suggestion = $service->propose($current, $digest, Credentials::baseten());
+            if (!$result->ok) {
+                return redirect('/issues')->with('error', $result->error);
             }
+            $suggestion = $result->suggestion;
 
             $suggestion['safetyNotice'] = 'Host execution of untrusted PHP candidates is disabled: worktrees and temporary directories are not security sandboxes. This candidate is an in-memory preview only.';
             $task->recordProposal(
@@ -717,43 +596,48 @@ final class IssueWorkbenchController
         $isOwned = (bool) $request->session()->get('issue_is_owned_fixture');
         $context = $request->session()->get('issue_context');
 
-        if (!is_array($suggestion) || !isset($suggestion['candidate']['source'])) {
-            return redirect('/issues')->with('error', 'No candidate proposal available to verify.');
-        }
-
-        if (!$isOwned || ($suggestion['path'] ?? '') !== 'src/OrderTotal.php') {
-            return redirect('/issues')->with('error', 'Automated host verification is currently restricted to the allowlisted owned review case fixture. Worktrees and temporary directories are not security sandboxes for arbitrary untrusted code.');
-        }
-
-        if (!is_array($context)) {
-            return redirect('/issues')->with('error', 'No active issue context available to verify.');
-        }
-
-        $candidateSource = (string) $suggestion['candidate']['source'];
-        $candidateSha = hash('sha256', $candidateSource);
-
         $rawGrant = getenv('MODAL_GRANT_VERIFIED') ?: ($_ENV['MODAL_GRANT_VERIFIED'] ?? $_SERVER['MODAL_GRANT_VERIFIED'] ?? 'false');
-        $isolatedRunner = $this->customRunner ?? new \ProofPatch\Verifier\ModalIsolatedRunner(grantVerified: $rawGrant === 'true');
+        $isolatedRunner = $this->customRunner
+            ?? (\ProofPatch\Verifier\TrustedOracleRunner::isEnabled()
+                ? new \ProofPatch\Verifier\TrustedOracleRunner()
+                : new \ProofPatch\Verifier\ModalIsolatedRunner(grantVerified: $rawGrant === 'true'));
         $isolatedAvailable = $isolatedRunner->isAvailable()['available'];
 
-        // Fail closed for model-generated or untrusted candidate code if microVM runner is unavailable
-        if (!$isolatedAvailable && (!empty($suggestion['model']) || !hash_equals(\ProofPatch\Verifier\OwnedCaseVerifier::KNOWN_TRUSTED_CANDIDATE_SHA256, $candidateSha))) {
-            return redirect('/issues')->with('error', 'Host execution disabled: Model-generated or untrusted candidate code cannot be executed on the host. Worktrees, temporary directories, and token filters are not security sandboxes; an isolated microVM runner is required.');
+        try {
+            $input = \ProofPatch\Application\Workbench\VerifyCandidateInput::fromRaw($suggestion, $isOwned, $context, $isolatedAvailable);
+        } catch (\Throwable $guardError) {
+            return redirect('/issues')->with('error', $guardError->getMessage());
         }
 
         try {
-            $task = $this->resolveAndValidateTask($request, $context, expectedCandidateSha: $candidateSha);
+            $candidateSha = $input->candidateSha;
+            $task = $this->resolveAndValidateTask($request, $input->context, expectedCandidateSha: $candidateSha);
             $expectedVersion = (int) ($task->version ?? 1);
             $expectedCandidateSha = $candidateSha;
 
             $approvalStore = new \ProofPatch\GitHub\ServerHeldPublicationApproval(storage_path('app/publication_approvals'));
-            $verifier = new \ProofPatch\Verifier\OwnedCaseVerifier(
+            $skill = ($this->hari ?? \Hari\Hari::registry())->resolve('verify.candidate', 1, 'workbench');
+            if (!$skill instanceof \ProofPatch\Abilities\VerifyCandidateSkill) {
+                throw new \RuntimeException('Candidate verification skill is unavailable.');
+            }
+            $outcome = $skill->withVerifier(new \ProofPatch\Verifier\OwnedCaseVerifier(
                 base_path(),
                 null,
                 $approvalStore,
                 $isolatedAvailable ? $isolatedRunner : null
-            );
-            $report = $verifier->verify($candidateSource, $context);
+            ))->invoke([
+                'suggestion' => $suggestion,
+                'is_owned' => $isOwned,
+                'context' => $context,
+                'isolated_available' => $isolatedAvailable,
+            ]);
+            if (!is_array($outcome) || ($outcome['ok'] ?? null) !== true) {
+                $request->session()->forget(['issue_verification_report', 'issue_publication_token']);
+                $error = is_string($outcome['error'] ?? null) && $outcome['error'] !== ''
+                    ? $outcome['error'] : 'Candidate verification skill failed.';
+                return redirect('/issues')->with('error', 'Verification error: ' . $error);
+            }
+            $report = $outcome['report'];
 
             // ATOMIC OPTIMISTIC PERSISTENCE:
             // Persist verification ONLY if the task version and active candidate SHA still match.
@@ -816,40 +700,28 @@ final class IssueWorkbenchController
         $context = $request->session()->get('issue_context');
         $report = $request->session()->get('issue_verification_report');
         $suggestion = $request->session()->get('issue_suggestion');
-        $authToken = $request->session()->get('issue_publication_token');
-        $isDedicated = (bool) $request->session()->get('issue_is_dedicated_test_repo');
 
-        if (!is_array($context) || !is_array($report) || !is_array($suggestion) || !isset($suggestion['candidate']['source'])) {
-            return redirect('/issues')->with('error', 'No verified candidate run available for publication.');
+        try {
+            $input = \ProofPatch\Application\Workbench\PublishDraftPrInput::fromRaw([
+                'context' => $context,
+                'report' => $report,
+                'suggestion' => $suggestion,
+                'is_dedicated' => (bool) $request->session()->get('issue_is_dedicated_test_repo'),
+                'auth_token' => $request->session()->get('issue_publication_token'),
+                'github_token' => $this->resolveGitHubToken($request),
+                'is_private_dedicated' => is_array($context) && $this->isPrivateDedicatedContext($request, $context),
+            ]);
+        } catch (\Throwable $inputError) {
+            return redirect('/issues')->with('error', $inputError->getMessage());
         }
-
-        if (!$isDedicated) {
-            return redirect('/issues')->with('error', 'Pull request publication is strictly restricted to the dedicated test repository.');
-        }
-
-        $evidenceDir = $report['evidenceDirectory'] ?? null;
-        if (!is_string($evidenceDir) || !is_dir($evidenceDir)) {
-            return redirect('/issues')->with('error', 'Execution evidence directory is missing.');
-        }
-
-        if ($authToken === null || trim((string) $authToken) === '') {
-            return redirect('/issues')->with('error', 'Publication refused: Server-held publication authorization token is required.');
-        }
-
-        // Reconcile and resolve GitHub authorization token safely
-        $githubToken = $this->resolveGitHubToken($request);
-        if ($githubToken === null || trim($githubToken) === '') {
-            return redirect('/issues')->with('error', 'Authentication required: Connect your GitHub account before publishing.');
-        }
-
-        $candidateSha = hash('sha256', (string) $suggestion['candidate']['source']);
+        $candidateSha = $input->candidateSha;
 
         try {
             $task = $this->resolveAndValidateTask(
                 $request,
-                $context,
+                $input->context,
                 expectedCandidateSha: $candidateSha,
-                expectedRunId: $report['id'] ?? null
+                expectedRunId: $input->report['id'] ?? null
             );
             $expectedVersion = (int) ($task->version ?? 1);
 
@@ -860,7 +732,7 @@ final class IssueWorkbenchController
             $task->claimPublication(
                 $expectedVersion,
                 $candidateSha,
-                (string) ($report['id'] ?? '')
+                (string) ($input->report['id'] ?? '')
             );
             $claimedVersion = (int) $task->version;
         } catch (\ProofPatch\Exceptions\StaleTaskConcurrencyException $concurrencyError) {
@@ -871,141 +743,100 @@ final class IssueWorkbenchController
 
         // 2. NETWORK CALL TO GITHUB:
         // Execute the external network request outside any DB transaction:
-        try {
-            $approvalStore = new \ProofPatch\GitHub\ServerHeldPublicationApproval(storage_path('app/publication_approvals'));
-            // Dedicated-only explicit user action path with connected publisher
-            $publisher = new \ProofPatch\GitHub\DedicatedTestRepoPublisher(
+        $approvalStore = new \ProofPatch\GitHub\ServerHeldPublicationApproval(storage_path('app/publication_approvals'));
+        // Dedicated-only explicit user action path with connected publisher
+        $useCase = new \ProofPatch\Application\Workbench\PublishDraftPrUseCase(
+            new \ProofPatch\GitHub\DedicatedTestRepoPublisher(
                 $approvalStore,
                 $this->getHttpClient(),
                 disconnected: false
-            );
+            )
+        );
+        $result = $useCase->execute($input);
 
-            $publicationContext = $context;
-            if (($suggestion['isOfflineExample'] ?? false) === true) {
-                $publicationContext['proposalOrigin'] = 'offline_reference';
-            } elseif (!empty($suggestion['model'])) {
-                $publicationContext['proposalOrigin'] = 'muse';
-                $publicationContext['model'] = $suggestion['model'];
-                $publicationContext['usage'] = $suggestion['usage'] ?? null;
-            } else {
-                $publicationContext['proposalOrigin'] = 'unspecified';
-            }
-            $result = $publisher->publishDraftPr(
-                $publicationContext,
-                $evidenceDir,
-                (string) $suggestion['candidate']['source'],
-                (string) $authToken,
-                $githubToken
-            );
-        } catch (\ProofPatch\Exceptions\AmbiguousPublicationException $ambiguousError) {
-            // Ambiguous write state: attempt read-only reconciliation before failing closed
-            $reconciled = null;
-            try {
-                $reconciled = $publisher->reconcileExistingPr($githubToken, $ambiguousError->branch);
-            } catch (\Throwable) {
-                $reconciled = null;
-            }
+        if ($result->status === 'blocked') {
+            // Pre-write failure: safe to release publication claim
+            $task->releasePublicationClaim($claimedVersion);
+            return redirect('/issues')->with('error', $result->message);
+        }
 
-            if ($reconciled !== null) {
-                // Read-only check verified PR was actually created on GitHub
-                $reconciled['receiptSha256'] = (string) ($report['receipt']['sha256'] ?? '');
-                $reconciled['verificationRunId'] = (string) ($report['id'] ?? '');
-
-                $request->session()->put('issue_published_pr', $reconciled);
-                $request->session()->forget('issue_publication_token');
-
-                try {
-                    $task->recordPublication(
-                        $reconciled,
-                        expectedVersion: $claimedVersion,
-                        expectedRunId: $report['id'] ?? null,
-                        expectedCandidateSha: $candidateSha
-                    );
-                } catch (\Throwable $dbErr) {
-                    $this->storeDurableRecoveryEvidence($task, $claimedVersion, $report['id'] ?? 'unknown', $reconciled, $dbErr->getMessage());
-                }
-
-                $this->addNotification(
-                    $request,
-                    'success',
-                    'Draft PR Reconciled',
-                    "Draft PR #{$reconciled['prNumber']} was verified created on GitHub for {$reconciled['repository']}.",
-                    $reconciled['prUrl']
-                );
-
-                return redirect('/issues');
-            }
-
+        if ($result->status === 'outcome_unknown') {
             // Could not confirm PR exists: fail closed with honest outcome-unknown state!
             // Preserve publication claim and deterministic branch identity; do NOT release claim or repeat writes.
             try {
-                $task->recordOutcomeUnknown($ambiguousError->branch, $ambiguousError->runId, $ambiguousError->getMessage(), $claimedVersion);
+                $task->recordOutcomeUnknown($result->branch, $result->runId, $result->detail, $claimedVersion);
             } catch (\Throwable $stateError) {
-                $this->storeDurableRecoveryEvidence($task, $claimedVersion, $ambiguousError->runId, [
-                    'branch' => $ambiguousError->branch,
-                    'repository' => $ambiguousError->repository,
+                $this->storeDurableRecoveryEvidence($task, $claimedVersion, $result->runId, [
+                    'branch' => $result->branch,
+                    'repository' => $result->repository,
                     'status' => 'outcome_unknown',
                 ], $stateError->getMessage());
             }
 
             $request->session()->put('issue_publication_reconciliation', [
                 'status' => 'outcome_unknown',
-                'repository' => $ambiguousError->repository,
-                'branch' => $ambiguousError->branch,
-                'runId' => $ambiguousError->runId,
-                'error' => $ambiguousError->getMessage(),
+                'repository' => $result->repository,
+                'branch' => $result->branch,
+                'runId' => $result->runId,
+                'error' => $result->detail,
             ]);
 
-            return redirect('/issues')->with(
-                'error',
-                "PR publication outcome unknown: writes began for branch '{$ambiguousError->branch}', but confirmation failed ({$ambiguousError->getMessage()}). Automatic retries are blocked to prevent duplicate branches or PRs. Reconcile the branch state first."
-            );
-        } catch (\Throwable $publishError) {
-            // Pre-write failure: safe to release publication claim
-            $task->releasePublicationClaim($claimedVersion);
-            return redirect('/issues')->with('error', 'PR Publication blocked: ' . $publishError->getMessage());
+            return redirect('/issues')->with('error', $result->message);
         }
 
         // 3. EXTERNAL PR WAS CREATED ON GITHUB:
         // External PR was successfully created on GitHub. Store in session immediately.
-        $request->session()->put('issue_published_pr', $result);
+        $pr = $result->pr;
+        $request->session()->put('issue_published_pr', $pr);
         $request->session()->forget('issue_publication_token');
 
         // 4. ATOMIC TASK FINALIZATION:
         try {
             $task->recordPublication(
-                $result,
+                $pr,
                 expectedVersion: $claimedVersion,
-                expectedRunId: $report['id'] ?? null,
+                expectedRunId: $input->report['id'] ?? null,
                 expectedCandidateSha: $candidateSha
             );
         } catch (\Throwable $dbError) {
             // External PR creation succeeded on GitHub.
             // Do NOT perform an unconditional DB update by ID, which could overwrite a newer task.
             // Instead, write durable recovery evidence to server storage and preserve in session.
-            $this->storeDurableRecoveryEvidence($task, $claimedVersion, $report['id'] ?? 'unknown', $result, $dbError->getMessage());
+            $this->storeDurableRecoveryEvidence($task, $claimedVersion, $input->report['id'] ?? 'unknown', $pr, $dbError->getMessage());
 
-            $this->addNotification(
-                $request,
-                'warning',
-                'Draft PR Created (Local Database Save Failed)',
-                "Draft PR #{$result['prNumber']} was created on GitHub at {$result['prUrl']}, but saving task state to local database failed: {$dbError->getMessage()}.",
-                $result['prUrl']
-            );
+            if ($result->status === 'published') {
+                $this->addNotification(
+                    $request,
+                    'warning',
+                    'Draft PR Created (Local Database Save Failed)',
+                    "Draft PR #{$pr['prNumber']} was created on GitHub at {$pr['prUrl']}, but saving task state to local database failed: {$dbError->getMessage()}.",
+                    $pr['prUrl']
+                );
 
-            return redirect('/issues')->with(
-                'error',
-                "Draft PR #{$result['prNumber']} was published successfully to {$result['prUrl']}. However, local task recording failed ({$dbError->getMessage()}). Do not retry publication."
-            );
+                return redirect('/issues')->with(
+                    'error',
+                    "Draft PR #{$pr['prNumber']} was published successfully to {$pr['prUrl']}. However, local task recording failed ({$dbError->getMessage()}). Do not retry publication."
+                );
+            }
         }
 
-        $this->addNotification(
-            $request,
-            'success',
-            'Draft PR Prepared',
-            "Draft PR #{$result['prNumber']} created in {$result['repository']}.",
-            $result['prUrl']
-        );
+        if ($result->status === 'reconciled') {
+            $this->addNotification(
+                $request,
+                'success',
+                'Draft PR Reconciled',
+                "Draft PR #{$pr['prNumber']} was verified created on GitHub for {$pr['repository']}.",
+                $pr['prUrl']
+            );
+        } else {
+            $this->addNotification(
+                $request,
+                'success',
+                'Draft PR Prepared',
+                "Draft PR #{$pr['prNumber']} created in {$pr['repository']}.",
+                $pr['prUrl']
+            );
+        }
 
         return redirect('/issues');
     }
@@ -1110,11 +941,6 @@ final class IssueWorkbenchController
         string $dbErrorMessage
     ): void {
         TaskWorkflowHelper::storeDurableRecoveryEvidence($task, $claimedVersion, $runId, $prResult, $dbErrorMessage);
-    }
-
-    private function consumeProposalApproval(Request $request, array $context, string $digest): void
-    {
-        TaskWorkflowHelper::consumeProposalApproval($request, $context, $digest, $this->approvalStore());
     }
 
     public function transcribeVoice(Request $request): \Illuminate\Http\JsonResponse

@@ -109,6 +109,37 @@ final class TelemetryTest extends TestCase
         $this->assertContains(350, array_column($data['feed'], 'tokens'));
     }
 
+    public function testWebTelemetryIsScopedToVerifiedRepositoryGrantAndHidesSharedLedger(): void
+    {
+        $this->seedReviews();
+        AutoReviewResult::create([
+            'repository' => 'other/private', 'pull_number' => 9,
+            'head_sha' => str_repeat('5', 40), 'base_sha' => str_repeat('6', 40),
+            'status' => 'completed', 'is_public' => false, 'summary' => 'Secret finding',
+        ]);
+        $ledger = $this->fixtureLedger();
+        $scoped = Telemetry::collect($ledger, ['acme/repo'], false);
+        $this->assertSame(2, $scoped['reviews']['total']);
+        $this->assertFalse($scoped['ledgerAvailable']);
+        $this->assertSame(0, $scoped['requests']['total']);
+        $this->assertStringNotContainsString('other/private', json_encode($scoped, JSON_THROW_ON_ERROR));
+
+        $request = \Illuminate\Http\Request::create('/telemetry', 'GET');
+        $session = new \Illuminate\Session\Store('test', new \Illuminate\Session\ArraySessionHandler(10));
+        // A session value alone is not a verified middleware grant.
+        $session->put('github_auth', ['token' => 'test', 'repositories' => [['fullName' => 'other/private']]]);
+        $request->setLaravelSession($session);
+        $controller = new \ProofPatch\Http\Controllers\TelemetryController();
+        $props = $controller->show($request)->toResponse($request)->getOriginalContent()->getData()['page']['props'];
+        $this->assertSame(0, $props['telemetry']['reviews']['total']);
+        $this->assertStringNotContainsString('other/private', json_encode($props['telemetry'], JSON_THROW_ON_ERROR));
+
+        $request->attributes->set('proofpatch_github_access', ['userId' => 1, 'repositories' => ['acme/repo' => true]]);
+        $props = $controller->show($request)->toResponse($request)->getOriginalContent()->getData()['page']['props'];
+        $this->assertSame(2, $props['telemetry']['reviews']['total']);
+        $this->assertStringNotContainsString('other/private', json_encode($props['telemetry'], JSON_THROW_ON_ERROR));
+    }
+
     public function testMissingLedgerYieldsHonestZeros(): void
     {
         $data = Telemetry::collect($this->tempDir.'/does-not-exist.json');

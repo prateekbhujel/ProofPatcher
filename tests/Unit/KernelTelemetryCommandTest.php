@@ -79,7 +79,7 @@ final class KernelTelemetryCommandTest extends TestCase
         $output = $tester->getDisplay();
         $this->assertStringContainsString('ProofPatcher Kernel telemetry', $output);
         $this->assertStringContainsString('Model requests', $output);
-        $this->assertStringContainsString('Estimated reserved', $output);
+        $this->assertStringContainsString('Held for model calls', $output);
         $this->assertStringContainsString('Tokens in / out', $output);
         $this->assertStringContainsString('100 / 20', $output);
         $this->assertStringContainsString('muse-spark-1.3', $output);

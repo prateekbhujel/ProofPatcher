@@ -117,6 +117,28 @@ final class PullRequestReviewTest extends TestCase
         $review->preview($this->validPull(), $patch);
     }
 
+    public function testPreviewRejectsIncompleteDiffBeforeAnyModelRequest(): void
+    {
+        foreach (['partial', 'missing', 'oversize', 'files_truncated', 'count_mismatch'] as $case) {
+            $patch = $this->validPatchPreview();
+            if (in_array($case, ['partial', 'missing', 'oversize'], true)) {
+                $patch['files'][] = ['name' => 'other.php', 'status' => $case, 'patch' => $case === 'partial' ? '+partial' : null];
+                $patch['changedFiles'] = 2;
+            } elseif ($case === 'files_truncated') {
+                $patch['filesTruncated'] = true;
+            } else {
+                $patch['changedFiles'] = 2;
+            }
+
+            try {
+                (new PullRequestReview(new MockHttpClient(), $this->budget))->preview($this->validPull(), $patch);
+                $this->fail("Expected incomplete diff to be rejected: {$case}");
+            } catch (\InvalidArgumentException $e) {
+                $this->assertStringContainsString('diff is incomplete', $e->getMessage(), $case);
+            }
+        }
+    }
+
     public function testReviewRejectsMismatchedDigest(): void
     {
         $http = new MockHttpClient();
@@ -206,6 +228,41 @@ final class PullRequestReviewTest extends TestCase
         $this->assertSame('medium', $validated['riskLevel']);
         $this->assertSame('discuss', $validated['recommendation']);
         $this->assertNull($validated['fileFindings'][0]['lineHint']);
+    }
+
+    public function testParseAndValidateAcceptsOptionalSuggestion(): void
+    {
+        $json = json_encode([
+            'summary' => 'Null guard missing.',
+            'riskLevel' => 'medium',
+            'recommendation' => 'request_changes',
+            'fileFindings' => [
+                ['path' => 'file.css', 'status' => 'concern', 'lineHint' => 3,
+                    'comment' => 'Null dereference when empty.', 'suggestion' => "if (\$x === null) {\n    return;\n}"],
+                ['path' => 'file.css', 'status' => 'note', 'lineHint' => null, 'comment' => 'Looks fine.'],
+            ],
+        ]);
+
+        $validated = PullRequestReview::parseAndValidate($json, ['file.css']);
+        $this->assertSame("if (\$x === null) {\n    return;\n}", $validated['fileFindings'][0]['suggestion']);
+        $this->assertNull($validated['fileFindings'][1]['suggestion']);
+    }
+
+    public function testParseAndValidateRejectsInvalidSuggestion(): void
+    {
+        $json = json_encode([
+            'summary' => 'Null guard missing.',
+            'riskLevel' => 'medium',
+            'recommendation' => 'request_changes',
+            'fileFindings' => [
+                ['path' => 'file.css', 'status' => 'concern', 'lineHint' => 3,
+                    'comment' => 'Null dereference when empty.', 'suggestion' => 42],
+            ],
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('fileFindings[0].suggestion must be null or a valid nonempty string');
+        PullRequestReview::parseAndValidate($json, ['file.css']);
     }
 
     public function testParseAndValidateRejectsInvalidRiskLevel(): void

@@ -8,6 +8,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { BudgetData, ReviewPreviewData, ReviewResult } from './types';
+import { reviewUsageLine } from '../ui/budgetCopy';
 
 interface PrReviewTabProps {
   review?: ReviewResult | null;
@@ -92,7 +93,7 @@ export function PrReviewTab({
             <span>Reviewed: {new Date(review.reviewedAt).toLocaleString()}</span>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Advisory only · Stored in ProofPatcher · Not posted to GitHub. External repository tests were not run here.
+            Advisory only · {review.publishedStatus === 'one_inline_comment' ? 'One suggestion posted to GitHub.' : review.publishedStatus === 'publication_unknown' ? 'Comment outcome unknown. Check GitHub.' : 'Stored in ProofPatcher · Not posted to GitHub.'} External repository tests were not run here.
           </p>
         </div>
       )}
@@ -159,16 +160,19 @@ export function PrReviewTab({
               <input
                 type="checkbox"
                 checked={reviewApproved}
+                disabled={isPrivate}
                 onChange={(e) => {
                   setReviewApproved(e.target.checked);
                   setReviewFormData('confirm', e.target.checked);
                   setReviewFormData('digest', reviewPreview.digest);
                   setReviewFormData('approval_token', reviewPreview.approvalToken || '');
                 }}
-                className="mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 dark:border-slate-700 dark:text-slate-100"
+                className="mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 dark:border-slate-700 dark:text-slate-100 disabled:opacity-40"
               />
               <span className="leading-relaxed">
-                I approve sending this public diff to Muse for review.
+                {isPrivate
+                  ? 'Private pull requests stay local and are not sent to a model.'
+                  : 'I approve sending this public diff to Muse for review.'}
               </span>
             </label>
 
@@ -176,7 +180,7 @@ export function PrReviewTab({
               <div className="text-xs">
                 {budget ? (
                   <span className="text-slate-600 dark:text-slate-400">
-                    Usage: <strong className="font-mono text-slate-900 dark:text-slate-100">{budget.attempts}/{budget.maxAttempts}</strong> attempts
+                    Usage: <strong className="font-mono text-slate-900 dark:text-slate-100">{reviewUsageLine(budget.attempts, budget.maxAttempts)}</strong>
                   </span>
                 ) : (
                   <span className="text-slate-400">Budget status unknown</span>

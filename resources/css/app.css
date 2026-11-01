@@ -203,6 +203,11 @@ html.dark {
     animation: pp-os-fade 140ms ease-out;
   }
 
+  /* A short entrance keeps inner pages cohesive with the desktop. */
+  .pp-page-enter {
+    animation: pp-os-fade 180ms ease-out;
+  }
+
   /* OS desktop: smooth minimize, maximize, and restore glides. */
   .os-window-move {
     transition:
@@ -237,6 +242,7 @@ html.dark {
     .pop,
     .pp-caret,
     .os-window-enter,
+    .pp-page-enter,
     .os-menu-enter,
     .os-live-dot {
       animation: none;

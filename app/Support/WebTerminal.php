@@ -6,7 +6,7 @@ namespace ProofPatch\Support;
 
 /**
  * Parses web-terminal input into allowlisted kernel command runs. The web
- * terminal is read-only by design: status, findings, telemetry, and repo
+ * terminal is read-only by design: status, findings, and repo
  * listing only. Anything that spends budget, writes to GitHub, or changes
  * settings stays in the real terminal and the app pages behind their own
  * confirmations. Pure and unit-tested; the controller only executes.
@@ -22,7 +22,7 @@ final class WebTerminal
           status [--json]                 pipeline dashboard
           reviews [--limit N] [--repository owner/repo] [--status S]
                                           recent review findings (S: completed, failed, skipped_private, skipped_budget)
-          telemetry                       local usage numbers
+          telemetry                       usage details (CLI only)
           repos                           authorized repositories
           help                            this list
         TEXT;
