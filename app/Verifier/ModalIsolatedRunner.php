@@ -22,6 +22,7 @@ final class ModalIsolatedRunner implements IsolatedRunnerInterface
 {
     public const MAX_OUTPUT_BYTES = 65536; // 64 KB limit
     public const DEFAULT_TIMEOUT_SECONDS = 30;
+    public const MIN_TIMEOUT_SECONDS = 10; // Modal rejects sandbox timeouts below 10s
     public const MAX_TIMEOUT_SECONDS = 60;
     public const DEFAULT_PYTHON_VENV = null;
 
@@ -92,7 +93,7 @@ final class ModalIsolatedRunner implements IsolatedRunnerInterface
         }
 
         $this->sanitizeRelativePath($relativePath);
-        $timeoutSeconds = max(5, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds));
+        $timeoutSeconds = max(self::MIN_TIMEOUT_SECONDS, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds));
         $startTime = hrtime(true);
 
         // Simulation / test hook path: clearly labeled as simulated
@@ -366,7 +367,7 @@ final class ModalIsolatedRunner implements IsolatedRunnerInterface
             'relative_path' => $relativePath,
             'test_harness_path' => $harnessPath,
             'oracle_token' => bin2hex(random_bytes(32)),
-            'timeout_seconds' => max(5, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds)),
+            'timeout_seconds' => max(self::MIN_TIMEOUT_SECONDS, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds)),
             'image' => self::VERIFIED_PHP_IMAGE,
         ];
     }

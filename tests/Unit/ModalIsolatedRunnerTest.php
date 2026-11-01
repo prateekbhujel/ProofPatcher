@@ -102,6 +102,14 @@ final class ModalIsolatedRunnerTest extends TestCase
         $runner->runIsolated('<?php', '<?php');
     }
 
+    public function testTimeoutClampsToProviderRange(): void
+    {
+        $runner = new ModalIsolatedRunner();
+        self::assertSame(10, $runner->generateModalRunnerSpec('<?php', '<?php', 'src/OrderTotal.php', 5)['timeout_seconds']);
+        self::assertSame(30, $runner->generateModalRunnerSpec('<?php', '<?php', 'src/OrderTotal.php', 30)['timeout_seconds']);
+        self::assertSame(60, $runner->generateModalRunnerSpec('<?php', '<?php', 'src/OrderTotal.php', 600)['timeout_seconds']);
+    }
+
     public function testSanitizesRelativePaths(): void
     {
         $runner = new ModalIsolatedRunner(sandboxExecutor: fn() => ['exitCode' => 0]);

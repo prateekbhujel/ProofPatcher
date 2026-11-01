@@ -50,6 +50,14 @@ final class TrustedOracleRunnerTest extends TestCase
         self::assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/', $spec['oracle_token']);
     }
 
+    public function testTimeoutClampsToProviderRange(): void
+    {
+        $runner = new TrustedOracleRunner(enabled: true);
+        self::assertSame(10, $runner->generateRunnerSpec('<?php', '<?php', 'src/OrderTotal.php', 5)['timeout_seconds']);
+        self::assertSame(30, $runner->generateRunnerSpec('<?php', '<?php', 'src/OrderTotal.php', 30)['timeout_seconds']);
+        self::assertSame(60, $runner->generateRunnerSpec('<?php', '<?php', 'src/OrderTotal.php', 600)['timeout_seconds']);
+    }
+
     public function testHelperScriptDeclaresSandboxBoundaries(): void
     {
         $runner = new TrustedOracleRunner(enabled: true);

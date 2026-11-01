@@ -181,5 +181,20 @@ class CaseParserExecutionTest(unittest.TestCase):
         self.assertIn('oversized', result['error'])
 
 
+class TrustedTimeoutFloorTest(unittest.TestCase):
+    def test_clamp_timeout_seconds_enforces_provider_floor(self):
+        self.assertEqual(10, runner.clamp_timeout_seconds(5))
+        self.assertEqual(30, runner.clamp_timeout_seconds(30))
+        self.assertEqual(60, runner.clamp_timeout_seconds(600))
+
+    def test_only_sandbox_timeout_marks_run_timed_out(self):
+        timeout_cls = type("SandboxTimeoutError", (Exception,), {})
+        self.assertTrue(runner.is_sandbox_timeout(timeout_cls("sandbox timed out")))
+        config_err = type("InvalidError", (Exception,), {})(
+            "Timeout must be between 10s and 86400s (inclusive)."
+        )
+        self.assertFalse(runner.is_sandbox_timeout(config_err))
+
+
 if __name__ == '__main__':
     unittest.main()

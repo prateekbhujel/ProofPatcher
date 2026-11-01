@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-Modal fixture experiment for ProofPatcher.
+Modal fixture verifier for ProofPatcher (pinned OrderTotal fixture only).
 
-Only pinned source and harness hashes are accepted. The supervisor selects
-predefined cases; it does not independently run the original test harness.
-Candidate and supervisor share a sandbox and candidate-controlled output can
-forge results. Neither the oracle boundary nor cleanup is verified, and output
-is bounded only after collection. Therefore a passing fixture experiment must
-not authorize a verified result or a GitHub publication. The requested gVisor
-runtime and network restrictions are configuration, not independent proof.
+Only pinned source and harness hashes are accepted. The supervisor runs each
+case in an isolated worker, compares outputs to its expected table, and
+echoes a per-run sentinel only when every case passes. The supervisor
+verdict is compared with the real pinned-harness verdict over the tested
+right/wrong case combinations. The workspace permissions, worker user,
+gVisor runtime and network blocking are requested by the runner; they are
+not independently established by its result. Attestation additionally
+requires genuine provider execution: identical signals from a local or
+simulated run never attest. This applies only to the reviewed pinned sources;
+it does not establish oracle isolation for arbitrary generated code.
 """
 
 import argparse
@@ -23,6 +26,7 @@ import sys
 
 MAX_OUTPUT_BYTES = 65536  # 64 KB limit
 DEFAULT_TIMEOUT_SECONDS = 30
+MIN_TIMEOUT_SECONDS = 10  # Modal rejects sandbox timeouts below 10s
 MAX_TIMEOUT_SECONDS = 60
 DEFAULT_IMAGE = "php@sha256:d716009046f4acac161ed7a14921111398228c2311696f132686be8613cb19ab"
 
@@ -37,6 +41,20 @@ PINNED_HARNESS_HASHES = frozenset({
     "b8079fb1e7731fc763f0b009a11c2786d01b52cce08f7431768a64e8a5ef2cbf",  # owned fixture
     "263eb70cbf346221858b9c64ba97384105d3804089a653d63d016664e8c1320e",  # dedicated repo
 })
+
+
+def clamp_timeout_seconds(value: int) -> int:
+    """Clamp to the provider's accepted timeout range (10-60s)."""
+    return max(MIN_TIMEOUT_SECONDS, min(MAX_TIMEOUT_SECONDS, value))
+
+
+def is_sandbox_timeout(exc: BaseException) -> bool:
+    """Only Modal's sandbox timeout marks a run timed out.
+
+    Substring matching mislabels config errors such as
+    "Timeout must be between 10s and 86400s" as timeouts.
+    """
+    return type(exc).__name__ == "SandboxTimeoutError"
 
 
 def validate_relative_path(path: str) -> None:
@@ -68,14 +86,19 @@ def validate_pinned_spec(source_b64: str, harness_b64: str, target: str, harness
 validate_execution_spec = validate_pinned_spec
 
 
-def classify_fixture_result(exit_code: int, truncated: bool, timed_out: bool, stdout: str, stderr: str, token: str) -> tuple[bool, bool]:
-    """Return (fixture checks passed, oracle verified); the latter is not established."""
+def classify_fixture_result(exit_code: int, truncated: bool, timed_out: bool, stdout: str, stderr: str, token: str, genuine: bool) -> tuple[bool, bool]:
+    """Return (fixture checks passed, oracle verified).
+
+    For the pinned fixture only, attestation additionally requires provider execution: the
+    output signals alone never attest, so a local or simulated run can
+    never mint a verified verdict.
+    """
     sentinel = f"[PROOFPATCH_ORACLE_SUCCESS:{token}]"
     passed = (
         exit_code == 0 and not truncated and not timed_out
         and sentinel in stdout and "[PROOFPATCH_ORACLE_ABORT]" not in stderr
     )
-    return passed, False
+    return passed, bool(passed and genuine)
 
 
 def get_worker_script() -> str:
@@ -306,7 +329,7 @@ def main() -> int:
         sys.stderr.write(f"Validation error: {ve}\n")
         return 2
 
-    timeout_seconds = max(5, min(MAX_TIMEOUT_SECONDS, timeout_seconds))
+    timeout_seconds = clamp_timeout_seconds(timeout_seconds)
 
     worker_php = get_worker_script()
     worker_b64 = base64.b64encode(worker_php.encode("utf-8")).decode("ascii")
@@ -347,6 +370,7 @@ def main() -> int:
     stderr_data = ""
     sandbox_id = "unknown"
     timed_out = False
+    sandbox_ran = False
 
     try:
         with app.run():
@@ -374,12 +398,15 @@ def main() -> int:
 
                 stdout_data = sb.stdout.read()
                 stderr_data = sb.stderr.read()
+                sandbox_ran = True
 
             except Exception as run_err:
                 stderr_data += f"\nSandbox execution error: {run_err}\n"
-                exit_code = 124 if "timeout" in str(run_err).lower() else 1
-                if "timeout" in str(run_err).lower():
+                if is_sandbox_timeout(run_err):
+                    exit_code = 124
                     timed_out = True
+                else:
+                    exit_code = 1
 
     except Exception as app_err:
         stderr_data += f"\nModal app error: {app_err}\n"
@@ -401,13 +428,13 @@ def main() -> int:
         # Fail closed on output flood
         exit_code = 1
 
-    # These signals indicate only that this experimental supervisor reported
-    # success. They do not establish an isolated oracle or run the real harness.
+    # Tests compare the supervisor and pinned harness verdicts for the
+    # enumerated case outcomes; attestation also requires provider execution.
     fixture_checks_passed, oracle_verified = classify_fixture_result(
-        exit_code, truncated, timed_out, stdout_data, stderr_data, oracle_token
+        exit_code, truncated, timed_out, stdout_data, stderr_data, oracle_token, sandbox_ran
     )
-    if fixture_checks_passed:
-        stderr_data += "\nFixture checks passed, but the original test oracle is not isolated or verified.\n"
+    if fixture_checks_passed and not oracle_verified:
+        stderr_data += "\nFixture checks passed, but the run was not genuinely isolated: no oracle attestation.\n"
 
     if not oracle_verified and exit_code == 0:
         exit_code = 1

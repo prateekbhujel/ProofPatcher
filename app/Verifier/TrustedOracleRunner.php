@@ -15,6 +15,7 @@ final class TrustedOracleRunner implements TrustedOracleInterface
     public const PROTOCOL = 'trusted-oracle/v1';
     public const MAX_OUTPUT_BYTES = 65536;
     public const DEFAULT_TIMEOUT_SECONDS = 30;
+    public const MIN_TIMEOUT_SECONDS = 10; // Modal rejects sandbox timeouts below 10s
     public const MAX_TIMEOUT_SECONDS = 60;
     public const VERIFIED_PHP_IMAGE = ModalIsolatedRunner::VERIFIED_PHP_IMAGE;
 
@@ -73,7 +74,7 @@ final class TrustedOracleRunner implements TrustedOracleInterface
         }
 
         $this->sanitizeRelativePath($relativePath);
-        $timeoutSeconds = max(5, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds));
+        $timeoutSeconds = max(self::MIN_TIMEOUT_SECONDS, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds));
         $startTime = hrtime(true);
 
         if ($this->sandboxExecutor !== null) {
@@ -124,7 +125,7 @@ final class TrustedOracleRunner implements TrustedOracleInterface
     private function runDiagnosticTransport(string $source, string $testHarness, string $relativePath = 'src/OrderTotal.php', int $timeoutSeconds = self::DEFAULT_TIMEOUT_SECONDS): array
     {
         $this->sanitizeRelativePath($relativePath);
-        $timeoutSeconds = max(5, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds));
+        $timeoutSeconds = max(self::MIN_TIMEOUT_SECONDS, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds));
         $startTime = hrtime(true);
         $pythonBinary = $this->resolvePythonBinary();
         if ($pythonBinary === null) {
@@ -338,7 +339,7 @@ final class TrustedOracleRunner implements TrustedOracleInterface
             'relative_path' => $relativePath,
             'test_harness_path' => $harnessPath,
             'oracle_token' => bin2hex(random_bytes(32)),
-            'timeout_seconds' => max(5, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds)),
+            'timeout_seconds' => max(self::MIN_TIMEOUT_SECONDS, min(self::MAX_TIMEOUT_SECONDS, $timeoutSeconds)),
             'image' => self::VERIFIED_PHP_IMAGE,
         ];
     }

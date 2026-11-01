@@ -24,6 +24,7 @@ PROTOCOL = "trusted-oracle/v1"
 MAX_OUTPUT_BYTES = 65536  # 64 KB backstop; inner per-case caps apply first
 MAX_SOURCE_BYTES = 65536
 DEFAULT_TIMEOUT_SECONDS = 30
+MIN_TIMEOUT_SECONDS = 10  # Modal rejects sandbox timeouts below 10s
 MAX_TIMEOUT_SECONDS = 60
 DEFAULT_IMAGE = "php@sha256:d716009046f4acac161ed7a14921111398228c2311696f132686be8613cb19ab"
 
@@ -31,6 +32,20 @@ PINNED_HARNESS_HASHES = frozenset({
     "b8079fb1e7731fc763f0b009a11c2786d01b52cce08f7431768a64e8a5ef2cbf",  # owned fixture
     "263eb70cbf346221858b9c64ba97384105d3804089a653d63d016664e8c1320e",  # dedicated repo
 })
+
+
+def clamp_timeout_seconds(value: int) -> int:
+    """Clamp to the provider's accepted timeout range (10-60s)."""
+    return max(MIN_TIMEOUT_SECONDS, min(MAX_TIMEOUT_SECONDS, value))
+
+
+def is_sandbox_timeout(exc: BaseException) -> bool:
+    """Only Modal's sandbox timeout marks a run timed out.
+
+    Substring matching mislabels config errors such as
+    "Timeout must be between 10s and 86400s" as timeouts.
+    """
+    return type(exc).__name__ == "SandboxTimeoutError"
 
 
 def validate_relative_path(path: str) -> None:
@@ -415,7 +430,7 @@ def _run_diagnostic_transport() -> int:
         sys.stderr.write(f"Validation error: {ve}\n")
         return 2
 
-    timeout_seconds = max(5, min(MAX_TIMEOUT_SECONDS, timeout_seconds))
+    timeout_seconds = clamp_timeout_seconds(timeout_seconds)
 
     worker_php = get_worker_script()
     worker_b64 = base64.b64encode(worker_php.encode("utf-8")).decode("ascii")
@@ -477,7 +492,7 @@ def _run_diagnostic_transport() -> int:
                     try:
                         exit_code = sb.poll()
                     except Exception as poll_err:
-                        if "timeout" in str(poll_err).lower():
+                        if is_sandbox_timeout(poll_err):
                             timed_out = True
                             stderr_data += f"\nSandbox wait timed out: {poll_err}\n"
                         else:
@@ -503,9 +518,11 @@ def _run_diagnostic_transport() -> int:
 
             except Exception as run_err:
                 stderr_data += f"\nSandbox execution error: {run_err}\n"
-                exit_code = 124 if "timeout" in str(run_err).lower() else 1
-                if "timeout" in str(run_err).lower():
+                if is_sandbox_timeout(run_err):
+                    exit_code = 124
                     timed_out = True
+                else:
+                    exit_code = 1
 
     except Exception as app_err:
         stderr_data += f"\nModal app error: {app_err}\n"
