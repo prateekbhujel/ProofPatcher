@@ -73,7 +73,7 @@ final class KernelStatusCommand extends Command
         $this->line('  GitHub      ' . $this->githubLine($state, $selected, $verification));
         $this->line('  Hari        ' . $this->hariLine());
         $this->line('  Muse        ' . $provider['label'] . ' · ' . $provider['model'] . ' · ' . ($provider['keyReady'] ? 'key ready' : 'key missing'));
-        $this->line('  Budget      ' . $this->budgetLine($budget));
+        $this->line('  Usage       ' . $this->budgetLine($budget));
         $this->line('  Autopilot   ' . $this->workerLine($worker));
         $this->line('  Auto-review ' . $stats['total'] . ' total · ' . $stats['completed'] . ' completed · ' . $stats['failed'] . ' failed · ' . $stats['skippedPrivate'] . ' skipped (private) · ' . $stats['skippedBudget'] . ' skipped (budget)');
         $this->line('  Reviews on  ' . ($enabled === [] ? 'none — enable one to let autopilot work' : implode(', ', array_values($enabled))));
@@ -178,7 +178,7 @@ final class KernelStatusCommand extends Command
         }
     }
 
-    /** @return ?array{attempts: int, maxAttempts: int, remainingMicros: int, canRequest: bool} */
+    /** @return ?array{attempts: int, maxAttempts: int, reservedMicros: int, remainingMicros: int, canRequest: bool} */
     private function budget(): ?array
     {
         try {
@@ -195,6 +195,7 @@ final class KernelStatusCommand extends Command
         return [
             'attempts' => (int) ($status['attempts'] ?? 0),
             'maxAttempts' => (int) ($status['maxAttempts'] ?? 0),
+            'reservedMicros' => (int) ($status['reservedMicros'] ?? 0),
             'remainingMicros' => (int) ($status['remainingMicros'] ?? 0),
             'canRequest' => (bool) ($status['canRequest'] ?? false),
         ];
@@ -206,7 +207,7 @@ final class KernelStatusCommand extends Command
             return 'unavailable';
         }
 
-        return $budget['attempts'] . ' of ' . $budget['maxAttempts'] . ' model requests used · $' . number_format($budget['remainingMicros'] / 1000000, 2) . ' left';
+        return $budget['attempts'] . ' model requests · $' . number_format(($budget['reservedMicros'] ?? 0) / 1000000, 2) . ' tracked';
     }
 
     /** @return array{isLive: bool, status: string, workerPid: ?int, cycleCount: int} */

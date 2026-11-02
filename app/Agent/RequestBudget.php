@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace ProofPatch\Agent;
 
-/** Persistent reservations in integer millionths of a dollar. */
+/**
+ * Persistent usage ledger in integer millionths of a dollar. Metering
+ * only: reservations are recorded for telemetry, but no local cap ever
+ * refuses a request — provider quotas (Baseten/Modal/Meta) are the
+ * limit. Explicit caps remain opt-in via PROOFPATCH_MODEL_MAX_ATTEMPTS.
+ */
 final readonly class RequestBudget
 {
-    public const DEFAULT_LIMIT_MICROS = 500000;
-    public const DEFAULT_MAX_ATTEMPTS = 10;
+    public const DEFAULT_LIMIT_MICROS = PHP_INT_MAX;
+    public const DEFAULT_MAX_ATTEMPTS = PHP_INT_MAX;
 
     public function __construct(
         private string $directory,
@@ -88,8 +93,10 @@ final readonly class RequestBudget
         try {
             $ledger = $this->read($handle);
             $status = $this->summarize($ledger);
-            if ($status['attempts'] >= $this->maxAttempts || $reserveMicros > $status['remainingMicros']) {
-                throw new \RuntimeException('The local request budget is exhausted.');
+            // Opt-in caps only: when a caller configured explicit limits
+            // they still apply; the defaults never refuse.
+            if ($this->maxAttempts !== PHP_INT_MAX && $status['attempts'] >= $this->maxAttempts) {
+                throw new \RuntimeException('The configured request cap is reached.');
             }
             if ($preflight !== null) {
                 $preflight();

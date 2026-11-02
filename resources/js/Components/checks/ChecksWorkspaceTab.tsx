@@ -163,15 +163,15 @@ export function ChecksWorkspaceTab({
           {budgetStatus ? (
             <>
               <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Held for model calls</span>
+                <span className="text-slate-500 dark:text-slate-400">Tracked cost (estimated)</span>
                 <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
                   {budgetDollars(budgetStatus.reservedMicros)}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Local spending limit</span>
+                <span className="text-slate-500 dark:text-slate-400">Local spending cap</span>
                 <span className="font-mono text-slate-900 dark:text-slate-100">
-                  {budgetDollars(budgetStatus.limitMicros)}
+                  {budgetStatus.limitMicros >= 1_000_000_000_000 ? 'None — provider quota applies' : budgetDollars(budgetStatus.limitMicros)}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1">

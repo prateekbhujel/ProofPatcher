@@ -29,7 +29,6 @@ export function DisconnectedOnboardingView({ error, githubConnection, redirectTo
             <BrandMark size={30} />
             <div>
               <p className="text-sm font-bold leading-tight">proofpatcher</p>
-              <p className="text-[11px] leading-tight text-[var(--fg-muted)]">hari kernel</p>
             </div>
           </div>
           <h1 className="mt-5 text-base font-semibold">Connect GitHub</h1>

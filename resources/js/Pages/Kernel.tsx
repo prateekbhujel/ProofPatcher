@@ -16,7 +16,7 @@ interface KernelProps {
   openIssues: number;
   openPulls: number;
   provider: { label: string; model: string; keyReady: boolean };
-  budget: { attempts: number | null; maxAttempts: number | null; remainingMicros: number | null; canRequest: boolean } | null;
+  budget: { attempts: number | null; reservedMicros: number | null; canRequest: boolean } | null;
   hari: { frozen: boolean; abilities: HariAbility[]; skills: HariSkill[] } | null;
   autopilotCaps: { remaining: number; maxAttempts: number };
   worker: { isLive: boolean; status: string };
@@ -69,7 +69,7 @@ export default function Kernel(props: KernelProps) {
             <Stat label="provider" value={provider.label} />
             <Stat label="model" value={provider.model} />
             <Stat label="api key" value={provider.keyReady ? 'ready' : 'missing'} tone={provider.keyReady ? 'ok' : 'danger'} />
-            <Stat label="budget" value={budget ? `${budget.attempts ?? '?'}/${budget.maxAttempts ?? '?'} req · $${((budget.remainingMicros ?? 0) / 1_000_000).toFixed(2)} left` : 'n/a'} />
+            <Stat label="usage" value={budget ? `${budget.attempts ?? 0} req · $${((budget.reservedMicros ?? 0) / 1_000_000).toFixed(2)} tracked` : 'n/a'} />
             <Stat label="autopilot" value={worker.isLive ? `live (${worker.status})` : worker.status} tone={worker.isLive ? 'ok' : 'default'} />
             <Stat label="auto-review" value={`${autoStats.completed} done · ${autoStats.failed} failed · ${autoStats.skippedPrivate} skipped (private)`} />
           </Panel>

@@ -206,4 +206,25 @@ final class KernelControllerTest extends TestCase
         $this->assertSame('acme/repo', $props['recentFindings'][0]['repository']);
         $this->assertSame(1, $props['autoStats']['totalReviews']);
     }
+
+    public function testRecentFindingsKeepOneRowPerPullRequest(): void
+    {
+        foreach ([[7, 'First review', '1'], [7, 'Second review', '3'], [8, 'Other pull', '1']] as [$pull, $summary, $shaChar]) {
+            AutoReviewResult::create([
+                'repository' => 'acme/repo',
+                'pull_number' => $pull,
+                'head_sha' => str_repeat($shaChar, 40),
+                'base_sha' => str_repeat('2', 40),
+                'status' => 'completed',
+                'is_public' => true,
+                'summary' => $summary,
+                'published_status' => 'local_only',
+            ]);
+        }
+
+        $props = $this->propsFor($this->auth() + ['selected_github_repo' => 'acme/repo']);
+
+        $this->assertCount(2, $props['recentFindings']);
+        $this->assertSame([8, 7], array_map(static fn ($row) => $row['pull_number'], $props['recentFindings']));
+    }
 }

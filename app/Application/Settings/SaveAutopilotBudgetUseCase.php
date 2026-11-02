@@ -15,7 +15,7 @@ final class SaveAutopilotBudgetUseCase
         if ($in->maxAttempts === null && $in->maxMicros === null) {
             return new SaveAutopilotBudgetResult(
                 true, null, null, true,
-                'Autopilot caps cleared. Automatic reviews are bounded only by the local request budget.',
+                'Autopilot caps cleared. Automatic reviews are bounded only by your provider quota.',
                 ''
             );
         }

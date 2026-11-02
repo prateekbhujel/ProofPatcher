@@ -132,7 +132,7 @@ final class KernelController
             'autopilotCaps' => $autopilotCaps,
             'worker' => $autoReview['worker'],
             'autoStats' => $autoReview['stats'],
-            'recentFindings' => $autoReview['recentResults'],
+            'recentFindings' => self::latestPerPull($autoReview['recentResults']),
             'nextStep' => $this->nextStep($state, is_array($published) ? $published : null),
             'stages' => $this->stages($state, $lastVerification),
             'lastVerification' => $lastVerification,
@@ -142,6 +142,25 @@ final class KernelController
                 'repository' => $published['repository'] ?? null,
             ] : null,
         ]);
+    }
+
+    /** Console home shows one row per PR: the newest rows come first, so keep the first per repo#PR. */
+    private static function latestPerPull(array $rows): array
+    {
+        $seen = [];
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $key = ($row['repository'] ?? '') . '#' . ($row['pull_number'] ?? '');
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $row;
+        }
+        return $out;
     }
 
     /**

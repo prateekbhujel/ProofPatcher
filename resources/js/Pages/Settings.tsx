@@ -33,8 +33,6 @@ export default function Settings({
 }: SettingsProps) {
   const { props } = usePage();
 
-  const [activeTab, setActiveTab] = useState<'code-review' | 'usage' | 'github' | 'general'>('code-review');
-  const [usageSubTab, setUsageSubTab] = useState<'overview' | 'analytics'>('overview');
 
   const [clientIdInput, setClientIdInput] = useState(githubConnection.clientId || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,69 +160,18 @@ export default function Settings({
           </div>
         )}
 
-        {/* Navigation Tabs */}
-        <div className="border-b border-slate-200 dark:border-slate-800">
-          <nav className="flex space-x-6 sm:space-x-8 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab('code-review')}
-              className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
-                activeTab === 'code-review'
-                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
-              }`}
-            >
-              <GitPullRequest className="w-3.5 h-3.5" />
-              <span>Code Review</span>
-            </button>
+        {/* Section nav: one short scroll, anchors instead of hidden tabs. */}
+        <nav aria-label="Settings sections" className="sticky top-0 z-10 -mx-1 flex gap-4 overflow-x-auto border-b border-[var(--border)] bg-[var(--bg)] px-1 py-2 text-xs font-semibold">
+          <a href="#settings-github" className="shrink-0 hover:underline">GitHub</a>
+          <a href="#settings-review" className="shrink-0 hover:underline">Code review</a>
+          <a href="#settings-provider" className="shrink-0 hover:underline">Provider</a>
+          <a href="#settings-autopilot" className="shrink-0 hover:underline">Autopilot</a>
+          <a href="#settings-comments" className="shrink-0 hover:underline">Inline comments</a>
+          <a href="#settings-usage" className="shrink-0 hover:underline">Usage</a>
+          <a href="#settings-general" className="shrink-0 hover:underline">General</a>
+        </nav>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('usage')}
-              className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
-                activeTab === 'usage'
-                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Usage &amp; Limits</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('github')}
-              className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
-                activeTab === 'github'
-                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
-              }`}
-            >
-              <Key className="w-3.5 h-3.5" />
-              <span>GitHub Connection</span>
-              {githubConnection.isConnected && (
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('general')}
-              className={`py-2.5 px-1 border-b-2 text-xs font-semibold inline-flex items-center gap-2 transition whitespace-nowrap ${
-                activeTab === 'general'
-                  ? 'border-accent-700 text-accent-900 dark:text-accent-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 dark:text-slate-400'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>General &amp; Sandbox</span>
-            </button>
-          </nav>
-        </div>
-
-        {/* ═══════════════════════ TAB 1: CODE REVIEW ═══════════════════════ */}
-        {activeTab === 'code-review' && (
-          <div className="space-y-6">
+        <section id="settings-review" className="scroll-mt-16 space-y-6">
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
@@ -288,15 +235,20 @@ export default function Settings({
               )}
             </div>
 
+            <div id="settings-autopilot" className="scroll-mt-16">
             <AutoReviewPanel connected={githubConnection.isConnected} repositories={repositories} autoReview={autoReview}
               pendingRepo={pendingReviewRepo} error={autoReviewError} onToggle={handleAutoReview}
               onRefresh={() => router.reload({ only: ['autoReview'] })} />
 
+            </div>
+            <div id="settings-comments" className="scroll-mt-16">
             <AutomaticCommentsPanel connected={githubConnection.isConnected} login={githubConnection.user?.login ?? null}
               repositories={repositories} csrf={String(props.csrf_token || '')} />
+            </div>
 
             {providerConfig && (
               <section
+                id="settings-provider"
                 aria-labelledby="muse-provider-config-heading"
                 className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-5 shadow-xs"
               >
@@ -451,72 +403,31 @@ export default function Settings({
                 </div>
               </section>
             )}
-          </div>
-        )}
+        </section>
 
-        {/* ═══════════════════════ TAB 2: USAGE & LIMITS ═══════════════════════ */}
-        {activeTab === 'usage' && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setUsageSubTab('overview')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  usageSubTab === 'overview'
-                    ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
-                }`}
-              >
-                Overview
-              </button>
-              <button
-                type="button"
-                onClick={() => setUsageSubTab('analytics')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  usageSubTab === 'analytics'
-                    ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
-                }`}
-              >
-                Analytics
-              </button>
-            </div>
-
-            {usageSubTab === 'overview' ? (
-              <div className="space-y-6">
-                <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#141821]">
-                  <h2 className="text-sm font-semibold">Provider balances</h2>
-                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Unavailable here. Check your provider dashboard for balances and billing.</p>
-                  {budget && (
-                    <>
-                    <div className="mt-5 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">
-                      <h3 className="font-medium">Local request budget</h3>
-                      <p className="mt-1 text-slate-500 dark:text-slate-400">{budgetStatusLine(budget)}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Local estimates are not provider balances or billing limits. {sharedBudgetNote}</p>
-                    </div>
-                    <AutopilotBudgetCard
-                      caps={autopilotBudget ?? null}
-                      spentAttempts={budget.attempts}
-                      spentDollars={(budget.limitMicros - budget.remainingMicros) / 1000000}
-                      onSave={handleSaveAutopilotBudget}
-                      saving={savingBudget}
-                    />
-                    </>
-                  )}
-                </div>
+        <section id="settings-usage" className="scroll-mt-16 space-y-6">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#141821]">
+            <h2 className="text-sm font-semibold">Usage</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Model usage on this machine. There is no local spending cap; your provider quota is the limit. Full history is on the Telemetry page.</p>
+            {budget && (
+              <>
+              <div className="mt-4 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">
+                <p className="text-slate-500 dark:text-slate-400">{budgetStatusLine(budget)}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Local estimates are not provider balances or billing limits. {sharedBudgetNote}</p>
               </div>
-            ) : (
-              <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
-                <h2 className="text-sm font-semibold">Usage history</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Provider usage is not available in ProofPatcher. Check your provider dashboard.</p>
-              </div>
+              <AutopilotBudgetCard
+                caps={autopilotBudget ?? null}
+                spentAttempts={budget.attempts}
+                spentDollars={(budget.reservedMicros ?? 0) / 1000000}
+                onSave={handleSaveAutopilotBudget}
+                saving={savingBudget}
+              />
+              </>
             )}
           </div>
-        )}
+        </section>
 
-        {/* ═══════════════════════ TAB 3: GITHUB CONNECTION ═══════════════════════ */}
-        {activeTab === 'github' && (
-          <div className="space-y-6">
+        <section id="settings-github" className="scroll-mt-16 space-y-6">
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
@@ -588,12 +499,9 @@ export default function Settings({
                 </div>
               )}
             </div>
-          </div>
-        )}
+        </section>
 
-        {/* ═══════════════════════ TAB 4: GENERAL & SANDBOX ═══════════════════════ */}
-        {activeTab === 'general' && (
-          <div className="space-y-6">
+        <section id="settings-general" className="scroll-mt-16 space-y-6">
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -617,8 +525,7 @@ export default function Settings({
               </div>
 
             </div>
-          </div>
-        )}
+        </section>
       </div>
     </AppLayout>
   );

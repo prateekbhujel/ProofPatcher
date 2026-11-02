@@ -29,7 +29,7 @@ export default function Telemetry({ telemetry }: { telemetry: TelemetryData }) {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-              ProofPatcher Kernel
+              proofpatcher
             </p>
             <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               Telemetry
@@ -57,7 +57,7 @@ export default function Telemetry({ telemetry }: { telemetry: TelemetryData }) {
         <section aria-label="Totals" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             { label: 'Model requests', value: telemetry.ledgerAvailable ? String(telemetry.requests.total) : '—', sub: telemetry.ledgerAvailable ? `${telemetry.requests.received} confirmed · ${telemetry.requests.uncertain} unclear` : 'Available in local terminal' },
-            { label: 'Held for model calls', value: telemetry.ledgerAvailable ? dollars(telemetry.requests.reservedMicros) : '—', sub: 'estimated before each call' },
+            { label: 'Tracked cost', value: telemetry.ledgerAvailable ? dollars(telemetry.requests.reservedMicros) : '—', sub: 'estimated before each call' },
             { label: 'Tokens in / out', value: telemetry.ledgerAvailable ? `${telemetry.tokens.prompt} / ${telemetry.tokens.completion}` : '—', sub: telemetry.ledgerAvailable ? `${telemetry.tokens.total} total` : 'Available in local terminal' },
             { label: 'Reviews completed', value: `${telemetry.reviews.completed} of ${telemetry.reviews.total}`, sub: `${telemetry.reviews.failed} failed · ${telemetry.reviews.skippedPrivate} skipped (private)` },
           ].map((stat) => (
@@ -165,7 +165,7 @@ export default function Telemetry({ telemetry }: { telemetry: TelemetryData }) {
 
         <p className="text-[11px] text-slate-400 dark:text-slate-500">
           Machine-wide totals in the local terminal: <code className="select-all font-mono">php artisan kernel:telemetry</code>.
-          {' '}<Link href="/settings" className="text-accent-700 dark:text-accent-300 hover:underline">Usage &amp; Limits</Link> holds the budget controls.
+          {' '}<Link href="/settings#settings-usage" className="text-accent-700 dark:text-accent-300 hover:underline">Usage</Link> in Settings shows the same ledger.
         </p>
       </div>
     </AppLayout>

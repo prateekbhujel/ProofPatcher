@@ -37,7 +37,7 @@ final class OsStatusController
         try {
             $budget = ($this->hari ?? \Hari\Hari::registry())->resolve('budget.status', 1, 'web')->invoke([]);
             if (is_array($budget)) {
-                $budgetText = '$' . number_format(((int) ($budget['remainingMicros'] ?? 0)) / 1000000, 2) . ' left';
+                $budgetText = ((int) ($budget['attempts'] ?? 0)) . ' requests';
             }
         } catch (\Throwable) {}
 

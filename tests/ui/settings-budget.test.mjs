@@ -31,7 +31,7 @@ test('budget card states spend and caps honestly', () => {
   assert.match(capped, /Capped at 25 model requests and \$2\.50/);
   assert.match(capped, /value="25"/);
   assert.match(capped, /value="2\.5"/);
-  assert.match(capped, /never raise the local request budget/);
+  assert.match(capped, /Manual reviews are not capped here/);
 });
 
 test('budget card shows a saving state', () => {

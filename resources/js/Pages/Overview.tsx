@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
+import { StateChip } from '../Components/console/primitives';
 import {
   GitPullRequest,
   ArrowRight,
@@ -101,12 +102,7 @@ export default function Overview({
             </div>
           </div>
 
-          <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 dark:border-slate-800 pt-5 sm:grid-cols-4">
-            <div className="rounded-lg border border-slate-200 p-3.5 dark:border-slate-700">
-              <dt className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Provider balance</dt>
-              <dd className="mt-1 text-sm font-medium">Unavailable</dd>
-              <p className="text-[10px] text-slate-400">Check your provider dashboard</p>
-            </div>
+          <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 dark:border-slate-800 pt-5 sm:grid-cols-3">
             <div className="rounded-lg border border-slate-200/80 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50 p-3.5 space-y-1">
               <dt className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Local Verifications</dt>
               <dd className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">{totalRuns}</dd>
@@ -172,13 +168,13 @@ export default function Overview({
                   <Settings className="w-4 h-4" />
                 </span>
                 <span className="text-xs font-semibold text-slate-900 group-hover:text-accent-700 transition dark:text-slate-100">
-                  GitHub App &amp; Budget
+                  GitHub &amp; Settings
                 </span>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-accent-700 transition" />
             </div>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed dark:text-slate-400">
-              Connect your GitHub App via Device Flow, select repositories, and review local model request usage.
+              Sign in with GitHub, select repositories, and review model usage.
             </p>
           </Link>
         </div>
@@ -291,17 +287,8 @@ export default function Overview({
                             </code>
                           </td>
                           <td className="py-3 px-5 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                isMerged
-                                  ? 'bg-accent-50 text-accent-800 border border-accent-200 dark:bg-accent-950/40 dark:border-accent-800 dark:text-accent-300'
-                                  : isOpen
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
-                                  : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:border-slate-800 dark:text-slate-300'
-                              }`}
-                            >
-                              {isMerged ? 'MERGED' : item.pull.state.toUpperCase()}
-                            </span>
+                            <StateChip state={isMerged ? 'merged' : item.pull.state} />
+                            {item.pull.isPrivate && <> <StateChip state="private" /></>}
                           </td>
                           <td className="py-3 px-5 text-slate-500 whitespace-nowrap font-mono text-[11px] dark:text-slate-400">
                             {formatTime(item.capturedAt)}

@@ -63,6 +63,18 @@ export function Panel({
   );
 }
 
+/** State chip used for every PR/repo state (open, closed, merged, draft, private). */
+export function StateChip({ state }: { state: string }) {
+  const normalized = state.toLowerCase();
+  const tone =
+    normalized === 'open' ? 'border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-400'
+    : normalized === 'merged' ? 'border-violet-600 text-violet-700 dark:border-violet-500 dark:text-violet-400'
+    : normalized === 'draft' ? 'border-slate-500 text-slate-600 dark:border-slate-400 dark:text-slate-300'
+    : normalized === 'private' ? 'border-amber-600 text-amber-700 dark:border-amber-500 dark:text-amber-400'
+    : 'border-rose-600 text-rose-700 dark:border-rose-500 dark:text-rose-400';
+  return <span className={`inline-block border px-1 py-px text-[10px] font-semibold uppercase leading-tight ${tone}`}>{normalized}</span>;
+}
+
 /** One dense key/value row. */
 export function Stat({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'ok' | 'warn' | 'danger' }) {
   const toneClass =

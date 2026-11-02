@@ -45,7 +45,6 @@ export function ConsoleLayout({ activeNav = 'kernel', title, children }: Console
           <BrandMark size={20} />
           <span className="min-w-0">
             <span className="block truncate text-[13px] font-bold leading-tight">proofpatcher</span>
-            <span className="block text-[10px] leading-tight text-[var(--fg-subtle)]">hari kernel</span>
           </span>
         </Link>
 

@@ -51,7 +51,7 @@ final class SaveAutopilotBudgetUseCaseTest extends TestCase
 
         self::assertTrue($result->ok);
         self::assertTrue($result->clears);
-        self::assertSame('Autopilot caps cleared. Automatic reviews are bounded only by the local request budget.', $result->message);
+        self::assertSame('Autopilot caps cleared. Automatic reviews are bounded only by your provider quota.', $result->message);
     }
 
     public function testWhitespaceIsTrimmedAndDollarsRound(): void

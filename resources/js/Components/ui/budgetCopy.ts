@@ -1,6 +1,7 @@
 export interface BudgetStatus {
   attempts: number;
   maxAttempts: number;
+  reservedMicros?: number;
   remainingMicros: number;
   canRequest: boolean;
 }
@@ -9,14 +10,14 @@ export function budgetDollars(micros: number): string {
   return `$${(micros / 1000000).toFixed(2)}`;
 }
 
-/** Full status line, e.g. "1 of 25 model requests used · $0.22 left". */
+/** Usage line, e.g. "21 model requests · $0.13 tracked". Metering only: no local cap refuses requests; provider quotas are the limit. */
 export function budgetStatusLine(budget: BudgetStatus): string {
-  return `${budget.attempts} of ${budget.maxAttempts} model requests used · ${budgetDollars(budget.remainingMicros)} left`;
+  return `${budget.attempts} model requests · ${budgetDollars(budget.reservedMicros ?? 0)} tracked`;
 }
 
-/** Compact line for the taskbar, e.g. "$0.22 left". */
+/** Compact line, e.g. "21 requests". */
 export function budgetShortLine(budget: BudgetStatus): string {
-  return `${budgetDollars(budget.remainingMicros)} left`;
+  return `${budget.attempts} requests`;
 }
 
 /** Autopilot spend, e.g. "Spent so far: 4 model requests · $0.06 reserved." */
@@ -41,9 +42,9 @@ export function autopilotCapLine(maxAttempts: number | null, maxReservedDollars:
 }
 
 /** One ledger serves everyone on this machine; people do not get separate budgets. */
-export const sharedBudgetNote = 'One shared budget on this machine — it is not split per person.';
+export const sharedBudgetNote = 'One shared usage record on this machine — it is not split per person.';
 
-/** Review usage, e.g. "0 of 10 model requests". Falls back honestly when the cap is unknown. */
+/** Review usage, e.g. "3 model requests used". Uncapped unless an explicit small cap is configured. */
 export function reviewUsageLine(attempts: number, maxAttempts?: number): string {
-  return maxAttempts == null ? `${attempts} model requests used` : `${attempts} of ${maxAttempts} model requests`;
+  return maxAttempts == null || maxAttempts >= 1_000_000_000 ? `${attempts} model requests used` : `${attempts} of ${maxAttempts} model requests`;
 }

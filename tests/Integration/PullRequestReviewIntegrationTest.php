@@ -278,7 +278,7 @@ final class PullRequestReviewIntegrationTest extends TestCase
 
         // Second attempt must fail closed because maxAttempts = 1
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('The local request budget is exhausted.');
+        $this->expectExceptionMessage('The configured request cap is reached.');
 
         $agent->review($this->samplePull(), $this->samplePatchPreview(), $preview['digest'], 'test-key-1234567890123');
     }

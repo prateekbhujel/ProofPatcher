@@ -26,7 +26,7 @@ final class RequestBudgetTest extends TestCase
         }
     }
 
-    public function testReservationsSurviveFailureAndBlockOverspend(): void
+    public function testReservationsSurviveFailureAndAreMeteredNotBlocked(): void
     {
         $budget = new RequestBudget($this->directory, 50000, 3);
         $calls = 0;
@@ -40,12 +40,12 @@ final class RequestBudgetTest extends TestCase
         $status = (new RequestBudget($this->directory, 50000, 3))->status();
         self::assertSame(2, $status['attempts']);
         self::assertSame(40000, $status['reservedMicros']);
+        // Dollar reservations never block (metering only)...
+        $budget->run(15000, function () use (&$calls): array { ++$calls; return ['usage' => []]; });
+        self::assertSame(3, $calls);
+        // ...but an explicitly configured attempt cap still applies.
         $this->expectException(\RuntimeException::class);
-        try {
-            $budget->run(15000, function () use (&$calls): array { ++$calls; return ['usage' => []]; });
-        } finally {
-            self::assertSame(2, $calls);
-        }
+        $budget->run(1000, function () use (&$calls): array { ++$calls; return ['usage' => []]; });
     }
 
     public function testDefaultLimitsAndFactoryMethod(): void
@@ -56,15 +56,14 @@ final class RequestBudgetTest extends TestCase
         putenv('PROOFPATCH_MODEL_MAX_ATTEMPTS');
         unset($_ENV['PROOFPATCH_MODEL_MAX_ATTEMPTS'], $_SERVER['PROOFPATCH_MODEL_MAX_ATTEMPTS']);
         try {
-            self::assertSame(500000, RequestBudget::DEFAULT_LIMIT_MICROS);
-            self::assertSame(10, RequestBudget::DEFAULT_MAX_ATTEMPTS);
+            self::assertSame(PHP_INT_MAX, RequestBudget::DEFAULT_LIMIT_MICROS);
+            self::assertSame(PHP_INT_MAX, RequestBudget::DEFAULT_MAX_ATTEMPTS);
 
             $budget = new RequestBudget($this->directory);
             $status = $budget->status();
-            self::assertSame(500000, $status['limitMicros']);
-            self::assertSame(10, $status['maxAttempts']);
+            self::assertSame(PHP_INT_MAX, $status['limitMicros']);
+            self::assertSame(PHP_INT_MAX, $status['maxAttempts']);
             self::assertSame(0, $status['attempts']);
-            self::assertSame(500000, $status['remainingMicros']);
             self::assertTrue($status['canRequest']);
 
             $factoryBudget = RequestBudget::forRuntime($this->directory);
@@ -95,7 +94,7 @@ final class RequestBudgetTest extends TestCase
             putenv('PROOFPATCH_MODEL_MAX_ATTEMPTS=12');
             $status = RequestBudget::forRuntime($this->directory)->status();
             self::assertSame(12, $status['maxAttempts']);
-            self::assertSame(500000, $status['limitMicros']);
+            self::assertSame(PHP_INT_MAX, $status['limitMicros']);
 
             putenv('PROOFPATCH_MODEL_MAX_ATTEMPTS=101');
             try {

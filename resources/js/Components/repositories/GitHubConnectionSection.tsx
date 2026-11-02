@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FolderGit2,
   CheckCircle2,
@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { GitHubConnectionData, GitHubPull } from './types';
 import { SignInWithGitHubButton } from '../ui/SignInWithGitHubButton';
+import { StateChip } from '../console/primitives';
+
+const REPO_PAGE_SIZE = 12;
 
 interface GitHubConnectionSectionProps {
   githubConnection: GitHubConnectionData | null;
@@ -29,8 +32,10 @@ export function GitHubConnectionSection({
   handleSelectRepository,
   handleCaptureGitHubPull,
 }: GitHubConnectionSectionProps) {
+  const [repoQuery, setRepoQuery] = useState('');
+  const [repoPage, setRepoPage] = useState(0);
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden dark:bg-[#141821] dark:border-slate-800">
+    <div className="border border-[var(--border)] bg-[var(--bg-raised)] overflow-hidden">
       <button
         type="button"
         onClick={() => setGitHubSectionOpen(!gitHubSectionOpen)}
@@ -150,41 +155,53 @@ export function GitHubConnectionSection({
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {githubConnection.repositories.map((repo) => {
-                      const isCurrent = githubConnection.selectedRepo === repo.fullName;
-                      return (
-                        <button
-                          key={repo.fullName}
-                          type="button"
-                          onClick={() => handleSelectRepository(repo.fullName)}
-                          className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between gap-2 ${
-                            isCurrent
-                              ? 'bg-accent-50/70 border-accent-300 ring-1 ring-accent-400 dark:bg-accent-950/40/70 dark:border-accent-700'
-                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 dark:bg-[#141821] dark:border-slate-800 dark:hover:bg-slate-800/50 dark:hover:border-slate-600'
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-slate-900 truncate dark:text-slate-100">{repo.fullName}</div>
-                            <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5 dark:text-slate-400">
-                              <span>{repo.defaultBranch}</span>
-                              <span>·</span>
-                              <span className={repo.isPrivate ? 'text-amber-700 font-medium dark:text-amber-400' : 'text-emerald-700 font-medium dark:text-emerald-400'}>
-                                {repo.isPrivate ? 'Private' : 'Public'}
-                              </span>
-                            </div>
-                          </div>
-                          <span
-                            className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                              isCurrent ? 'bg-accent-700 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
-                          >
-                            {isCurrent ? 'Selected' : 'Select'}
+                  (() => {
+                    const query = repoQuery.trim().toLowerCase();
+                    const filtered = query
+                      ? githubConnection.repositories.filter((r) => r.fullName.toLowerCase().includes(query))
+                      : githubConnection.repositories;
+                    const pageCount = Math.max(1, Math.ceil(filtered.length / REPO_PAGE_SIZE));
+                    const page = Math.min(repoPage, pageCount - 1);
+                    const visible = filtered.slice(page * REPO_PAGE_SIZE, page * REPO_PAGE_SIZE + REPO_PAGE_SIZE);
+                    return (
+                      <div className="space-y-2">
+                        <input
+                          type="search"
+                          value={repoQuery}
+                          onChange={(e) => { setRepoQuery(e.target.value); setRepoPage(0); }}
+                          placeholder="Search repositories…"
+                          aria-label="Search repositories"
+                          className="w-full border border-[var(--border-strong)] bg-transparent px-2.5 py-1.5 text-xs"
+                        />
+                        <div className="divide-y divide-[var(--border)] border border-[var(--border)] bg-[var(--bg-raised)]">
+                          {visible.map((repo) => {
+                            const isCurrent = githubConnection.selectedRepo === repo.fullName;
+                            return (
+                              <button
+                                key={repo.fullName}
+                                type="button"
+                                onClick={() => handleSelectRepository(repo.fullName)}
+                                className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs ${isCurrent ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]'}`}
+                              >
+                                <span className="min-w-0 flex-1 truncate font-medium">{repo.fullName}</span>
+                                <span className="shrink-0 text-[var(--fg-muted)]">{repo.defaultBranch}</span>
+                                {repo.isPrivate ? <StateChip state="private" /> : <span className="shrink-0 text-[10px] uppercase text-[var(--fg-subtle)]">public</span>}
+                                <span className={`shrink-0 font-semibold ${isCurrent ? 'text-[var(--accent-text)]' : 'text-[var(--fg-muted)]'}`}>{isCurrent ? 'selected' : 'select'}</span>
+                              </button>
+                            );
+                          })}
+                          {visible.length === 0 && <p className="px-2.5 py-2 text-xs text-[var(--fg-muted)]">No repositories match.</p>}
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-[var(--fg-muted)]">
+                          <span>{filtered.length} repositories · page {page + 1} of {pageCount}</span>
+                          <span className="flex gap-2">
+                            <button type="button" disabled={page === 0} onClick={() => setRepoPage(page - 1)} className="font-semibold disabled:opacity-40">← prev</button>
+                            <button type="button" disabled={page >= pageCount - 1} onClick={() => setRepoPage(page + 1)} className="font-semibold disabled:opacity-40">next →</button>
                           </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
 
@@ -236,26 +253,9 @@ export function GitHubConnectionSection({
                           <div className="space-y-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-xs text-slate-900 dark:text-slate-100">#{pr.number}</span>
-                              <span
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase border ${
-                                  (pr as any).state === 'merged'
-                                    ? 'bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-950/40 dark:border-accent-800 dark:text-accent-300'
-                                    : (pr as any).state === 'closed'
-                                    ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-400'
-                                    : (pr as any).isDraft
-                                    ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400'
-                                }`}
-                              >
-                                {(pr as any).isDraft && (pr as any).state === 'open' ? 'DRAFT' : ((pr as any).state || 'OPEN')}
-                              </span>
+                              <StateChip state={(pr as any).isDraft && ((pr as any).state || 'open') === 'open' ? 'draft' : ((pr as any).state || 'open')} />
                               <span className="text-xs font-medium text-slate-800 truncate dark:text-slate-200">{pr.title}</span>
-                              {pr.isPrivate && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
-                                  <Lock className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400" />
-                                  Private
-                                </span>
-                              )}
+                              {pr.isPrivate && <StateChip state="private" />}
                             </div>
                             <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-2 font-mono dark:text-slate-400">
                               <span>by @{pr.user}</span>
