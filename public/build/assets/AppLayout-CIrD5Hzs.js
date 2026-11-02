@@ -1,4 +1,4 @@
-import{j as s,r as c,b as O,L as y,a as F}from"./app-DkfF-IfD.js";function A({size:t=36,className:e=""}){return s.jsx("img",{src:"/icon.svg",width:t,height:t,className:`shrink-0 ${e}`,alt:"","aria-hidden":"true"})}/**
+import{j as s,r as c,b as O,L as y,a as F}from"./app-BbHzLYXr.js";function A({size:t=36,className:e=""}){return s.jsx("img",{src:"/icon.svg",width:t,height:t,className:`shrink-0 ${e}`,alt:"","aria-hidden":"true"})}/**
  * @license lucide-react v1.62.0 - ISC
  *
  * This source code is licensed under the ISC license.

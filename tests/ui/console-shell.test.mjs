@@ -91,7 +91,7 @@ const homeProps = {
   openIssues: 1,
   openPulls: 1,
   provider: { label: 'Baseten Inference API', model: 'muse-spark', keyReady: true },
-  budget: { limit: 25, usedRequests: 3, used: '$0.01', left: '$0.24' },
+  budget: { attempts: 3, maxAttempts: 25, remainingMicros: 240000, canRequest: true },
   hari: {
     frozen: true,
     abilities: [{ name: 'proofpatch-verify', version: 1, provides: ['verify.gate'], borrows: {}, needs: ['model'] }],
@@ -111,6 +111,7 @@ test('the console home shows pipeline, engine and hari panels', () => {
   const html = renderToStaticMarkup(React.createElement(kernelPage.default, homeProps));
   assert.match(html, /next: Open an issue or pull request/);
   assert.match(html, /Open the workbench/);
+  assert.match(html, /3\/25 req/);
   assert.match(html, /proofpatch-verify/);
   assert.match(html, /verify\.gate/);
   assert.match(html, /frozen/);
