@@ -172,6 +172,8 @@ PHP,
         self::assertSame('needs_reproduction', $result3['verdict']);
         self::assertNotNull($result3['downgradeReason']);
         self::assertStringContainsString('screenshot', $result3['downgradeReason']);
+        self::assertStringContainsString('steps to reproduce', $result3['suggestedResponse']);
+        self::assertStringNotContainsString('Screenshot might relate', $result3['summary']);
     }
 
     public function testHallucinatedEvidenceQuoteDowngradesVerdictToNeedsReproduction(): void
@@ -196,6 +198,29 @@ PHP,
         self::assertSame('needs_reproduction', $parsed['verdict']);
         self::assertFalse($parsed['evidenceVerified']);
         self::assertNotNull($parsed['downgradeReason']);
+        self::assertStringNotContainsString('already', strtolower($parsed['suggestedResponse']));
+        self::assertStringContainsString('steps to reproduce', $parsed['suggestedResponse']);
+        self::assertStringNotContainsString('already checks', $parsed['summary']);
+    }
+
+    public function testNeedsReproductionNeverSurfacesContradictoryModelProse(): void
+    {
+        $pinned = $this->pinnedOrderTotalFile();
+        $raw = json_encode([
+            'verdict' => 'needs_reproduction',
+            'summary' => 'This is fixed and should be closed.',
+            'evidenceQuote' => '',
+            'evidenceLine' => null,
+            'suggestedBranchSlug' => '',
+            'suggestedResponse' => 'Already fixed, closing this.',
+        ], JSON_THROW_ON_ERROR);
+        foreach ([false, true] as $screenshotOnly) {
+            $parsed = IssueTriageAgent::parseAndValidate($raw, $pinned['source'], 'Unclear issue', 4, $pinned['commit'], $screenshotOnly);
+            self::assertSame('needs_reproduction', $parsed['verdict']);
+            self::assertStringNotContainsString('fixed', strtolower($parsed['summary'].$parsed['suggestedResponse']));
+            self::assertStringContainsString('steps to reproduce', $parsed['suggestedResponse']);
+            if ($screenshotOnly) self::assertStringContainsString('cannot inspect the screenshot', $parsed['suggestedResponse']);
+        }
     }
 
     public function testPrivateIssueIsRefusedBeforeAnyPreviewOrNetworkCall(): void

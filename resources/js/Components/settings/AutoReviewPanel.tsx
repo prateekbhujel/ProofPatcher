@@ -127,6 +127,9 @@ export function AutoReviewPanel({ connected, repositories, autoReview, pendingRe
                       {statusLabel(result.status)}
                     </span>
                   </div>
+                  <div className="text-slate-500 dark:text-slate-400">
+                    Review commit: {typeof result.head_sha === 'string' && result.head_sha ? result.head_sha.slice(0, 12) : 'unavailable'}
+                  </div>
                   {result.status === 'completed' && (
                     <div className="text-slate-600 dark:text-slate-300 space-y-0.5">
                       <div>
@@ -137,7 +140,7 @@ export function AutoReviewPanel({ connected, repositories, autoReview, pendingRe
                     </div>
                   )}
                   <div className="text-[11px] text-slate-400 dark:text-slate-500">
-                    {result.published_status === 'one_inline_comment' ? 'One suggestion posted to GitHub' : result.published_status === 'publication_unknown' ? 'Comment outcome unknown · Check GitHub' : 'Stored locally · Not posted to GitHub'}
+                    {result.published_status === 'one_inline_comment' ? 'One suggestion posted to GitHub' : result.published_status === 'review_summary' ? 'Review summary posted to GitHub' : result.published_status === 'publication_unknown' ? 'Comment outcome unknown · Check GitHub' : 'Stored locally · Not posted to GitHub'}
                     {result.reviewed_at ? ` · ${new Date(result.reviewed_at).toLocaleString()}` : ''}
                   </div>
                 </li>

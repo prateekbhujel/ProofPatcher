@@ -238,6 +238,43 @@ final class GitHubDeviceFlowIntegrationTest extends TestCase
         $this->assertNull($session->get('github_device_flow'));
     }
 
+    public function testPullListIsLoadedOnlyForTheSelectedAuthorizedRepository(): void
+    {
+        $session = app('session')->driver('array');
+        $session->put('github_auth', [
+            'token' => 'test-token',
+            'user' => ['id' => 1, 'login' => 'owner'],
+            'repositories' => [['fullName' => 'owner/repo']],
+        ]);
+        $session->put('selected_github_repo', 'owner/repo');
+        $controller = new DashboardController();
+        $props = static function () use ($controller, $session): array {
+            $request = Request::create('/repositories', 'GET');
+            $request->setLaravelSession($session);
+            return $controller->repositories($request)->toResponse($request)->getOriginalContent()->getData()['page']['props']['githubConnection'];
+        };
+
+        // A selection restored from the terminal is not a fetched empty list.
+        self::assertFalse($props()['repoPullsLoaded']);
+        self::assertSame([], $props()['repoPulls']);
+
+        // A successful empty response is a real, known empty list.
+        $session->put('github_repo_pulls_repo', 'owner/repo');
+        $session->put('github_repo_pulls', []);
+        self::assertTrue($props()['repoPullsLoaded']);
+        self::assertSame([], $props()['repoPulls']);
+
+        // Never project a cached list from another repo or an unauthorized one.
+        $session->put('github_repo_pulls', [['title' => 'private cached value']]);
+        $session->put('github_repo_pulls_repo', 'owner/other');
+        self::assertFalse($props()['repoPullsLoaded']);
+        self::assertSame([], $props()['repoPulls']);
+        $session->put('github_repo_pulls_repo', 'owner/repo');
+        $session->put('github_auth.repositories', []);
+        self::assertFalse($props()['repoPullsLoaded']);
+        self::assertSame([], $props()['repoPulls']);
+    }
+
     public function testPollDeviceFlowCollectsMultiInstallationPaginationAndErrors(): void
     {
         $session = app('session')->driver('array');

@@ -324,6 +324,14 @@ final class DashboardController
         $clientIdConfigured = (bool) (getenv('PROOFPATCH_GITHUB_CLIENT_ID') || getenv('GITHUB_APP_CLIENT_ID'));
         $selectedRepo = $this->getSession($request, 'selected_github_repo');
         $access = $request->attributes->get('proofpatch_github_access');
+        $repoPulls = $this->getSession($request, 'github_repo_pulls');
+        $cachedRepo = $this->getSession($request, 'github_repo_pulls_repo');
+        $grantedRepos = is_array($githubAuth['repositories'] ?? null) ? $githubAuth['repositories'] : [];
+        $repoPullsLoaded = \ProofPatch\Application\Settings\GitHubConnectionState::isConnected($githubAuth)
+            && is_string($selectedRepo) && is_string($cachedRepo)
+            && strcasecmp($selectedRepo, $cachedRepo) === 0
+            && \ProofPatch\Application\Repository\AuthorizedRepository::find($grantedRepos, $selectedRepo) !== null
+            && is_array($repoPulls);
 
         $githubConnection = \ProofPatch\Application\Settings\GitHubConnectionProjection::build([
             'auth' => $githubAuth,
@@ -337,8 +345,11 @@ final class DashboardController
                 'canCapturePrivateTestRepo' => \ProofPatch\Application\Repository\PrivateCapturePolicy::canCapturePrivateTestRepo(
                     $access, $selectedRepo, DedicatedTestRepo::name(), PrivatePullSession::usesServerSession()
                 ),
-                'repoPulls' => $this->getSession($request, 'github_repo_pulls') ?? [],
-                'repoPullsStatus' => $this->getSession($request, 'github_repo_pulls_status') ?? null,
+                'repoPulls' => $repoPullsLoaded ? $repoPulls : [],
+                // A saved selection can be restored without its in-session list.
+                // Distinguish that state from a successful empty GitHub response.
+                'repoPullsLoaded' => $repoPullsLoaded,
+                'repoPullsStatus' => $repoPullsLoaded ? $this->getSession($request, 'github_repo_pulls_status') : null,
             ],
         ]);
         $this->forgetSession($request, 'github_status', 'github_error');
@@ -999,6 +1010,7 @@ final class DashboardController
             $this->putSession($request, 'selected_github_repo', $repoName);
             $this->putSession($request, 'github_repo_issues', $issues);
             $this->putSession($request, 'github_repo_pulls', $pulls);
+            $this->putSession($request, 'github_repo_pulls_repo', $repoName);
             $this->putSession($request, 'github_repo_pulls_status', $pullsStatus);
             try {
                 // The terminal reads this same selection file.

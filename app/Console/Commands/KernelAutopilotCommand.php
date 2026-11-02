@@ -137,6 +137,9 @@ final class KernelAutopilotCommand extends Command
                     (int) ($summary['reviewsSkipped'] ?? 0),
                     (int) ($summary['reviewsFailed'] ?? 0)
                 ));
+                foreach ((array) ($summary['followups'] ?? []) as $link) {
+                    if (is_string($link)) $this->line('Review reply needs attention: '.$link);
+                }
                 foreach ((array) ($summary['errors'] ?? []) as $error) {
                     $this->warn((string) $error);
                 }

@@ -55,7 +55,7 @@ export function AutopilotBudgetCard({ caps, spentAttempts, spentDollars, onSave,
             type="button"
             disabled={saving}
             onClick={() => onSave(attempts.trim(), dollars.trim())}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 transition disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 transition disabled:opacity-50"
           >
             {saving ? 'Saving…' : 'Save cap'}
           </button>

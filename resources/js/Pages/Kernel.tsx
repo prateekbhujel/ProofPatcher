@@ -131,6 +131,7 @@ export default function Kernel(props: KernelProps) {
               {recentFindings.map((f) => (
                 <li key={f.id} className="flex flex-wrap items-baseline gap-x-2 py-1">
                   <span className="font-medium">{f.repository}#{f.pull_number}</span>
+                  <span className="text-[var(--fg-muted)]">review commit: {typeof f.head_sha === 'string' && f.head_sha ? f.head_sha.slice(0, 12) : 'unavailable'}</span>
                   <span className={f.status === 'completed' ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--fg-muted)]'}>{f.status}</span>
                   {f.risk_level && <span className="text-[var(--fg-muted)]">risk: {f.risk_level}</span>}
                   <span className="min-w-0 flex-1 truncate text-[var(--fg-muted)]">{f.summary ?? f.recommendation ?? ''}</span>

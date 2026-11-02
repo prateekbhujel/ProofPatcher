@@ -157,7 +157,7 @@ export function ThemeToggle({ compact = true }: ThemeToggleProps) {
             }`}
           >
             <Icon className="w-3.5 h-3.5 shrink-0" />
-            <span className={compact ? 'hidden sm:inline' : 'inline'}>
+            <span className={compact ? 'sr-only' : 'inline'}>
               {opt.label}
             </span>
           </button>

@@ -102,6 +102,37 @@ final class PrivateProposalStoreTest extends TestCase
         self::assertSame(10, $kept['usage']['prompt_tokens']);
     }
 
+    public function testSeparateRunsPreserveExactProvenanceWithoutOverwriting(): void
+    {
+        $firstId = str_repeat('a', 32);
+        $secondId = str_repeat('b', 32);
+        $second = $this->proposal;
+        $second['requestDigest'] = str_repeat('c', 64);
+        $second['usage']['completion_tokens'] = 9;
+        $this->store->record($this->binding, $this->grant, $this->proposal, $firstId);
+        $this->store->record($this->binding, $this->grant, $second, $secondId);
+        self::assertSame($this->proposal['requestDigest'], $this->store->lookup($this->binding, $this->grant, $firstId)['requestDigest']);
+        self::assertSame($second['requestDigest'], $this->store->lookup($this->binding, $this->grant, $secondId)['requestDigest']);
+        self::assertNull($this->store->lookup($this->binding, $this->grant, str_repeat('d', 32)));
+        self::assertNull($this->store->lookup($this->binding, ['userId' => 17, 'repositories' => []], $firstId));
+        self::assertNull($this->store->lookup($this->binding, $this->grant, '../invalid'));
+        $this->expectException(\RuntimeException::class);
+        $this->store->record($this->binding, $this->grant, $second, $firstId);
+    }
+
+    public function testCopiedCiphertextCannotImpersonateAnotherRun(): void
+    {
+        $first = str_repeat('a', 32);
+        $second = str_repeat('b', 32);
+        $this->store->record($this->binding, $this->grant, $this->proposal, $first);
+        $firstFile = (glob($this->directory.'/*.enc') ?: [])[0];
+        $this->store->record($this->binding, $this->grant, $this->proposal, $second);
+        $secondFile = array_values(array_diff(glob($this->directory.'/*.enc') ?: [], [$firstFile]))[0];
+        file_put_contents($secondFile, file_get_contents($firstFile));
+        self::assertNull($this->store->lookup($this->binding, $this->grant, $second));
+        self::assertNotNull($this->store->lookup($this->binding, $this->grant, $first));
+    }
+
     public function testInvalidBindingsAreRejected(): void
     {
         foreach ([

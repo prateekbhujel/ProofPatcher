@@ -19,6 +19,8 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
     private bool $optOutBeforePost = false;
     private bool $reviewOptOutBeforePost = false;
     private ?array $posted = null;
+    private ?string $postAuthorization = null;
+    private bool $missingBot = false;
 
     protected function setUp(): void
     {
@@ -51,6 +53,7 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
             $path = parse_url($url, PHP_URL_PATH);
             if ($method === 'POST') {
                 $this->posts++;
+                $this->postAuthorization = implode(' ', $options['normalized_headers']['authorization'] ?? []);
                 $this->posted = json_decode($options['body'], true, 16, JSON_THROW_ON_ERROR);
                 return new MockResponse($this->postFailure ? '{}' : '{"id":123}', ['http_code' => $this->postFailure ? 500 : 201]);
             }
@@ -75,7 +78,8 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
             ]]));
             throw new RuntimeException('Unexpected request: '.$path);
         });
-        return new AutomaticInlineCommentPublisher($this->db, $http, static fn (string $token): bool => true);
+        return new AutomaticInlineCommentPublisher($this->db, $http, static fn (string $token): bool => true,
+            fn (string $token, string $repo): string => $this->missingBot ? $token : 'installation-token');
     }
 
     public function testOptOutMakesNoRequest(): void
@@ -87,11 +91,25 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
     public function testNoUnanchoredOrUnsafeModelTextIsPosted(): void
     {
         $this->enable();
-        foreach ([['commentable' => false], ['comment' => '@someone please look'], ['comment' => 'see https://example.com']] as $change) {
+        foreach ([['commentable' => false], ['comment' => '@someone please look'], ['comment' => 'see https://example.com'],
+            ['comment' => '[view](//evil.example/path)'], ['comment' => '![image](//evil.example/pixel)'],
+            ['comment' => '[x](mailto:someone)'], ['comment' => '[x][ref]'], ['comment' => '[ref]: //evil.example']] as $change) {
             $this->assertNull($this->client()->publish('token', 7, $this->pull(), [array_replace($this->finding(), $change)]));
         }
         $this->assertSame(0, $this->posts);
         $this->assertSame(0, $this->users);
+    }
+
+    public function test_html_in_finding_is_escaped_before_markdown_rendering(): void
+    {
+        $this->enable();
+        $finding = array_replace($this->finding(), ['comment' => 'Unsafe HTML: <img src=x onerror=alert(1)> & <script>alert(1)</script>.']);
+        $result = $this->client()->publish('token', 7, $this->pull(), [$finding]);
+        $this->assertSame(123, $result['id']);
+        $this->assertStringContainsString('&lt;img src=x onerror=alert(1)&gt;', $this->posted['body']);
+        $html = (new \League\CommonMark\CommonMarkConverter())->convert($this->posted['body'])->getContent();
+        $this->assertStringNotContainsString('<img', $html);
+        $this->assertStringNotContainsString('<script>', $html);
     }
 
     public function testStaleAndPartialDiffsDoNotPost(): void
@@ -111,7 +129,11 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
         $this->revokeAtSecondCheck = true;
         try { $this->client()->publish('token', 7, $this->pull(), [$this->finding()]); $this->fail('Expected a refusal.'); }
         catch (RuntimeException) { $this->assertSame(0, $this->posts); }
-        $this->assertSame('uncertain', $this->db->query('SELECT status FROM automatic_inline_attempts')->fetchColumn());
+        $this->assertFalse($this->db->query('SELECT status FROM automatic_inline_attempts')->fetchColumn());
+        $this->revokeAtSecondCheck = false;
+        $this->users = 0;
+        $this->assertSame(123, $this->client()->publish('token', 7, $this->pull(), [$this->finding()])['id']);
+        $this->assertSame(1, $this->posts);
     }
 
     public function testOptOutImmediatelyBeforePostIsHonored(): void
@@ -120,6 +142,7 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
         $this->optOutBeforePost = true;
         $this->assertNull($this->client()->publish('token', 7, $this->pull(), [$this->finding()]));
         $this->assertSame(0, $this->posts);
+        $this->assertFalse($this->db->query('SELECT status FROM automatic_inline_attempts')->fetchColumn());
     }
 
     public function testReviewOptOutImmediatelyBeforePostIsHonored(): void
@@ -128,6 +151,7 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
         $this->reviewOptOutBeforePost = true;
         $this->assertNull($this->client()->publish('token', 7, $this->pull(), [$this->finding()]));
         $this->assertSame(0, $this->posts);
+        $this->assertFalse($this->db->query('SELECT status FROM automatic_inline_attempts')->fetchColumn());
     }
 
     public function testFailedPostIsUncertainAndCannotRetry(): void
@@ -145,11 +169,22 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
     public function testSafeSuggestionIsPostedInsideFencedBlock(): void
     {
         $this->enable();
-        $finding = array_replace($this->finding(), ['suggestion' => "if (\$items === []) {\n    return 0;\n}\n\$total += \$item['price'] * \$item['qty'];"]);
+        $finding = array_replace($this->finding(), ['suggestion' => "    \$total += \$item['price'] * \$item['qty'];"]);
         $this->client()->publish('token', 7, $this->pull(), [$finding]);
         $this->assertStringContainsString('Could this handle empty input?', $this->posted['body']);
-        $this->assertStringContainsString("```suggestion\nif (\$items === []) {", $this->posted['body']);
+        $this->assertStringContainsString("```suggestion\n    \$total += \$item['price'] * \$item['qty'];", $this->posted['body']);
         $this->assertStringContainsString('**issue:**', $this->posted['body']);
+        $this->assertStringContainsString('installation-token', $this->postAuthorization);
+        $this->assertStringNotContainsString('Bearer token', $this->postAuthorization);
+    }
+
+    public function testNeverFallsBackToUserTokenForPosting(): void
+    {
+        $this->enable();
+        $this->missingBot = true;
+        try { $this->client()->publish('token', 7, $this->pull(), [$this->finding()]); $this->fail('Expected a refusal.'); }
+        catch (RuntimeException $e) { $this->assertStringContainsString('bot token', $e->getMessage()); }
+        $this->assertSame(0, $this->posts);
     }
 
     public function testBlockingDecorationFollowsVerdict(): void
@@ -167,7 +202,7 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
     public function testDangerousSuggestionIsDroppedButCommentStillPosts(): void
     {
         $this->enable();
-        foreach (['see https://evil.test/x', 'ping @owner', "```\nbreak out", '<img src=x onerror=1>', "line\x01break"] as $bad) {
+        foreach (['see https://evil.test/x', 'ping @owner', "```\nbreak out", '<img src=x onerror=1>', "line\x01break", "<?php\nfunction replacement() {}", '?>', "first line\nsecond line"] as $bad) {
             $this->db->exec('DELETE FROM automatic_inline_attempts');
             $this->posts = 0;
             $finding = array_replace($this->finding(), ['suggestion' => $bad]);

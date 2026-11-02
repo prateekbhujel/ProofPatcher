@@ -12,7 +12,7 @@ const APP_TITLES: Record<ConsoleNavKey, string> = {
   overview: 'overview',
   repositories: 'pull requests',
   pulls: 'pull requests',
-  checks: 'checks',
+  checks: 'visual demo',
   issues: 'issues & tasks',
   settings: 'settings',
   docs: 'docs',

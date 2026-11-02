@@ -18,7 +18,7 @@ export const CONSOLE_NAV: Array<{ section: string; items: ConsoleNavItem[] }> = 
       { href: '/', label: 'console', key: 'kernel' },
       { href: '/issues', label: 'issues', key: 'issues' },
       { href: '/repositories', label: 'pull requests', key: 'repositories' },
-      { href: '/checks', label: 'checks', key: 'checks' },
+      { href: '/checks', label: 'visual demo', key: 'checks' },
     ],
   },
   {

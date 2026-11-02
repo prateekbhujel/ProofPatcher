@@ -148,6 +148,23 @@ final class PublishDraftPrUseCaseTest extends TestCase
         self::assertTrue($result->pr['draft']);
     }
 
+    public function testPrivateModelProposalWithoutExactRunCannotPublish(): void
+    {
+        $calls = 0;
+        [$base, $useCase] = $this->scenario(function () use (&$calls): MockResponse {
+            ++$calls;
+            throw new \RuntimeException('No network call is allowed.');
+        });
+        $suggestion = ['model' => 'meta-models/muse-spark-open-1026',
+            'privateProvenanceRecorded' => true, 'candidate' => ['source' => $base->candidateSource]];
+        $input = new PublishDraftPrInput($base->context, $base->report, $suggestion, $base->candidateSource,
+            $base->candidateSha, $base->authToken, $base->githubToken, $base->evidenceDir, true);
+        $result = $useCase->execute($input);
+        self::assertSame('blocked', $result->status);
+        self::assertStringContainsString('recorded private proposal run', $result->message);
+        self::assertSame(0, $calls);
+    }
+
     public function testMissingEvidenceBlocksBeforeAnyWrite(): void
     {
         [$input, ] = $this->scenario($this->gitFlowResponder(false));

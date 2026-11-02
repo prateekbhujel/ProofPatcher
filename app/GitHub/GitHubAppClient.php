@@ -218,6 +218,108 @@ final readonly class GitHubAppClient
     }
 
     /**
+     * Reads a complete, bounded review-comment list for a pinned public PR.
+     * Comment bodies are intentionally discarded; replies remain untrusted.
+     *
+     * @return list<array{id:int, parentId:int}>
+     */
+    public function listHumanReviewReplies(string $token, string $repository, int $number, string $head, string $base): array
+    {
+        $path = "/repos/{$repository}/pulls/{$number}";
+        $this->assertPublicPullRevision($token, $repository, $number, $head, $base);
+        $replies = [];
+        $seen = [];
+        $botRoots = [];
+        for ($page = 1; $page <= 5; $page++) {
+            $comments = $this->get($path."/comments?per_page=100&page={$page}", $token);
+            if (!array_is_list($comments) || count($comments) > 100) {
+                throw new \RuntimeException('Review comment list is incomplete.');
+            }
+            foreach ($comments as $comment) {
+                if (!is_array($comment) || !is_int($comment['id'] ?? null) || $comment['id'] < 1 || isset($seen[$comment['id']])) {
+                    throw new \RuntimeException('Review comment list is invalid.');
+                }
+                $seen[$comment['id']] = true;
+                $parent = $comment['in_reply_to_id'] ?? null;
+                if ($parent !== null && (!is_int($parent) || $parent < 1)) {
+                    throw new \RuntimeException('Review comment parent is invalid.');
+                }
+                if ($parent !== null && ($comment['user']['type'] ?? null) === 'User') {
+                    $replies[] = ['id' => $comment['id'], 'parentId' => $parent];
+                }
+                if ($parent === null && ($comment['user']['type'] ?? null) === 'Bot') {
+                    $botRoots[$comment['id']] = true;
+                }
+            }
+            if (count($comments) < 100) {
+                $this->assertPublicPullRevision($token, $repository, $number, $head, $base);
+                return array_values(array_filter($replies, static fn (array $reply): bool => isset($botRoots[$reply['parentId']])));
+            }
+        }
+        throw new \RuntimeException('Review comment list exceeds the supported limit.');
+    }
+
+    public function assertPublicPullRevision(string $token, string $repository, int $number, string $head, string $base): void
+    {
+        $this->validateRepositoryName($repository);
+        if ($number < 1 || !preg_match('/\A[a-f0-9]{40}\z/', $head) || !preg_match('/\A[a-f0-9]{40}\z/', $base)) {
+            throw new \InvalidArgumentException('Invalid pull request revision.');
+        }
+        $pull = $this->get("/repos/{$repository}/pulls/{$number}", $token);
+        $repo = $pull['base']['repo'] ?? null;
+        if (($pull['number'] ?? null) !== $number || ($pull['state'] ?? null) !== 'open'
+            || ($pull['head']['sha'] ?? null) !== $head || ($pull['base']['sha'] ?? null) !== $base
+            || !is_array($repo) || !self::isExplicitlyPublic($repo)) {
+            throw new \RuntimeException('Pull request revision or public visibility changed.');
+        }
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function listRecentIssueComments(string $token, string $repository, string $since): array
+    {
+        $this->validateRepositoryName($repository);
+        if (!preg_match('/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/', $since)) {
+            throw new \InvalidArgumentException('Invalid comment start time.');
+        }
+        $all = [];
+        $seen = [];
+        for ($page = 1; $page <= 5; $page++) {
+            $comments = $this->get('/repos/'.$repository.'/issues/comments?since='.rawurlencode($since).'&per_page=100&page='.$page, $token);
+            if (!array_is_list($comments) || count($comments) > 100) {
+                throw new \RuntimeException('GitHub comment list was incomplete.');
+            }
+            foreach ($comments as $comment) {
+                if (!is_array($comment) || !is_int($comment['id'] ?? null) || $comment['id'] < 1 || isset($seen[$comment['id']])) {
+                    throw new \RuntimeException('GitHub comment list was invalid.');
+                }
+                $seen[$comment['id']] = true;
+                $all[] = $comment;
+            }
+            if (count($comments) < 100) return $all;
+        }
+        throw new \RuntimeException('GitHub comment list exceeded the supported limit.');
+    }
+
+    /** @return array<string, mixed> */
+    public function getIssueComment(string $token, string $repository, int $id): array
+    {
+        $this->validateRepositoryName($repository);
+        if ($id < 1) throw new \InvalidArgumentException('Invalid comment ID.');
+        return $this->get('/repos/'.$repository.'/issues/comments/'.$id, $token);
+    }
+
+    public function canMaintainRepository(string $token, string $repository, string $login, int $userId): bool
+    {
+        $this->validateRepositoryName($repository);
+        if ($userId < 1 || !preg_match('/\A[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\z/', $login)) return false;
+        $data = $this->get('/repos/'.$repository.'/collaborators/'.$login.'/permission', $token);
+        return in_array($data['permission'] ?? null, ['admin', 'maintain', 'write'], true)
+            && is_array($data['user'] ?? null)
+            && ($data['user']['id'] ?? null) === $userId
+            && strcasecmp((string) ($data['user']['login'] ?? ''), $login) === 0;
+    }
+
+    /**
      * Lists issues (excluding pull requests) for an authorized repository.
      *
      * @param-out array{truncated: bool, count: int, errors: array<string>} $status

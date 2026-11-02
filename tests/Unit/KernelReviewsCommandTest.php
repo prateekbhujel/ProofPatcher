@@ -58,6 +58,8 @@ final class KernelReviewsCommandTest extends TestCase
         $output = $this->runCommand([]);
 
         $this->assertStringContainsString('acme/roadrunner#7', $output);
+        $this->assertStringContainsString('Review commit', $output);
+        $this->assertStringContainsString(str_repeat('1', 12), $output);
         $this->assertStringContainsString('approve', $output);
         $this->assertStringContainsString('acme/anvil#3', $output);
         $this->assertStringContainsString('failed', $output);

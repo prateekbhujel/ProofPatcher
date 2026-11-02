@@ -48,8 +48,12 @@ final class ServerHeldPublicationApproval
         string $baseSha256,
         string $candidateSha256,
         string $testSha256,
-        bool $isSimulated = false
+        bool $isSimulated = false,
+        ?string $privateProvenanceId = null
     ): string {
+        if ($privateProvenanceId !== null && !preg_match('/\A[a-f0-9]{32}\z/', $privateProvenanceId)) {
+            throw new \InvalidArgumentException('Invalid private proposal run identifier.');
+        }
         $token = bin2hex(random_bytes(32));
         $now = time();
         $expiresAt = $now + $this->ttlSeconds;
@@ -67,7 +71,8 @@ final class ServerHeldPublicationApproval
             $baseSha256,
             $candidateSha256,
             $testSha256,
-            $isSimulated
+            $isSimulated,
+            $privateProvenanceId
         );
 
         $hmac = hash_hmac('sha256', $canonicalPayload, $this->serverSecret);
@@ -89,6 +94,7 @@ final class ServerHeldPublicationApproval
             'expiresAt' => $expiresAt,
             'hmac' => $hmac,
         ];
+        if ($privateProvenanceId !== null) $record['privateProvenanceId'] = $privateProvenanceId;
 
         $tokenPath = $this->tokenPath($token);
         $data = json_encode($record, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT) . "\n";
@@ -119,7 +125,8 @@ final class ServerHeldPublicationApproval
         string $runId,
         string $evidenceDirectory,
         string $receiptSha256,
-        string $candidateSha256
+        string $candidateSha256,
+        ?string $privateProvenanceId = null
     ): array {
         if (!preg_match('/\A[a-f0-9]{64}\z/', $token)) {
             throw new \InvalidArgumentException('Invalid publication token format.');
@@ -167,12 +174,16 @@ final class ServerHeldPublicationApproval
                 (string) ($record['baseSha256'] ?? ''),
                 (string) ($record['candidateSha256'] ?? ''),
                 (string) ($record['testSha256'] ?? ''),
-                (bool) ($record['isSimulated'] ?? false)
+                (bool) ($record['isSimulated'] ?? false),
+                $record['privateProvenanceId'] ?? null
             );
 
             $expectedHmac = hash_hmac('sha256', $expectedPayload, $this->serverSecret);
             if (!hash_equals($expectedHmac, (string) ($record['hmac'] ?? ''))) {
                 throw new \RuntimeException('Publication authorization record failed HMAC signature verification.');
+            }
+            if (($record['privateProvenanceId'] ?? null) !== $privateProvenanceId) {
+                throw new \RuntimeException('Publication authorization does not match the private proposal run.');
             }
 
             // Strictly reject simulated/mocked runs from publication
@@ -271,7 +282,8 @@ final class ServerHeldPublicationApproval
                 (string) ($record['baseSha256'] ?? ''),
                 (string) ($record['candidateSha256'] ?? ''),
                 (string) ($record['testSha256'] ?? ''),
-                (bool) ($record['isSimulated'] ?? false)
+                (bool) ($record['isSimulated'] ?? false),
+                $record['privateProvenanceId'] ?? null
             );
 
             if (!hash_equals(hash_hmac('sha256', $expectedPayload, $this->serverSecret), (string) ($record['hmac'] ?? ''))) {
@@ -352,9 +364,10 @@ final class ServerHeldPublicationApproval
         string $baseSha,
         string $candidateSha,
         string $testSha,
-        bool $isSimulated
+        bool $isSimulated,
+        ?string $privateProvenanceId = null
     ): string {
-        return implode(':', [
+        $payload = implode(':', [
             $token,
             $runId,
             $evidenceDir,
@@ -368,6 +381,7 @@ final class ServerHeldPublicationApproval
             $testSha,
             $isSimulated ? '1' : '0',
         ]);
+        return $privateProvenanceId === null ? $payload : $payload.':private-proposal-v1:'.$privateProvenanceId;
     }
 
     private function resolveServerSecret(): string

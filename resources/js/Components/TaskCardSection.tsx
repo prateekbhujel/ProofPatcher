@@ -232,7 +232,7 @@ export function FocusedLocalTaskView({
             <button
               type="button"
               onClick={() => router.post('/issues/load-dedicated')}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs hover:bg-slate-800 transition"
+              className="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs hover:bg-slate-800 dark:hover:bg-slate-200 transition"
             >
               Load dedicated test case
             </button>

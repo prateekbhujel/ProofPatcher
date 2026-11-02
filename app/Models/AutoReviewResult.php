@@ -60,6 +60,7 @@ final class AutoReviewResult extends Model
         }
         return match ($attempt) {
             'posted' => 'one_inline_comment',
+            'posted_review' => 'review_summary',
             'uncertain' => 'publication_unknown',
             null => $stored,
             default => 'publication_unknown',

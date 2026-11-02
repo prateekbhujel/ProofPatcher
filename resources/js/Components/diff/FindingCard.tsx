@@ -42,22 +42,22 @@ export function FindingCard({
   const { subject, discussion } = splitComment(finding.comment);
   return (
     <tr>
-      <td colSpan={5} className="p-3 bg-[#f6f8fa] border-y border-[#d0d7de]">
-        <div className="rounded-lg bg-white border border-[#d0d7de] shadow-2xs p-3.5 space-y-3 font-sans dark:bg-[#141821]">
+      <td colSpan={5} className="p-3 bg-[#f6f8fa] border-y border-[#d0d7de] dark:bg-slate-900 dark:border-slate-700">
+        <div className="rounded-lg bg-white border border-[#d0d7de] shadow-2xs p-3.5 space-y-3 font-sans dark:bg-[#141821] dark:border-slate-700">
           {/* Bot Header */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-accent-700 text-white flex items-center justify-center text-xs font-bold">
                 <Sparkles className="w-3.5 h-3.5" />
               </div>
-              <span className="text-xs font-semibold text-[#1f2328]">Muse suggestion</span>
+              <span className="text-xs font-semibold text-[#1f2328] dark:text-slate-100">Muse suggestion</span>
               <span className="text-slate-300">·</span>
               <span
                 className={`px-2 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider ${
                   label === 'praise'
                     ? 'bg-[#dafbe1] text-[#1a7f37]'
                     : label === 'issue'
-                    ? 'bg-amber-100 text-amber-900 dark:text-amber-200'
+                    ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200'
                     : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
                 }`}
               >
@@ -91,7 +91,7 @@ export function FindingCard({
           </div>
 
           {/* Subject + discussion */}
-          <div className="text-xs text-[#1f2328] leading-relaxed whitespace-pre-wrap">
+          <div className="text-xs text-[#1f2328] dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
             <p className="font-semibold">{subject}</p>
             {discussion !== '' && discussion !== subject && <p className="mt-1 font-normal">{discussion}</p>}
           </div>

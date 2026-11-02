@@ -276,6 +276,8 @@ final class IssueWorkbenchConnectedWorkflowTest extends TestCase
         self::assertIsArray($pulls);
         self::assertCount(1, $pulls);
         self::assertSame(11, $pulls[0]['number']);
+        self::assertSame('my-org/my-repo', $session->get('github_repo_pulls_repo'));
+        self::assertIsArray($session->get('github_repo_pulls_status'));
     }
 
     public function testLoadIssueFetchesAndIntakesTask(): void

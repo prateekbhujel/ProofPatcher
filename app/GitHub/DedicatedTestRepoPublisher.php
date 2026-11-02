@@ -48,7 +48,8 @@ final readonly class DedicatedTestRepoPublisher
     public function __construct(
         private ServerHeldPublicationApproval $approvalStore,
         private ?HttpClientInterface $http = null,
-        private bool $disconnected = true
+        private bool $disconnected = true,
+        private ?\ProofPatch\Agent\ServerHeldModelProposal $modelProposals = null
     ) {
     }
 
@@ -155,7 +156,7 @@ final readonly class DedicatedTestRepoPublisher
                 );
                 $context['usage'] = $privateRecord['usage'];
             } else {
-                $proposalStore = new \ProofPatch\Agent\ServerHeldModelProposal();
+                $proposalStore = $this->modelProposals ?? new \ProofPatch\Agent\ServerHeldModelProposal();
                 $serverProposal = $proposalStore->lookup($candidateSha);
                 if ($serverProposal === null) {
                     throw new \InvalidArgumentException(
@@ -212,7 +213,8 @@ final readonly class DedicatedTestRepoPublisher
             (string) ($verificationReport['id'] ?? ''),
             $evidenceDirectory,
             (string) ($verificationReport['receipt']['sha256'] ?? ''),
-            $candidateSha
+            $candidateSha,
+            $context['privateProvenanceId'] ?? null
         );
 
         // Boundary 10: Verify all binding fields of the consumed record against the request/report
@@ -433,7 +435,7 @@ final readonly class DedicatedTestRepoPublisher
         ]);
 
         // 7. Create Draft Pull Request
-        $prTitle = 'fix(order-total): correct zero-quantity item pricing (ProofPatcher #1)';
+        $prTitle = 'fix(order-total): correct zero-quantity pricing';
         $prRes = $this->apiCall($client, 'POST', "{$repoApi}/pulls", $token, [
             'title' => $prTitle,
             'head' => $branchName,
@@ -560,24 +562,28 @@ COMMIT;
             ? " (Tokens: {$context['usage']['prompt_tokens']} prompt, {$context['usage']['completion_tokens']} completion)"
             : '';
         $modelName = $context['model'] ?? 'meta-models/muse-spark-open-1026';
+        $provider = in_array($modelName, \ProofPatch\Agent\ProviderConfigStore::PROVIDERS['baseten']['models'], true)
+            ? 'Baseten' : (in_array($modelName, \ProofPatch\Agent\ProviderConfigStore::PROVIDERS['meta']['models'], true)
+                ? 'Meta Model API' : 'the configured provider');
+        $modelContext = ($context['isPrivateDedicated'] ?? false) === true
+            ? 'the private test issue and selected source file' : 'the public fixture context';
         $origin = match ($context['proposalOrigin'] ?? null) {
             'offline_reference' => 'This is the known offline reference repair. No model was called for this proposal.',
-            'muse' => "Candidate proposed by Meta Muse Spark ({$modelName}) via Baseten inference on public fixture context{$tokensInfo}. Applied to dedicated test repository with exact matching source SHA-256.",
+            'muse' => "Candidate proposed by {$modelName} via {$provider} using {$modelContext}{$tokensInfo}. Applied to the dedicated test repository with matching source SHA-256.",
             default => 'The candidate matches the pinned reference repair.',
         };
 
         return <<<MARKDOWN
-This draft was prepared by ProofPatcher for review. It does not merge automatically.
+Fixes #1: zero-quantity items no longer add one unit to the order total.
+
+ProofPatcher ran bounded checks against the OrderTotal fixture; the full repository test suite was not run. This is a draft for maintainer review.
+
+<details>
+<summary>Verification details</summary>
 
 {$origin}
 
-The checks below cover the bounded OrderTotal fixture, not the full repository test suite.
-
-### Summary
-Fixes #1 (`Zero-quantity items inflate the order total`).
-Zero-quantity items now contribute 0 to the total order price instead of charging for 1 unit.
-
-### Verification Evidence & 5-Gate Audit
+### Bounded fixture checks
 | Gate | Expected | Observed | Status |
 | :--- | :--- | :--- | :--- |
 | **1. Baseline Failure Reproduction** | Exit 1 (Bug reproduced) | Exit {$report['runs']['baseline']['exitCode']} | PASSED |
@@ -595,6 +601,8 @@ Zero-quantity items now contribute 0 to the total order price instead of chargin
 - **Target Repository**: `{$targetRepository}`
 - **Bound Base Commit**: `{$baseCommit}`
 - **Target Branch**: `main`
+
+</details>
 MARKDOWN;
     }
 
@@ -623,17 +631,26 @@ MARKDOWN;
         if (!is_string($repoData['full_name'] ?? null) || strcasecmp($repoData['full_name'], $repo) !== 0) {
             throw new \InvalidArgumentException('Publication refused: repository access could not be verified.');
         }
+        $runId = $context['privateProvenanceId'] ?? null;
+        if (!is_string($runId) || !preg_match('/\A[a-f0-9]{32}\z/', $runId)) {
+            throw new \InvalidArgumentException('Publication refused: a recorded private proposal run is required.');
+        }
         $record = \ProofPatch\Agent\PrivateProposalStore::forRuntime()->lookup(
             ['githubUserId' => $userId, 'repository' => $repo,
                 'issueNumber' => self::AUTHORIZED_ISSUE_NUMBER, 'baseCommit' => DedicatedTestRepo::requireBaseCommit(),
                 'path' => self::AUTHORIZED_FILE_PATH, 'sourceSha256' => $baseSha, 'candidateSha256' => $candidateSha],
-            ['userId' => $userId, 'repositories' => [strtolower($repo) => true]]
+            ['userId' => $userId, 'repositories' => [strtolower($repo) => true]],
+            $runId
         );
         if ($record === null) {
             throw new \InvalidArgumentException('Publication refused: no private model provenance matches this change and current access.');
         }
         if (($record['model'] ?? null) !== ($context['model'] ?? 'meta-models/muse-spark-open-1026')) {
             throw new \InvalidArgumentException('Publication refused: Model name mismatch against private proposal.');
+        }
+        $requestDigest = $context['requestDigest'] ?? null;
+        if (!is_string($requestDigest) || !hash_equals((string) ($record['requestDigest'] ?? ''), $requestDigest)) {
+            throw new \InvalidArgumentException('Publication refused: private request digest does not match.');
         }
         return $record;
     }

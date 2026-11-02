@@ -476,6 +476,9 @@ final class DedicatedTestRepoPublisherTest extends TestCase
                 $payload = json_decode($options['body'], true, 32, JSON_THROW_ON_ERROR);
                 self::assertTrue($payload['draft']);
                 self::assertStringContainsString('ProofPatcher', $payload['body']);
+                self::assertStringContainsString('full repository test suite was not run', $payload['body']);
+                self::assertStringContainsString('<summary>Verification details</summary>', $payload['body']);
+                self::assertStringContainsString('Receipt SHA-256', $payload['body']);
                 self::assertStringNotContainsString('Frontier Model', $payload['body']);
                 self::assertStringNotContainsString('baseten.co', $payload['body']);
                 self::assertStringNotContainsString('Meta Muse', $payload['body']);

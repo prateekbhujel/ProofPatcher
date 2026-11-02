@@ -70,6 +70,8 @@ final class TaskWorkflowHelper
                 'model' => $meta['model'] ?? null,
                 'requestDigest' => $task->proposal_digest,
                 'usage' => $meta['usage'] ?? null,
+                'privateProvenanceId' => $meta['privateProvenanceId'] ?? null,
+                'privateProvenanceRecorded' => $meta['privateProvenanceRecorded'] ?? null,
                 'candidate' => [
                     'status' => $task->verification_decision === 'VERIFIED' ? 'verified_allowlisted_candidate' : 'unverified_in_memory_preview',
                     'source' => $task->candidate_source,

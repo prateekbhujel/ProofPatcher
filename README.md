@@ -1,129 +1,121 @@
 # ProofPatcher
 
-> A project for the **Meta Global AI Developer Hackathon 2026** (Indie Developer Track).
+**A local GitHub co-maintainer powered by Meta Muse.**
 
-ProofPatcher is a local prototype for inspecting GitHub pull requests and testing sample UI repairs. It records PR metadata and existing checks and can show a read-only preview of changes from a public PR at the captured commits. Its visual verifier currently runs on bundled checkout fixtures, not on the selected PR. A worktree is not a security sandbox for untrusted code.
+ProofPatcher helps maintainers inspect pull requests, find potential issues, and review suggested changes. It brings a GitHub workspace, model-assisted review, and verification tools together in a web app and terminal interface.
 
----
+Built for the **Meta Global AI Developer Hackathon 2026**, Indie Developer track.
 
-## Quickstart
+## What it does today
 
-### 1. Requirements
-* PHP 8.4+ with `ext-gd` and `ext-json`
-* Composer
-* Node.js 20+ and npm
-* Chrome / Chromium (for headless browser verification)
+- **Connect GitHub** to browse repositories, issues, pull requests, and existing GitHub checks within the app's grant.
+- **Review pull requests with Muse.** Opt-in autopilot polls enabled public repositories, saves findings, and skips revisions it already reviewed. A separate opt-in permits an automated inline comment on eligible public repositories. A maintainer can also request a review with a mention while the local mention listener is running. Bot comments require GitHub App credentials.
+- **Work with issues and tasks.** Save local task cards, inspect supported issue content, and request suggestions in the available workflows. Attached screenshots are stored locally; they are not interpreted by Muse in this workflow.
+- **Check a supported patch.** A visual verifier exercises included checkout examples. A separate, configured test-repository workflow can verify pinned candidates and create a draft pull request after the required checks and authorization.
+- **Use the terminal.** The interactive menu and direct Artisan commands share connection state with the web app.
 
-### 2. Setup
-For a new installation, install dependencies, create a private application key, build frontend assets, and prepare the local SQLite database. Keep the generated `.env` private and do not regenerate the key for an existing installation:
+Model findings are suggestions: review them before acting. The application is an early local prototype, not a production service.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    User --> Web["Web · React + Inertia"]
+    User --> CLI["Terminal · Artisan"]
+    Web --> App["Laravel application"]
+    CLI --> App
+    App --> Hari["Hari · ability and skill registry"]
+    App --> GitHub["GitHub App and API"]
+    App --> Muse["Muse · Baseten or Meta Model API"]
+    App --> Store["Local SQLite and evidence"]
+    Hari --> Verifier["Supported patch verifiers"]
+    Verifier -. "configured fixture runner" .-> Modal["Modal"]
+```
+
+**Hari** is an in-process coordination core: abilities declare the skills they provide or use, and the registry checks those relationships. ProofPatcher is the application built on top. Hari is not a system kernel or a sandbox for untrusted code. See [Hari's design and boundaries](docs/HARI_KERNEL.md).
+
+## Run locally
+
+### Requirements
+
+- PHP 8.4 or newer, with `gd`, `json`, SQLite, and the extensions required by Laravel and Composer.
+- Composer, Node.js 20 or newer, and npm.
+- Chrome or Chromium for the visual verification examples.
+- The PHP `terminal` extension and an interactive terminal for `php artisan kernel`. A plain menu is available when ANSI color is disabled.
+
+For a **new installation**, from the repository directory:
 
 ```bash
 composer install
-npm install && npm run build
+npm ci
 cp .env.example .env
 php artisan key:generate
+touch database/proofpatch.sqlite
 php artisan migrate
+npm run build
+php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-### 3. Run the Web Dashboard
-Start the local server using standard Laravel Artisan:
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). For an existing installation, keep its `.env` and application key, and back up the SQLite database before migrations. Rolling back task-card migrations deletes those cards or their screenshots.
+
+### Connect GitHub
+
+Configure a GitHub App with a client ID and client secret, enable device flow for terminal use, and install the app on the repositories you want to access. For local web sign-in, register `http://127.0.0.1:8000/github/callback` as a callback URL, or use the callback corresponding to your configured `APP_URL`.
+
+Set `PROOFPATCH_GITHUB_CLIENT_ID` and `PROOFPATCH_GITHUB_CLIENT_SECRET` in your private `.env`. Do not commit credentials. Choose **Sign in with GitHub** in the web app; the terminal uses GitHub's device authorization flow.
+
+Select a Muse provider and add its key in Settings, or configure the appropriate provider key privately in the environment. The current app supports Baseten and Meta Model API configuration. Model requests may consume provider credits or incur charges; the local usage ledger is an estimate, not a provider billing limit. An optional `PROOFPATCH_MODEL_MAX_ATTEMPTS` setting limits local request attempts; autopilot also has optional limits in Settings.
+
+### Terminal
 
 ```bash
-php artisan serve
+# Open the interactive menu (requires the PHP terminal extension)
+php artisan kernel
+
+# Or use individual commands
+php artisan github:connect
+php artisan kernel:status
+php artisan kernel:select-repo --list
+php artisan kernel:reviews
 ```
 
-Open **http://127.0.0.1:8000** in your browser.
-
-*(Alternatively, run `php artisan serve --port=8431`).*
-
-To enable GitHub sign-in, the operator sets `PROOFPATCH_GITHUB_CLIENT_ID` in `.env` to a GitHub App client ID with device flow enabled. Install that app on the repositories it should access. Users then select **Continue with GitHub** and enter the short code on GitHub; they do not need to enter the client ID themselves.
-
-For an existing installation, back up the SQLite database before running `php artisan migrate`. Rolling back the task-card migrations deletes the cards or their screenshots.
-
-### Issue suggestions
-
-The Issues page also lets a connected user save task cards and one PNG or JPEG screenshot per card for repositories granted to the GitHub app. Cards and images stay local; they are not assigned to Muse or run automatically.
-
-The Issues page can load issues from repositories granted to the connected GitHub account. A public issue and selected text file can also be previewed when that repository is granted. Muse suggestions are unverified until checked. The dedicated test workflow requires a local repository and revision allowlist; it is disabled when those settings are absent. For the configured private test case, a connected maintainer can explicitly consent to send the selected issue and source file to Muse; private test harnesses are excluded. Private PR previews are limited to the configured test repository. A maintainer may manually post an anchored comment there after reviewing it.
-
-Automatic reviews support public repositories when enabled in Settings and the local worker (`php artisan review:poll --daemon`) is running. A separate, default-off setting permits one automated inline suggestion per reviewed revision on an opted-in public repository owned by the connected account. The comment is posted as that account and identifies itself as automated. Suggestions can be wrong, and a PR can change between the final check and GitHub accepting a comment. GitHub comment triggers are not supported. Private Muse suggestions on the dedicated test repository carry owner-scoped provenance. Verification of arbitrary generated candidates remains blocked: the experimental trusted oracle is disabled until its isolation is independently established.
-
-Model requests use a local ledger with a default limit of 10 attempts and $0.50 in estimated reservations. The operator may set `PROOFPATCH_MODEL_MAX_ATTEMPTS` between 1 and 100; this does not change the $0.50 limit or set a provider billing cap.
-
-To enable the dedicated test workflow, set `PROOFPATCH_TEST_REPO` to the exact `owner/repository` and `PROOFPATCH_TEST_BASE_COMMIT` to the intended 40-character commit SHA in your private environment. The workflow is limited to the bundled test case and pinned file hashes. Do not commit private settings.
-
----
-
-## CLI Usage
-
-### Inspect a GitHub Pull Request
-Fetch pull request metadata, changed files, and check runs, saving a local snapshot with a digest. The digest is not an independent authenticity guarantee. You can use shorthand handles, full URLs, or run interactively:
+To run a bounded automatic-review cycle, enable review for an authorized **public** repository and then run:
 
 ```bash
-# Shorthand handle
-php artisan review:inspect owner/repo#123
-
-# Full URL
-php artisan review:inspect https://github.com/owner/repo/pull/123
-
-# Interactive prompt
-php artisan review:inspect
+php artisan kernel:select-repo --enable-review owner/repository
+php artisan kernel:autopilot --repo=owner/repository --minutes=1 --max-cycles=1
 ```
 
-### Record an Existing Local Snapshot
-Record a saved snapshot in SQLite for review:
+The worker runs only while the local machine and process are running. Automatic review does not process private pull requests. Automatic inline commenting requires its own explicit setting; enabling review alone does not enable comments. Bot posting additionally requires `PROOFPATCH_GITHUB_APP_ID` and an owner-only private key file outside the repository, referenced by `PROOFPATCH_GITHUB_APP_PRIVATE_KEY_PATH`. If the bot is not configured, it does not fall back to posting as the user. Reviews completed before bot setup are not automatically retried for posting.
+
+For a maintainer-requested public PR review, independent of automatic review:
 
 ```bash
-php artisan review:record <SNAPSHOT_ID>
+php artisan kernel:mentions --repo=owner/repository --minutes=10 --publish
 ```
 
-### Inspect a Review via HTTP API
-Query review status, repository metadata, and the saved snapshot digest:
+After the listener reports that it is ready, a maintainer can post `@proofpatcher review` in the PR conversation. The listener checks the requester's access and the PR revision before reviewing and posting. Omit `--publish` to keep results local. This is a bounded, best-effort local listener, not a webhook: it does not process mentions while stopped, and issue or inline-thread mentions are not supported. `@pp review` is also recognized, but may notify an unrelated GitHub account.
+
+## Scope and safeguards
+
+- The visual verifier uses bundled checkout fixtures, not arbitrary selected pull requests. The dedicated issue-to-draft-PR workflow is restricted to its configured test repository and pinned inputs. Set `PROOFPATCH_TEST_REPO` and `PROOFPATCH_TEST_BASE_COMMIT` privately to enable the intended test case.
+- Modal can run the configured pinned fixture checks when explicitly enabled. A successful result applies to the tested candidate and cases; it is not proof that arbitrary generated code is safe or correct. General untrusted-candidate verification remains disabled until its test-oracle boundary is established.
+- A Git worktree is not a security sandbox. Do not run untrusted repository code on the host merely because it is in a worktree.
+- Local task cards and images are not autonomous jobs. The app does not currently understand attached screenshots in the task-card workflow, or automatically solve and merge arbitrary issues.
+- A snapshot digest or receipt supports integrity checking; it does not independently prove the origin, correctness, or safety of a change.
+
+## Tests
 
 ```bash
-curl http://127.0.0.1:8000/reviews/<REVIEW_ID>
-```
-
----
-
-## Testing
-
-Run the full PHPUnit test suite:
-
-```bash
-php artisan test
-# or
 ./vendor/bin/phpunit
+python3 -m unittest discover -s tests/Python -p 'test_*.py'
+npm run typecheck
+node --test tests/ui/*.test.mjs
+npm run build
 ```
 
-Run browser driver detection (if needed):
+`composer drivers` can detect browser drivers for the Panther-based visual checks.
 
-```bash
-composer drivers
-```
+## License
 
----
-
-## Project Structure
-
-```text
-ProofPatcher/
-├── artisan                 # Root Artisan CLI
-├── bootstrap/              # Laravel bootstrap & command registration
-├── config/                 # Application & SQLite database config
-├── database/               # Database migrations & local SQLite store
-│   └── migrations/
-├── public/                 # Web root (CSS, static assets, index.php)
-├── routes/                 # web.php & api.php routes
-├── app/                    # Core verification engine & application code
-│   ├── Agent/              # Model repair proposal & budgeting
-│   ├── Application/        # Controllers & Artisan commands
-│   ├── Browser/            # Headless browser probes (Panther)
-│   ├── Evidence/           # Receipts & canonical JSON encoding
-│   ├── GitHub/             # Pull request reader & snapshot store
-│   ├── Patch/              # CSS patch manipulation & validation
-│   └── Verifier/           # Worktree isolation & test verifier
-├── storage/                # Framework cache, logs & sessions
-└── tests/                  # Unit, Integration & Locked regression tests
-```
-
+[MIT](LICENSE)

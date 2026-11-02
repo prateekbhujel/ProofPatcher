@@ -51,9 +51,10 @@ final readonly class PrivateProposalStore
     }
 
     /** @param array<string,mixed> $binding @param array<string,mixed> $grant */
-    public function record(array $binding, array $grant, array $proposal): void
+    public function record(array $binding, array $grant, array $proposal, ?string $runId = null): void
     {
         $binding = $this->normalize($binding);
+        $this->validateRunId($runId);
         if (!$this->authorized($binding, $grant)) {
             throw new \RuntimeException('Current GitHub access is required.');
         }
@@ -71,8 +72,9 @@ final readonly class PrivateProposalStore
         $record = ['binding' => $binding, 'candidateSource' => $source, 'model' => $model,
             'requestDigest' => $requestDigest, 'usage' => ['prompt_tokens' => $usage['prompt_tokens'],
                 'completion_tokens' => $usage['completion_tokens']]];
-        $target = $this->path($binding);
-        $this->guardOverwrite($target, $record, $grant);
+        if ($runId !== null) $record['privateProvenanceId'] = $runId;
+        $target = $this->path($binding, $runId);
+        $this->guardOverwrite($target, $record, $grant, $runId);
         $encoded = json_encode($record, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         $encrypted = $this->encrypter->encryptString($encoded);
         $temporary = $this->directory . '/.' . bin2hex(random_bytes(16)) . '.tmp';
@@ -86,8 +88,11 @@ final readonly class PrivateProposalStore
             }
             fclose($handle);
             $handle = null;
-            if (!rename($temporary, $target)) {
-                throw new \RuntimeException('Cannot save private proposal.');
+            // Link is atomic and never overwrites a competing record. If an
+            // identical record won the race, the guarded lookup accepts it.
+            if (!@link($temporary, $target)) {
+                if (!is_file($target) || is_link($target)) throw new \RuntimeException('Cannot save private proposal.');
+                $this->guardOverwrite($target, $record, $grant, $runId);
             }
             chmod($target, 0600);
         } finally {
@@ -101,17 +106,18 @@ final readonly class PrivateProposalStore
     }
 
     /** Returns no data without the exact binding and a current verified grant. */
-    public function lookup(array $binding, array $grant): ?array
+    public function lookup(array $binding, array $grant, ?string $runId = null): ?array
     {
         try {
             $binding = $this->normalize($binding);
+            $this->validateRunId($runId);
         } catch (\InvalidArgumentException) {
             return null;
         }
         if (!$this->authorized($binding, $grant)) {
             return null;
         }
-        $path = $this->path($binding);
+        $path = $this->path($binding, $runId);
         if (!is_file($path) || is_link($path) || filesize($path) > 131072) {
             return null;
         }
@@ -122,6 +128,7 @@ final readonly class PrivateProposalStore
             }
             $record = json_decode($this->encrypter->decryptString($ciphertext), true, 16, JSON_THROW_ON_ERROR);
             if (!is_array($record) || ($record['binding'] ?? null) !== $binding
+                || ($record['privateProvenanceId'] ?? null) !== $runId
                 || !is_string($record['candidateSource'] ?? null)
                 || !hash_equals($binding['candidateSha256'], hash('sha256', $record['candidateSource']))) {
                 return null;
@@ -133,12 +140,12 @@ final readonly class PrivateProposalStore
     }
 
     /** An identical rewrite is idempotent; anything else on record throws. */
-    private function guardOverwrite(string $target, array $record, array $grant): void
+    private function guardOverwrite(string $target, array $record, array $grant, ?string $runId): void
     {
         if (!is_file($target) || is_link($target)) {
             return;
         }
-        $existing = $this->lookup($record['binding'], $grant);
+        $existing = $this->lookup($record['binding'], $grant, $runId);
         if ($existing === null || $existing !== $record) {
             throw new \RuntimeException('A different private proposal is already recorded for this change.');
         }
@@ -170,8 +177,17 @@ final readonly class PrivateProposalStore
             && (($grant['repositories'][$binding['repository']] ?? null) === true);
     }
 
-    private function path(array $binding): string
+    private function validateRunId(?string $runId): void
     {
-        return $this->directory . '/' . hash_hmac('sha256', json_encode($binding, JSON_THROW_ON_ERROR), $this->namespaceKey) . '.enc';
+        if ($runId !== null && !preg_match('/\A[a-f0-9]{32}\z/', $runId)) {
+            throw new \InvalidArgumentException('Invalid private proposal run identifier.');
+        }
+    }
+
+    private function path(array $binding, ?string $runId = null): string
+    {
+        $input = json_encode($binding, JSON_THROW_ON_ERROR);
+        if ($runId !== null) $input .= ':run:'.$runId;
+        return $this->directory . '/' . hash_hmac('sha256', $input, $this->namespaceKey) . '.enc';
     }
 }

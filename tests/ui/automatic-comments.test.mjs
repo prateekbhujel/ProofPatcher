@@ -17,7 +17,9 @@ test('automatic comment settings disclose scope and never assume enabled before 
     connected: true, login: 'maintainer', repositories: [], csrf: 'test',
   }));
   assert.match(html, /Opt in per public repository you own/);
-  assert.match(html, /as @maintainer/);
+  assert.match(html, /GitHub App bot configured/);
+  assert.match(html, /Without them, comments are not posted/);
+  assert.doesNotMatch(html, /as @maintainer/);
   assert.match(html, /Suggestions can be wrong/);
   assert.match(html, /will not merge or close PRs/);
   assert.match(html, /Settings unavailable or loading/);

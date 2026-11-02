@@ -316,7 +316,7 @@ export default function Settings({
                     <button
                       type="submit"
                       disabled={savingProvider}
-                      className="w-full px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold hover:bg-slate-800 transition disabled:opacity-50"
+                      className="w-full px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-200 transition disabled:opacity-50"
                     >
                       Apply Provider &amp; Model
                     </button>

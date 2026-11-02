@@ -23,6 +23,12 @@ const { PrHeaderCard } = component('../../resources/js/Components/repositories/P
 const { TaskComposerFooter } = component('../../resources/js/Components/workbench/TaskComposerFooter.tsx',
   (id) => id === '../VoiceDictationButton' ? { VoiceDictationButton: () => null } : require(id));
 const { AutoReviewPanel } = component('../../resources/js/Components/settings/AutoReviewPanel.tsx');
+const Kernel = component('../../resources/js/Pages/Kernel.tsx', (id) => {
+  if (id === '@inertiajs/react') return { Head: () => null, Link: ({ children }) => React.createElement('span', null, children) };
+  if (id === '../Components/AppLayout') return { AppLayout: ({ children }) => React.createElement('main', null, children) };
+  if (id === '../Components/console/primitives') return { Panel: ({ children }) => React.createElement('section', null, children), Stat: () => null };
+  return require(id);
+}).default;
 const render = (type, props) => renderToStaticMarkup(React.createElement(type, props));
 
 const context = { title: 'An issue', body: 'A description', issueNumber: 1, issueUrl: 'https://github.com/owner/repo/issues/1',
@@ -99,6 +105,25 @@ test('an uncertain automatic comment is never presented as not posted', () => {
   const html = render(AutoReviewPanel, props);
   assert.match(html, /Comment outcome unknown/);
   assert.doesNotMatch(html, /Not posted to GitHub/);
+});
+
+test('recent findings show the review commit and handle old rows without it', () => {
+  const findings = [
+    { id: 1, repository: 'owner/public', pull_number: 3, status: 'completed', head_sha: 'a'.repeat(40), summary: 'Advisory finding' },
+    { id: 2, repository: 'owner/public', pull_number: 4, status: 'failed' },
+  ];
+  const panel = render(AutoReviewPanel, { connected: true, repositories: [{ fullName: 'owner/public', isPrivate: false }],
+    pendingRepo: null, error: null, onToggle() {}, onRefresh() {}, autoReview: {
+      worker: { isLive: false, status: 'offline' }, settings: {}, publicOnly: true, recentResults: findings,
+    } });
+  assert.match(panel, /Review commit: a{12}/);
+  assert.match(panel, /Review commit: unavailable/);
+  const kernel = render(Kernel, { connected: true, user: null, reposCount: 1, selectedRepo: 'owner/public', openIssues: 0, openPulls: 0,
+    provider: { label: '', model: '', keyReady: false }, budget: null, hari: null,
+    worker: { isLive: false, status: 'offline' }, autoStats: { completed: 0, failed: 0, skippedPrivate: 0 },
+    recentFindings: findings, stages: [], nextStep: { title: '', detail: '', href: '/', cta: '' }, lastVerification: null, publishedPr: null });
+  assert.match(kernel, /review commit: a{12}/);
+  assert.match(kernel, /review commit: unavailable/);
 });
 
 test('pull request header renders Merge and Close controls for open PRs and disables Merge for drafts', () => {
@@ -186,6 +211,10 @@ test('automatic reviews list recent findings with local-only provenance', () => 
   assert.match(filled, /Rounding fix looks correct/);
   assert.match(filled, /Skipped \(private\)/);
   assert.match(filled, /Stored locally · Not posted to GitHub/);
+  const publishedSummary = render(AutoReviewPanel, { ...base, autoReview: { ...base.autoReview,
+    recentResults: [{ id: 8, repository: 'owner/public', pull_number: 43, status: 'completed', summary: 'Review complete.',
+      risk_level: 'low', recommendation: 'discuss', model: 'muse', published_status: 'review_summary', reviewed_at: null, created_at: null }] } });
+  assert.match(publishedSummary, /Review summary posted to GitHub/);
 });
 
 test('review provenance distinguishes automatic and manual Muse reviews', () => {
@@ -198,6 +227,9 @@ test('review provenance distinguishes automatic and manual Muse reviews', () => 
   const automatic = render(PrReviewTab, { ...base, review: { ...review, source: 'automatic' } });
   assert.match(automatic, /Automatic review/);
   assert.match(automatic, /Not posted to GitHub/);
+  const summaryPosted = render(PrReviewTab, { ...base, review: { ...review, source: 'automatic', publishedStatus: 'review_summary' } });
+  assert.match(summaryPosted, /Review summary posted to GitHub/);
+  assert.doesNotMatch(summaryPosted, /Not posted to GitHub/);
   const manual = render(PrReviewTab, { ...base, review });
   assert.match(manual, /Manual review/);
 });

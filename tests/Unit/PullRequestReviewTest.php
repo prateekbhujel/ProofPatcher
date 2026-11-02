@@ -238,13 +238,13 @@ final class PullRequestReviewTest extends TestCase
             'recommendation' => 'request_changes',
             'fileFindings' => [
                 ['path' => 'file.css', 'status' => 'concern', 'lineHint' => 3,
-                    'comment' => 'Null dereference when empty.', 'suggestion' => "if (\$x === null) {\n    return;\n}"],
+                    'comment' => 'Null dereference when empty.', 'suggestion' => "    if (\$x === null) {\n        return;\n    }"],
                 ['path' => 'file.css', 'status' => 'note', 'lineHint' => null, 'comment' => 'Looks fine.'],
             ],
         ]);
 
         $validated = PullRequestReview::parseAndValidate($json, ['file.css']);
-        $this->assertSame("if (\$x === null) {\n    return;\n}", $validated['fileFindings'][0]['suggestion']);
+        $this->assertSame("    if (\$x === null) {\n        return;\n    }", $validated['fileFindings'][0]['suggestion']);
         $this->assertNull($validated['fileFindings'][1]['suggestion']);
     }
 

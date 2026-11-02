@@ -27,10 +27,19 @@ final class PublishDraftPrUseCase
         if (($in->suggestion['isOfflineExample'] ?? false) === true) {
             $publicationContext['proposalOrigin'] = 'offline_reference';
         } elseif (!empty($in->suggestion['model'])) {
+            if ($in->isPrivateDedicated && (($in->suggestion['privateProvenanceRecorded'] ?? null) !== true
+                || !is_string($in->suggestion['privateProvenanceId'] ?? null)
+                || !preg_match('/\A[a-f0-9]{32}\z/', $in->suggestion['privateProvenanceId']))) {
+                return PublishDraftPrResult::blocked('PR Publication blocked: a recorded private proposal run is required.');
+            }
             $publicationContext['proposalOrigin'] = 'muse';
             $publicationContext['model'] = $in->suggestion['model'];
             $publicationContext['usage'] = $in->suggestion['usage'] ?? null;
             $publicationContext['isPrivateDedicated'] = $in->isPrivateDedicated;
+            if ($in->isPrivateDedicated) {
+                $publicationContext['privateProvenanceId'] = $in->suggestion['privateProvenanceId'] ?? null;
+                $publicationContext['requestDigest'] = $in->suggestion['requestDigest'] ?? null;
+            }
         } else {
             $publicationContext['proposalOrigin'] = 'unspecified';
         }

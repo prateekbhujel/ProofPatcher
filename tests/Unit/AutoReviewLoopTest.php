@@ -256,7 +256,8 @@ final class AutoReviewLoopTest extends TestCase
             throw new \RuntimeException('Unexpected request');
         });
         $publisher = new \ProofPatch\GitHub\AutomaticInlineCommentPublisher(
-            \Illuminate\Support\Facades\DB::connection()->getPdo(), $http, static fn (string $token): bool => true
+            \Illuminate\Support\Facades\DB::connection()->getPdo(), $http, static fn (string $token): bool => true,
+            static fn (string $token, string $repo): string => 'test-installation-token'
         );
         $service = new AutoReviewService(
             github: $this->mockGitHubClient($open), patchPreviewer: $this->mockPatchPreviewer(),

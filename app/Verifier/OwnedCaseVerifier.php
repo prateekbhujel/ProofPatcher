@@ -565,7 +565,8 @@ final readonly class OwnedCaseVerifier
                 $actualBaseSha,
                 $candidateSha,
                 $actualTestSha,
-                $isSimulated
+                $isSimulated,
+                $context['privateProvenanceId'] ?? null
             );
         }
 

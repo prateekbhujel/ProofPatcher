@@ -204,6 +204,8 @@ final class WorkbenchTask extends Model
             'find' => $suggestion['find'] ?? null,
             'replace' => $suggestion['replace'] ?? null,
             'usage' => $suggestion['usage'] ?? null,
+            'privateProvenanceId' => $suggestion['privateProvenanceId'] ?? null,
+            'privateProvenanceRecorded' => $suggestion['privateProvenanceRecorded'] ?? null,
         ]);
 
         $now = now();

@@ -82,14 +82,14 @@ export function UnifiedDiffTable({
               <React.Fragment key={lIdx}>
                 {/* Diff Row */}
                 <tr
-                  className={`group border-b border-slate-100 ${
+                  className={`group border-b border-slate-100 dark:border-slate-700 ${
                     isAdd ? 'diff-added bg-[#e6ffec]' : isDel ? 'diff-removed bg-[#ffebe9]' : 'diff-context bg-white dark:bg-[#141821]'
                   }`}
                 >
                   {/* Old Line Number */}
                   <td
                     className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[#d0d7de]/60 font-mono ${
-                      isDel ? 'bg-[#ffdce0] text-[#cf222e]' : 'text-[#656d76]'
+                      isDel ? 'bg-[#ffdce0] text-[#cf222e]' : `text-[#656d76] ${!isAdd ? 'dark:text-slate-400' : ''}`
                     }`}
                   >
                     {line.oldLine ?? ''}
@@ -98,7 +98,7 @@ export function UnifiedDiffTable({
                   {/* New Line Number */}
                   <td
                     className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[#d0d7de]/60 font-mono ${
-                      isAdd ? 'bg-[#dafbe1] text-[#1a7f37]' : 'text-[#656d76]'
+                      isAdd ? 'bg-[#dafbe1] text-[#1a7f37]' : `text-[#656d76] ${!isDel ? 'dark:text-slate-400' : ''}`
                     }`}
                   >
                     {line.newLine ?? ''}
@@ -146,7 +146,7 @@ export function UnifiedDiffTable({
                   </td>
 
                   {/* Code Content */}
-                  <td className="diff-code px-2 py-0.5 whitespace-pre font-mono text-xs overflow-x-auto text-[#1f2328]">
+                  <td className={`diff-code px-2 py-0.5 whitespace-pre font-mono text-xs overflow-x-auto text-[#1f2328] ${!isAdd && !isDel ? 'dark:text-slate-200' : ''}`}>
                     {line.content}
                   </td>
                 </tr>

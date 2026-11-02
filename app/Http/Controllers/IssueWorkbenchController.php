@@ -407,6 +407,8 @@ final class IssueWorkbenchController
             }
             $request->session()->put('github_repo_issues', $issues);
             $request->session()->put('github_repo_pulls', $pulls);
+            $request->session()->put('github_repo_pulls_repo', $repoName);
+            $request->session()->put('github_repo_pulls_status', $pullStatus);
             $request->session()->put('github_repo_list_incomplete', (bool) ($issueStatus['truncated'] || $pullStatus['truncated']));
 
             $this->addNotification($request, 'info', 'Repository Loaded', "Found " . count($issues) . " issues and " . count($pulls) . " pull requests for {$repoName}.");
@@ -959,8 +961,10 @@ final class IssueWorkbenchController
             return response()->json(['status' => 'error', 'message' => 'Audio clip exceeds the 4 MB local limit.'], 422);
         }
 
-        $whisperBin = is_executable('/Users/pratikbhujel/.local/bin/whisper')
-            ? '/Users/pratikbhujel/.local/bin/whisper'
+        $homeDir = getenv('HOME');
+        $localWhisper = is_string($homeDir) ? rtrim($homeDir, '/').'/.local/bin/whisper' : '';
+        $whisperBin = $localWhisper !== '' && is_executable($localWhisper)
+            ? $localWhisper
             : 'whisper';
         $ffmpegBin = is_executable('/opt/homebrew/bin/ffmpeg')
             ? '/opt/homebrew/bin/ffmpeg'

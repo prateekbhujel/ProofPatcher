@@ -78,11 +78,13 @@ export function ConsoleLayout({ activeNav = 'kernel', title, children }: Console
             <span className="truncate">{status === null ? 'loading…' : connected ? `@${status.userLogin ?? 'connected'}` : 'not connected'}</span>
           </p>
           {status?.selectedRepo && <p className="mt-0.5 truncate text-[var(--fg-muted)]">{status.selectedRepo}</p>}
-          <div className="mt-1.5 flex items-center justify-between">
+          <div className="mt-2 flex flex-col items-start gap-2">
             <ThemeToggle />
-            <button type="button" onClick={disconnect} className="text-[var(--fg-muted)] underline-offset-2 hover:text-rose-600 hover:underline dark:hover:text-rose-400">
-              disconnect
-            </button>
+            {connected && (
+              <button type="button" onClick={disconnect} className="rounded px-1 py-1 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+                Disconnect GitHub
+              </button>
+            )}
           </div>
         </div>
       </aside>

@@ -32,6 +32,7 @@ final class KernelShellCommand extends Command
             ['key' => 'findings', 'label' => 'Recent findings', 'detail' => 'See locally saved review results'],
             ['key' => 'telemetry', 'label' => 'Usage', 'detail' => 'View local usage estimates'],
             ['key' => 'verify', 'label' => 'Verify a patch', 'detail' => 'Run verification for a supported patch'],
+            ['key' => 'mentions', 'label' => 'Listen for review requests', 'detail' => 'Watch public PR mentions while this runs'],
             ['key' => 'quit', 'label' => 'Quit', 'detail' => 'Close the terminal dashboard'],
         ];
     }
@@ -51,7 +52,7 @@ final class KernelShellCommand extends Command
         if ($term === null) {
             $this->error(!extension_loaded('terminal') || !class_exists(\Io\Terminal\Terminal::class)
                 ? 'ProofPatcher requires the PHP terminal extension. Install and enable it for your CLI PHP.'
-                : 'The terminal extension could not open an ANSI-capable terminal. Check TERM and NO_COLOR, then try again.');
+                : 'The terminal extension could not open this terminal. Check TERM and try again.');
             return self::FAILURE;
         }
 
@@ -74,7 +75,9 @@ final class KernelShellCommand extends Command
                     'repo: '.($repository ?? 'none'),
                     'hari: '.$this->hariSummary(),
                 ];
-                $action = TerminalDashboard::choose($term, $this->menuOptions(), $status, $lastAction);
+                $action = $this->supportsAnsi($term)
+                    ? TerminalDashboard::choose($term, $this->menuOptions(), $status, $lastAction)
+                    : $this->plainChoice($this->menuOptions(), $status);
             } catch (\RuntimeException $e) {
                 $this->error($e->getMessage());
                 return self::FAILURE;
@@ -100,6 +103,7 @@ final class KernelShellCommand extends Command
                 'findings' => $this->call('kernel:reviews'),
                 'telemetry' => $this->call('kernel:telemetry'),
                 'verify' => $this->verifyOnce(),
+                'mentions' => $this->mentionsOnce(),
                 default => null,
             };
             $this->line('');
@@ -126,7 +130,7 @@ final class KernelShellCommand extends Command
                 return null;
             }
             $term = \Io\Terminal\Terminal::create();
-            if (!$term->isTty() || !$term->supportsAnsi()) {
+            if (!$term->isTty()) {
                 return null;
             }
 
@@ -134,6 +138,55 @@ final class KernelShellCommand extends Command
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function supportsAnsi(object $term): bool
+    {
+        try {
+            return $term->supportsAnsi();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /** Plain input for NO_COLOR and terminals without ANSI support. */
+    private function plainChoice(array $options, array $status): ?string
+    {
+        $this->line('ProofPatcher');
+        foreach ($status as $line) {
+            $this->line((string) preg_replace('/[\x00-\x1f\x7f-\x9f]/u', ' ', $line));
+        }
+        foreach ($options as $index => $option) {
+            $this->line(($index + 1).'. '.$option['label']);
+        }
+        while (true) {
+            fwrite(STDOUT, 'Choose an action (number or q): ');
+            $input = fgets(STDIN);
+            if (!is_string($input) || strtolower(trim($input)) === 'q') return null;
+            $input = trim($input);
+            if (ctype_digit($input) && (int) $input >= 1 && (int) $input <= count($options)) {
+                return $options[(int) $input - 1]['key'];
+            }
+            $this->line('Enter a listed number or q.');
+        }
+    }
+
+    private function mentionsOnce(): void
+    {
+        $repo = KernelCli::getSelectedRepo();
+        if ($repo === null) {
+            $this->warn('Select a public repository first.');
+            return;
+        }
+        $minutes = $this->promptLine('Listen for review requests (minutes, 1-180)', '10');
+        if (!ctype_digit($minutes) || (int) $minutes < 1 || (int) $minutes > 180) {
+            $this->warn('Enter 1 to 180.');
+            return;
+        }
+        $answer = strtolower($this->promptLine('Post bot responses on GitHub? [y/N]', 'N'));
+        $options = ['--repo' => $repo, '--minutes' => (int) $minutes];
+        if ($answer === 'y' || $answer === 'yes') $options['--publish'] = true;
+        $this->call('kernel:mentions', $options);
     }
 
     private function extensionVersion(): string

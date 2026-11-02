@@ -81,6 +81,7 @@ export interface AutoReviewRecentResult {
   id: number;
   repository: string;
   pull_number: number;
+  head_sha?: string | null;
   status: string;
   summary: string | null;
   risk_level: string | null;

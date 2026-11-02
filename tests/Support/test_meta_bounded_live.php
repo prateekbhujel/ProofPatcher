@@ -16,8 +16,9 @@ if (!($status['providers']['meta']['configured'] ?? false)) {
     exit(1);
 }
 
-$key = ProviderConfigStore::resolveProviderKey('meta');
-if (strlen($key) < 16) {
+$resolved = ProviderConfigStore::resolveProviderKey('meta');
+$key = $resolved['key'] ?? null;
+if (!is_string($key) || strlen($key) < 16) {
     echo json_encode([
         'status' => 'invalid_key',
         'message' => 'Configured Meta API key is invalid or too short.',

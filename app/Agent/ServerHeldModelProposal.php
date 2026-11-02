@@ -41,7 +41,7 @@ final class ServerHeldModelProposal
     }
 
     /**
-     * Records a verified provider proposal received from Baseten inference.
+     * Records a validated provider proposal from a supported Muse endpoint.
      */
     public function record(array $proposalData): void
     {
@@ -56,7 +56,8 @@ final class ServerHeldModelProposal
         }
 
         $model = (string) ($proposalData['model'] ?? '');
-        if ($model !== 'meta-models/muse-spark-open-1026') {
+        $models = array_merge(ProviderConfigStore::PROVIDERS['baseten']['models'], ProviderConfigStore::PROVIDERS['meta']['models']);
+        if (!in_array($model, $models, true)) {
             throw new \InvalidArgumentException("Unsupported or untrusted model: '{$model}'.");
         }
 

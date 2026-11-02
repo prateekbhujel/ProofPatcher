@@ -14,7 +14,7 @@ use ProofPatch\GitHub\GitHubTokenStore;
  */
 final class KernelCli
 {
-    public const VERSION = 'v0.3';
+    public const VERSION = 'v0.0.1';
 
     private const SELECTION_FILE = 'kernel_selected_repo';
 

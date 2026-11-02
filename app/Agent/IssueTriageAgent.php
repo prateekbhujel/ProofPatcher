@@ -33,7 +33,10 @@ final readonly class IssueTriageAgent
         .'"evidenceQuote" (exact verbatim code substring from the pinned source file supporting your verdict, or "" if needs_reproduction), '
         .'"evidenceLine" (1-based integer line number in the pinned source file where evidenceQuote appears, or null), '
         .'"suggestedBranchSlug" (concise hyphenated slug for a fix branch, or ""), '
-        .'"suggestedResponse" (polite maintainer comment explaining the finding or asking for written reproduction steps).';
+        .'"suggestedResponse" (a concise maintainer comment explaining the finding or asking for the specific missing reproduction details). '
+        .'Be direct and respectful; address the issue, not the person. State only what the supplied evidence supports, avoid filler and unsupported consequences, and say when the available context is insufficient. '
+        .'If screenshots were omitted, do not say they are missing or failed to arrive. Say you cannot inspect them and ask for the written details needed to reproduce the issue. '
+        .'Do not claim a test was run or a fix was verified.';
 
     public function __construct(private HttpClientInterface $http, private RequestBudget $budget) {}
 
@@ -297,15 +300,26 @@ final readonly class IssueTriageAgent
         $slugSource = trim($data['suggestedBranchSlug']) !== '' ? $data['suggestedBranchSlug'] : $issueTitle;
         $suggestedBranch = DedicatedTestRepoPublisher::branchName($slugSource, $issueNumber, $commitSha);
 
+        // A needs-reproduction verdict can still arrive with contradictory
+        // prose such as "already fixed", even without a guard downgrade.
+        // Do not surface that unverified claim as the maintainer's response.
+        $needsReproduction = $verdict === 'needs_reproduction';
+        $summary = $needsReproduction
+            ? 'The available information is not enough to confirm this issue.'
+            : trim($data['summary']);
+        $suggestedResponse = $needsReproduction
+            ? ($screenshotOnly ? 'I cannot inspect the screenshot here. ' : '').'Could you share the steps to reproduce, expected and actual behavior, and any relevant environment details?'
+            : trim($data['suggestedResponse']);
+
         return [
             'verdict' => $verdict,
-            'summary' => trim($data['summary']),
+            'summary' => $summary,
             'evidenceQuote' => $quote,
             'evidenceLine' => $line,
             'evidenceVerified' => $evidenceVerified,
             'downgradeReason' => $downgradeReason,
             'suggestedBranch' => $suggestedBranch,
-            'suggestedResponse' => trim($data['suggestedResponse']),
+            'suggestedResponse' => $suggestedResponse,
         ];
     }
 

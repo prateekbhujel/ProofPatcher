@@ -54,6 +54,7 @@ export interface GitHubConnectionData {
   repositoriesStatus?: GitHubStatusMetadata | null;
   selectedRepo: string | null;
   repoPulls: GitHubPull[];
+  repoPullsLoaded?: boolean;
   repoPullsStatus?: GitHubStatusMetadata | null;
   deviceFlow: GitHubDeviceFlowData | null;
   statusMessage: string | null;

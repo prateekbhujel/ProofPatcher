@@ -67,7 +67,7 @@ final class KernelReviewsCommand extends Command
             return self::SUCCESS;
         }
 
-        $detailWidth = max(24, TerminalWidth::columns() - 72);
+        $detailWidth = max(24, TerminalWidth::columns() - 89);
         $table = [];
         foreach ($rows as $row) {
             if (!is_array($row)) {
@@ -82,6 +82,7 @@ final class KernelReviewsCommand extends Command
             };
             $table[] = [
                 ($row['repository'] ?? '?').'#'.($row['pull_number'] ?? '?'),
+                is_string($row['head_sha'] ?? null) && $row['head_sha'] !== '' ? substr($row['head_sha'], 0, 12) : '—',
                 "<{$statusTag}>{$status}</{$statusTag}>",
                 !empty($row['recommendation']) ? str_replace('_', ' ', (string) $row['recommendation']) : '—',
                 !empty($row['risk_level']) ? (string) $row['risk_level'] : '—',
@@ -89,7 +90,7 @@ final class KernelReviewsCommand extends Command
                 mb_strimwidth((string) ($row['summary'] ?? ''), 0, $detailWidth, '…'),
             ];
         }
-        $this->table(['Target', 'Status', 'Advice', 'Risk', 'Reviewed (UTC)', 'Summary'], $table);
+        $this->table(['Target', 'Review commit', 'Status', 'Advice', 'Risk', 'Reviewed (UTC)', 'Summary'], $table);
 
         return self::SUCCESS;
     }

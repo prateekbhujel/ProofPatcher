@@ -42,8 +42,10 @@ export function PrDashboardView({
   const [prPage, setPrPage] = useState(0);
 
   const repositories = githubConnection.repositories || [];
-  const selectedRepo = githubConnection.selectedRepo || repositories[0]?.fullName || null;
+  const selectedRepo = githubConnection.selectedRepo || null;
   const pulls = githubConnection.repoPulls || [];
+  const pullsLoaded = Boolean(selectedRepo && githubConnection.repoPullsLoaded);
+  const pullsIncomplete = Boolean(githubConnection.repoPullsStatus?.truncated || githubConnection.repoPullsStatus?.errors?.length);
 
   const filteredPulls = useMemo(() => {
     return pulls.filter((pr) => {
@@ -90,6 +92,7 @@ export function PrDashboardView({
                 onChange={(e) => handleSelectRepository(e.target.value)}
                 className="appearance-none pl-8 pr-8 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-accent-600 shadow-2xs transition cursor-pointer text-slate-800 dark:bg-[#141821] dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
+                <option value="" disabled>Choose a repository</option>
                 {repositories.map((repo) => (
                   <option key={repo.fullName} value={repo.fullName}>
                     {repo.fullName} {repo.isPrivate ? '(Private)' : ''}
@@ -123,7 +126,7 @@ export function PrDashboardView({
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
-              All ({pulls.length})
+              All ({pullsLoaded ? pulls.length : '—'})
             </button>
             <button
               type="button"
@@ -134,7 +137,7 @@ export function PrDashboardView({
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
-              Open ({pulls.filter((p) => ((p as any).state || 'open').toLowerCase() === 'open').length})
+              Open ({pullsLoaded ? pulls.filter((p) => ((p as any).state || 'open').toLowerCase() === 'open').length : '—'})
             </button>
             <button
               type="button"
@@ -145,7 +148,7 @@ export function PrDashboardView({
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
-              Merged ({pulls.filter((p) => ((p as any).state || '').toLowerCase() === 'merged').length})
+              Merged ({pullsLoaded ? pulls.filter((p) => ((p as any).state || '').toLowerCase() === 'merged').length : '—'})
             </button>
             <button
               type="button"
@@ -156,7 +159,7 @@ export function PrDashboardView({
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
-              Closed ({pulls.filter((p) => ((p as any).state || '').toLowerCase() === 'closed').length})
+              Closed ({pullsLoaded ? pulls.filter((p) => ((p as any).state || '').toLowerCase() === 'closed').length : '—'})
             </button>
           </div>
 
@@ -173,6 +176,12 @@ export function PrDashboardView({
         </div>
       </div>
 
+      {pullsLoaded && pullsIncomplete && (
+        <p role="status" className="text-xs text-amber-700 dark:text-amber-300">
+          Some pull requests could not be loaded. Counts cover only the results received; refresh to try again.
+        </p>
+      )}
+
       {/* Pull Requests Stream List */}
       {(() => {
         const prPageCount = Math.max(1, Math.ceil(filteredPulls.length / PR_PAGE_SIZE));
@@ -180,7 +189,13 @@ export function PrDashboardView({
         const pagePulls = filteredPulls.slice(page * PR_PAGE_SIZE, page * PR_PAGE_SIZE + PR_PAGE_SIZE);
         return (
       <div className="space-y-2">
-        {filteredPulls.length === 0 ? (
+        {!pullsLoaded ? (
+          <div className="border border-[var(--border)] bg-[var(--bg-raised)] p-8 text-center space-y-3">
+            <h3 className="text-sm font-semibold">Pull requests not loaded</h3>
+            <p className="text-xs text-[var(--fg-muted)]">{selectedRepo ? 'Refresh to load pull requests for this repository.' : 'Choose a repository to load its pull requests.'}</p>
+            {selectedRepo && <button type="button" onClick={() => handleSelectRepository(selectedRepo)} className="border border-[var(--border-strong)] px-3 py-1.5 text-xs font-semibold">Load pull requests</button>}
+          </div>
+        ) : filteredPulls.length === 0 ? (
           <div className="border border-[var(--border)] bg-[var(--bg-raised)] p-8 text-center space-y-3">
             <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto dark:bg-slate-800 dark:text-slate-400">
               <GitPullRequest className="w-5 h-5" />
@@ -188,9 +203,13 @@ export function PrDashboardView({
             <div className="space-y-1 max-w-sm mx-auto">
               <h3 className="text-sm font-semibold">No pull requests found</h3>
               <p className="text-xs text-[var(--fg-muted)]">
-                {searchQuery
+                {pullsIncomplete
+                  ? 'The list is incomplete. Refresh to try again.'
+                  : searchQuery
                   ? `No pull requests match "${searchQuery}".`
-                  : `No pull requests are currently open in ${selectedRepo || 'this repository'}.`}
+                  : statusFilter === 'all'
+                  ? `No pull requests found in ${selectedRepo}.`
+                  : `No ${statusFilter} pull requests found in ${selectedRepo}.`}
               </p>
             </div>
           </div>

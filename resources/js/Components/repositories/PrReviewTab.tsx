@@ -93,7 +93,7 @@ export function PrReviewTab({
             <span>Reviewed: {new Date(review.reviewedAt).toLocaleString()}</span>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Advisory only · {review.publishedStatus === 'one_inline_comment' ? 'One suggestion posted to GitHub.' : review.publishedStatus === 'publication_unknown' ? 'Comment outcome unknown. Check GitHub.' : 'Stored in ProofPatcher · Not posted to GitHub.'} External repository tests were not run here.
+            Advisory only · {review.publishedStatus === 'one_inline_comment' ? 'One suggestion posted to GitHub.' : review.publishedStatus === 'review_summary' ? 'Review summary posted to GitHub.' : review.publishedStatus === 'publication_unknown' ? 'Comment outcome unknown. Check GitHub.' : 'Stored in ProofPatcher · Not posted to GitHub.'} External repository tests were not run here.
           </p>
         </div>
       )}

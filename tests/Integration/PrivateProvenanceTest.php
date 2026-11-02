@@ -143,16 +143,27 @@ final class PrivateProvenanceTest extends TestCase
             'baseCommit' => $ctx['commit'], 'path' => $ctx['path'],
             'sourceSha256' => $ctx['sourceSha256'], 'candidateSha256' => $suggestion['candidate']['sha256']];
         $grant = ['userId' => 7, 'repositories' => [strtolower($ctx['repository']) => true]];
-        $record = $store->lookup($binding, $grant);
+        $record = $store->lookup($binding, $grant, $suggestion['privateProvenanceId']);
         self::assertNotNull($record);
         self::assertSame('meta-models/muse-spark-open-1026', $record['model']);
         self::assertSame($suggestion['candidate']['source'], $record['candidateSource']);
 
+        $task = WorkbenchTask::where('repository', $ctx['repository'])->where('issue_number', 1)->firstOrFail();
+        $session = app('session')->driver('array');
+        $session->forget('issue_suggestion');
+        $request = Request::create('/issues', 'GET');
+        $request->setLaravelSession($session);
+        \ProofPatch\Support\TaskWorkflowHelper::hydrateTaskSession($request, $task);
+        $restored = $session->get('issue_suggestion');
+        self::assertSame($suggestion['privateProvenanceId'], $restored['privateProvenanceId']);
+        self::assertSame($suggestion['requestDigest'], $restored['requestDigest']);
+        self::assertTrue($restored['privateProvenanceRecorded']);
+
         // Revoked access or a changed candidate yields nothing.
-        self::assertNull($store->lookup($binding, ['userId' => 7, 'repositories' => []]));
+        self::assertNull($store->lookup($binding, ['userId' => 7, 'repositories' => []], $suggestion['privateProvenanceId']));
         $changed = $binding;
         $changed['candidateSha256'] = hash('sha256', 'other');
-        self::assertNull($store->lookup($changed, $grant));
+        self::assertNull($store->lookup($changed, $grant, $suggestion['privateProvenanceId']));
     }
 
     private function evidenceFor(string $candidateSource, string $candidateSha): array
@@ -194,7 +205,8 @@ final class PrivateProvenanceTest extends TestCase
         $approvalStore = new ServerHeldPublicationApproval($this->dir . '/pub-approvals');
         $authToken = $approvalStore->issue($report['id'], $runDir, $receipt['sha256'],
             DedicatedTestRepo::requireBaseCommit(), $ctx['repository'], 1, 'src/OrderTotal.php',
-            $report['baseSha256'], $candidateSha, $report['testSha256'], isSimulated: false);
+            $report['baseSha256'], $candidateSha, $report['testSha256'], isSimulated: false,
+            privateProvenanceId: $suggestion['privateProvenanceId']);
 
         $repo = DedicatedTestRepo::requireName();
         $baseCommit = DedicatedTestRepo::requireBaseCommit();
@@ -228,6 +240,8 @@ final class PrivateProvenanceTest extends TestCase
             if (str_ends_with($url, '/pulls')) {
                 $payload = json_decode($options['body'], true, 32, JSON_THROW_ON_ERROR);
                 self::assertTrue($payload['draft']);
+                self::assertStringContainsString('private test issue and selected source file', $payload['body']);
+                self::assertStringNotContainsString('public fixture context', $payload['body']);
                 return new MockResponse(json_encode([
                     'number' => 9, 'html_url' => 'https://github.com/' . $repo . '/pull/9', 'draft' => true]));
             }
@@ -237,7 +251,8 @@ final class PrivateProvenanceTest extends TestCase
         $publisher = new DedicatedTestRepoPublisher($approvalStore, $mock, disconnected: false);
         $result = $publisher->publishDraftPr(
             ['repository' => $repo, 'issueNumber' => 1, 'path' => 'src/OrderTotal.php',
-                'proposalOrigin' => 'muse', 'model' => 'meta-models/muse-spark-open-1026', 'isPrivateDedicated' => true],
+                'proposalOrigin' => 'muse', 'model' => 'meta-models/muse-spark-open-1026', 'isPrivateDedicated' => true,
+                'privateProvenanceId' => $suggestion['privateProvenanceId'], 'requestDigest' => $suggestion['requestDigest']],
             $runDir, $candidateSource, $authToken, 'mock-token-1234567890'
         );
         self::assertSame('published', $result['status']);
@@ -286,7 +301,8 @@ final class PrivateProvenanceTest extends TestCase
         try {
             $publisher->publishDraftPr(
                 ['repository' => $repo, 'issueNumber' => 1, 'path' => 'src/OrderTotal.php',
-                    'proposalOrigin' => 'muse', 'model' => 'meta-models/muse-spark-open-1026', 'isPrivateDedicated' => true],
+                    'proposalOrigin' => 'muse', 'model' => 'meta-models/muse-spark-open-1026', 'isPrivateDedicated' => true,
+                    'privateProvenanceId' => $suggestion['privateProvenanceId'], 'requestDigest' => $suggestion['requestDigest']],
                 $runDir, $candidateSource, $authToken, 'mock-token-1234567890'
             );
             self::fail('A public record must not satisfy a private provenance claim.');
@@ -328,7 +344,8 @@ final class PrivateProvenanceTest extends TestCase
         try {
             $publisher->publishDraftPr(
                 ['repository' => $repo, 'issueNumber' => 1, 'path' => 'src/OrderTotal.php',
-                    'proposalOrigin' => 'muse', 'model' => 'meta-models/muse-spark-open-1026', 'isPrivateDedicated' => true],
+                    'proposalOrigin' => 'muse', 'model' => 'meta-models/muse-spark-open-1026', 'isPrivateDedicated' => true,
+                    'privateProvenanceId' => $suggestion['privateProvenanceId'], 'requestDigest' => $suggestion['requestDigest']],
                 $runDir, $candidateSource, $authToken, 'mock-token-1234567890'
             );
             self::fail('Publication without a private provenance record must be refused.');

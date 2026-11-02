@@ -26,8 +26,8 @@ final class TerminalDashboard
         $width = max(4, $width);
         $height = max(4, $height);
         $lines = [];
-        $lines[] = "\e[1m".self::fit('proofpatcher · hari kernel', $width)."\e[0m";
-        if ($height >= 9) $lines[] = "\e[2m".self::fit('repository maintenance console', $width)."\e[0m";
+        $lines[] = "\e[1;35m".self::fit('ProofPatcher', $width)."\e[0m";
+        if ($height >= 9) $lines[] = "\e[2m".self::fit('Your repository workspace', $width)."\e[0m";
         if ($height >= 10) {
             foreach (array_slice($status, 0, min(3, $height - 8)) as $line) {
                 $lines[] = self::fit(self::safeText($line), $width);

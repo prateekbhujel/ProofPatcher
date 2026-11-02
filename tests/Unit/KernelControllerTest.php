@@ -204,6 +204,7 @@ final class KernelControllerTest extends TestCase
 
         $this->assertCount(1, $props['recentFindings']);
         $this->assertSame('acme/repo', $props['recentFindings'][0]['repository']);
+        $this->assertSame(str_repeat('1', 40), $props['recentFindings'][0]['head_sha']);
         $this->assertSame(1, $props['autoStats']['totalReviews']);
     }
 

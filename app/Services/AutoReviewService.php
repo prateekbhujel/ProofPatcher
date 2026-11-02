@@ -43,6 +43,7 @@ final class AutoReviewService
      *     reviewsSkipped: int,
      *     reviewsFailed: int,
      *     budgetExhausted: bool,
+     *     followups?: list<string>,
      *     details: array<array<string, mixed>>,
      *     errors: array<string>
      * }
@@ -131,9 +132,13 @@ final class AutoReviewService
             'reviewsSkipped' => 0,
             'reviewsFailed' => 0,
             'budgetExhausted' => false,
+            'followups' => [],
             'details' => [],
             'errors' => [],
         ];
+        if ($enabledRepos !== [] && !\Illuminate\Support\Facades\Schema::hasTable('review_followups')) {
+            $summary['errors'][] = 'Reply tracking is unavailable until the database migrations are applied.';
+        }
 
         foreach ($enabledRepos as $repoName) {
             $lowerRepo = strtolower($repoName);
@@ -190,6 +195,21 @@ final class AutoReviewService
                         'reason' => 'Repository or PR is private. Automatic reviews strictly process public diffs.',
                     ];
                     continue;
+                }
+
+                // A reply is a request for attention, not proof that a fix works.
+                // Track only opt-in public repositories and only after a complete PR listing.
+                if (($authorizedRepos[$lowerRepo]['isPrivate'] ?? null) === false
+                    && ($pullsStatus['truncated'] ?? true) === false && empty($pullsStatus['errors'])
+                    && \Illuminate\Support\Facades\Schema::hasTable('review_followups')) {
+                    try {
+                        $links = (new ReviewFollowupTracker($this->github))->detect(
+                            $token, (int) $user['id'], $repoName, $prNumber, $headSha, $baseSha
+                        );
+                        array_push($summary['followups'], ...$links);
+                    } catch (\Throwable) {
+                        $summary['errors'][] = 'A review reply check was incomplete; no follow-up was recorded for that pull request.';
+                    }
                 }
 
                 // Existing record check for (repository, prNumber, headSha, baseSha)
@@ -295,14 +315,15 @@ final class AutoReviewService
             // Never retry an ambiguous result or mark the local review failed.
             $unknown = str_contains($error->getMessage(), 'outcome is unknown');
             return ['status' => $unknown ? 'unknown' : 'failed',
-                'message' => $unknown ? 'Check GitHub before another attempt.' : 'Automatic comment could not be posted.'];
+                'message' => $unknown ? 'Check GitHub before another attempt.' : ($error instanceof \ProofPatch\GitHub\BotIdentityConfigurationException
+                    ? $error->getMessage() : 'Automatic comment could not be posted.')];
         }
     }
 
     /**
      * Reviews a specific pull request revision with TOCTOU recheck, public validation, and budget guard.
      */
-    public function reviewPullRevision(string $repository, int $pullNumber, string $headSha, string $baseSha, string $title = ''): array
+    public function reviewPullRevision(string $repository, int $pullNumber, string $headSha, string $baseSha, string $title = '', ?\ProofPatch\GitHub\MentionReviewAuthorization $mention = null): array
     {
         // 1. Atomic claim via direct unique INSERT (fails closed on concurrent workers or existing claims)
         try {
@@ -351,7 +372,7 @@ final class AutoReviewService
         try {
             $patchPreview = $this->patchPreviewer->fetch($pullDescriptor);
         } catch (\Throwable $e) {
-            $record->update([
+            $this->finishPreflight($record, $mention, [
                 'status' => 'failed',
                 'error_message' => 'Diff fetch or visibility verification failed: '.$e->getMessage(),
             ]);
@@ -368,7 +389,7 @@ final class AutoReviewService
 
         // Recheck public flag
         if (($patchPreview['isPrivate'] ?? true) !== false) {
-            $record->update([
+            $this->finishPreflight($record, $mention, [
                 'status' => 'skipped_private',
                 'is_public' => false,
                 'error_message' => 'Repository or PR is not public.',
@@ -387,7 +408,7 @@ final class AutoReviewService
         try {
             $preview = $this->reviewAgent->preview($pullDescriptor, $patchPreview);
         } catch (\Throwable $e) {
-            $record->update([
+            $this->finishPreflight($record, $mention, [
                 'status' => 'failed',
                 'error_message' => 'Review preview generation failed: '.$e->getMessage(),
             ]);
@@ -406,7 +427,7 @@ final class AutoReviewService
         try {
             $budgetStatus = $this->budget->status();
             if ($budgetStatus['attempts'] >= $budgetStatus['maxAttempts'] || $preview['estimatedMicros'] > $budgetStatus['remainingMicros']) {
-                $record->update([
+                $this->finishPreflight($record, $mention, [
                     'status' => 'skipped_budget',
                     'error_message' => 'Local request budget is exhausted.',
                 ]);
@@ -430,7 +451,7 @@ final class AutoReviewService
                 $preview['estimatedMicros']
             );
             if ($capReason !== null) {
-                $record->update([
+                $this->finishPreflight($record, $mention, [
                     'status' => 'skipped_budget',
                     'error_message' => $capReason,
                 ]);
@@ -445,7 +466,7 @@ final class AutoReviewService
                 ];
             }
         } catch (\Throwable $e) {
-            $record->update([
+            $this->finishPreflight($record, $mention, [
                 'status' => 'skipped_budget',
                 'error_message' => 'Budget verification error: '.$e->getMessage(),
             ]);
@@ -461,10 +482,13 @@ final class AutoReviewService
         }
 
         // 4. Honor opt-out immediately before each paid call
-        if (!RepositoryAutoReviewSetting::isRepoEnabled($repository)) {
-            $record->update([
-                'status' => 'skipped_opted_out',
-                'error_message' => 'Repository was opted out before model call.',
+        if ($mention !== null
+            ? !$mention->allows($repository, $pullNumber, $headSha, $baseSha)
+            : !RepositoryAutoReviewSetting::isRepoEnabled($repository)) {
+            $status = $mention !== null ? 'skipped_unauthorized' : 'skipped_opted_out';
+            $this->finishPreflight($record, $mention, [
+                'status' => $status,
+                'error_message' => $mention !== null ? 'Mention authorization could not be verified before model call.' : 'Repository was opted out before model call.',
             ]);
 
             return [
@@ -472,8 +496,8 @@ final class AutoReviewService
                 'number' => $pullNumber,
                 'headSha' => $headSha,
                 'baseSha' => $baseSha,
-                'status' => 'skipped_opted_out',
-                'reason' => 'Repository was opted out before review execution.',
+                'status' => $status,
+                'reason' => $mention !== null ? 'Mention authorization could not be verified.' : 'Repository was opted out before review execution.',
             ];
         }
 
@@ -481,7 +505,7 @@ final class AutoReviewService
         try {
             $key = $this->basetenKey ?? Credentials::baseten();
         } catch (\Throwable $e) {
-            $record->update([
+            $this->finishPreflight($record, $mention, [
                 'status' => 'failed',
                 'error_message' => 'Model credentials unavailable: '.$e->getMessage(),
             ]);
@@ -545,6 +569,18 @@ final class AutoReviewService
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /** Release only a mention's own preflight claim; no provider request has started. */
+    private function finishPreflight(AutoReviewResult $record, ?\ProofPatch\GitHub\MentionReviewAuthorization $mention, array $attributes): void
+    {
+        if ($mention !== null) {
+            // The separate mention ledger keeps the attempt and prevents replay.
+            // Do not block later authorized reviews of the same revision.
+            $record->delete();
+            return;
+        }
+        $record->update($attributes);
     }
 
     private function recordSkippedPrivate(string $repo, int $prNumber, string $headSha, string $baseSha): void

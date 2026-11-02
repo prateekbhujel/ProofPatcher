@@ -50,7 +50,7 @@ final class ReviewCommentFormatter
         $subject = trim((string) ($parts[0] ?? $comment));
         $discussion = trim((string) ($parts[1] ?? ''));
         if (strlen($subject) > 160) {
-            $subject = rtrim(substr($subject, 0, 157)).'…';
+            $subject = rtrim(mb_strcut($subject, 0, 157, 'UTF-8')).'…';
             $discussion = $comment;
         }
         return ['subject' => $subject, 'discussion' => $discussion];
@@ -73,7 +73,7 @@ final class ReviewCommentFormatter
             $body .= "\n\n".$discussion;
         }
         if (is_string($suggestion) && trim($suggestion) !== '') {
-            $body .= "\n\n```suggestion\n".trim($suggestion)."\n```";
+            $body .= "\n\n```suggestion\n".$suggestion."\n```";
         }
         return $body;
     }

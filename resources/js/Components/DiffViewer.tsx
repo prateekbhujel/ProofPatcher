@@ -101,12 +101,12 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
 
   return (
     <div
-      className={`diff-viewer border rounded-lg overflow-hidden bg-white shadow-2xs transition-colors ${
+      className={`diff-viewer border rounded-lg overflow-hidden bg-white dark:bg-[#141821] shadow-2xs transition-colors ${
         isViewed ? 'border-slate-200/60 opacity-80 dark:border-slate-800/60' : 'border-slate-300 dark:border-slate-700'
       }`}
     >
       {/* File Header Bar — Exact GitHub PR Style */}
-      <div className="diff-file-header w-full p-2.5 sm:px-4 bg-[#f6f8fa] border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs select-none dark:border-slate-800">
+      <div className="diff-file-header w-full p-2.5 sm:px-4 bg-[#f6f8fa] dark:bg-slate-900 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs select-none dark:border-slate-800">
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
@@ -119,7 +119,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
 
           <FileText className="w-4 h-4 text-slate-500 shrink-0 dark:text-slate-400" />
 
-          <span className="diff-file-name font-mono font-semibold text-[#1f2328] truncate text-[13px]">{file.name}</span>
+          <span className="diff-file-name font-mono font-semibold text-[#1f2328] dark:text-slate-100 truncate text-[13px]">{file.name}</span>
 
           <button
             type="button"
@@ -208,7 +208,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
         <div className="space-y-0">
           {/* Unanchored Muse Hints Warning if any */}
           {unanchoredFindings.length > 0 && (
-            <div className="p-3 bg-amber-50/70 border-b border-amber-200 text-xs space-y-1.5 dark:bg-amber-950/40/70 dark:border-amber-800">
+            <div className="p-3 bg-amber-50/70 border-b border-amber-200 text-xs space-y-1.5 dark:bg-amber-950/40 dark:border-amber-800">
               <div className="flex items-center gap-2 text-amber-900 font-semibold dark:text-amber-200">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 dark:text-amber-400" />
                 <span>Muse Advisory Hint (Outside Captured Diff Hunks)</span>

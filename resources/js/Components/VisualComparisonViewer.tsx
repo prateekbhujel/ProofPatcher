@@ -91,7 +91,7 @@ export function VisualComparisonViewer({
 
   return (
     <div
-      className={`bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col ${
+      className={`bg-white dark:bg-[#141821] rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col ${
         isFullscreen ? 'fixed inset-0 z-50 rounded-none bg-slate-900 border-none' : ''
       }`}
     >
@@ -104,7 +104,7 @@ export function VisualComparisonViewer({
             onClick={() => setMode('slider')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
               mode === 'slider'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white shadow-xs dark:bg-slate-200 dark:text-slate-950'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100'
             }`}
           >
@@ -117,7 +117,7 @@ export function VisualComparisonViewer({
             onClick={() => setMode('sideBySide')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
               mode === 'sideBySide'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white shadow-xs dark:bg-slate-200 dark:text-slate-950'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100'
             }`}
           >
@@ -130,7 +130,7 @@ export function VisualComparisonViewer({
             onClick={() => setMode('toggle')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
               mode === 'toggle'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white shadow-xs dark:bg-slate-200 dark:text-slate-950'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100'
             }`}
           >
@@ -181,7 +181,7 @@ export function VisualComparisonViewer({
             onClick={() => setIsCrisp(!isCrisp)}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition ${
               isCrisp
-                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-xs dark:bg-slate-200 dark:text-slate-950 dark:border-slate-200'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-[#141821] dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
             }`}
             title="Preserve sharp pixel edges on high zoom"
@@ -312,8 +312,7 @@ export function VisualComparisonViewer({
                 {/* Before */}
                 <div className="space-y-1.5 flex-1 min-w-[500px]">
                   <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                    <span>Baseline (Before Fix)</span>
-                    <span className="text-rose-400">Bug Active</span>
+                    <span>Baseline</span>
                   </div>
                   <div
                     className="rounded-lg overflow-hidden border border-slate-800 shadow-lg bg-black"
@@ -335,8 +334,7 @@ export function VisualComparisonViewer({
                 {/* After */}
                 <div className="space-y-1.5 flex-1 min-w-[500px]">
                   <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                    <span>Candidate (With Patch)</span>
-                    <span className="text-emerald-400">Fixed</span>
+                    <span>Candidate</span>
                   </div>
                   <div
                     className="rounded-lg overflow-hidden border border-slate-800 shadow-lg bg-black"

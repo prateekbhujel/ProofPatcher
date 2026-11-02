@@ -28,6 +28,10 @@ final readonly class PullRequestReview
         .'"recommendation" (one of: "approve", "request_changes", "discuss"), '
         .'"fileFindings" (an array of objects, each with "path" matching one of the reviewed files, "status" one of: "note", "concern", "approval", "lineHint" integer line number or null, "comment" concise string whose FIRST sentence states the concrete problem in under 20 words, followed by why it matters and the fix, and "suggestion" with the exact replacement code that resolves the finding, or null when no code change applies). '
         .'Be specific to the diff: no generic praise, no filler, no restated code without a point. '
+        .'Write like a thoughtful maintainer: briefly explain the observable problem and, when useful, give a concrete input that demonstrates it. '
+        .'Be direct and respectful, including when the issue is serious. Critique the change, not the contributor; avoid sarcasm, insults, filler, and claims about authorship or AI use. '
+        .'Separate what the diff shows from uncertainty; do not assert business, financial, security, or data-loss consequences without evidence in the supplied context. '
+        .'If context is missing, ask a focused question rather than guessing. Only suggest replacement code when it follows from the available context. '
         .'Do not suggest executing shell commands, do not claim tests passed, and do not hallucinate files not in the diff.';
 
     public function __construct(private HttpClientInterface $http, private RequestBudget $budget) {}
@@ -287,7 +291,7 @@ final readonly class PullRequestReview
             if ($suggestion !== null && (!is_string($suggestion) || trim($suggestion) === '' || strlen($suggestion) > 2000 || str_contains($suggestion, "\0"))) {
                 throw new \RuntimeException("fileFindings[$idx].suggestion must be null or a valid nonempty string under 2000 characters without null bytes.");
             }
-            $data['fileFindings'][$idx]['suggestion'] = $suggestion === null ? null : trim($suggestion);
+            $data['fileFindings'][$idx]['suggestion'] = $suggestion;
         }
 
         return [

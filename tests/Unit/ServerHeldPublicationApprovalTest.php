@@ -108,6 +108,26 @@ final class ServerHeldPublicationApprovalTest extends TestCase
         self::assertFileDoesNotExist($tokenFile);
     }
 
+    public function testPrivateProposalRunIsBoundToPublicationApproval(): void
+    {
+        $run = 'run-private';
+        $evidence = $this->tempDir.'/runs/'.$run;
+        mkdir($evidence, 0700, true);
+        $receipt = str_repeat('a', 64);
+        $candidate = str_repeat('c', 64);
+        $proposalId = str_repeat('d', 32);
+        $issue = fn () => $this->store->issue($run, $evidence, $receipt,
+            str_repeat('e', 40), 'owner/repo', 1, 'src/OrderTotal.php',
+            str_repeat('b', 64), $candidate, str_repeat('f', 64), false, $proposalId);
+        $token = $issue();
+        self::assertSame($token, $this->store->findActiveTokenForRun($run, $candidate));
+        $record = $this->store->verifyAndConsume($token, $run, $evidence, $receipt, $candidate, $proposalId);
+        self::assertSame($proposalId, $record['privateProvenanceId']);
+        $wrong = $issue();
+        $this->expectExceptionMessage('private proposal run');
+        $this->store->verifyAndConsume($wrong, $run, $evidence, $receipt, $candidate, str_repeat('f', 32));
+    }
+
     public function testReplayConsumptionFailsClosed(): void
     {
         $runId = 'run-' . bin2hex(random_bytes(6));

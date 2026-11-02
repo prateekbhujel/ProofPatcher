@@ -111,16 +111,16 @@ export default function Checks({
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-slate-500 font-medium dark:text-slate-400">
                 <span className="px-1.5 py-0.5 rounded bg-accent-100 text-accent-800 font-mono text-[10px] font-bold uppercase tracking-wider dark:bg-accent-950/60 dark:text-accent-300">
-                  Kernel Module · Chromium Sandbox
+                  Included checkout example
                 </span>
                 <span>/</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {fixture.includes('occlusion-b') ? 'Lumen Checkout' : fixture.includes('modal-overflow') ? 'Aura Checkout' : 'Northline Checkout'}
                 </span>
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Visual &amp; CSS Sandbox Verification</h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Visual patch demo</h1>
               <p className="text-xs text-slate-600 max-w-2xl dark:text-slate-400">
-                4-gate headless Chromium visual verifier for UI/CSS patches (Baseline Reproduction, Protected E2E Tests, Outside-Mask Pixel Guard, and Test Authority Integrity). For backend PHP/AST 5-Gate repository issue verification, use{' '}
+                Try visual verification on the included checkout examples. To work on repository issues, use{' '}
                 <Link href="/issues" className="font-semibold text-accent-700 hover:underline dark:text-accent-300">
                   Issues &amp; Tasks
                 </Link>
@@ -176,7 +176,7 @@ export default function Checks({
               onClick={() => setActiveTab('workspace')}
               className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === 'workspace'
-                  ? 'border-slate-900 text-slate-900 font-semibold dark:text-slate-100'
+                  ? 'border-slate-900 text-slate-900 font-semibold dark:border-slate-100 dark:text-slate-100'
                   : 'border-transparent text-slate-500 hover:text-slate-800 font-medium dark:text-slate-400'
               }`}
             >
@@ -189,7 +189,7 @@ export default function Checks({
               onClick={() => setActiveTab('visual')}
               className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === 'visual'
-                  ? 'border-slate-900 text-slate-900 font-semibold dark:text-slate-100'
+                  ? 'border-slate-900 text-slate-900 font-semibold dark:border-slate-100 dark:text-slate-100'
                   : 'border-transparent text-slate-500 hover:text-slate-800 font-medium dark:text-slate-400'
               }`}
             >
@@ -202,7 +202,7 @@ export default function Checks({
               onClick={() => setActiveTab('evidence')}
               className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === 'evidence'
-                  ? 'border-slate-900 text-slate-900 font-semibold dark:text-slate-100'
+                  ? 'border-slate-900 text-slate-900 font-semibold dark:border-slate-100 dark:text-slate-100'
                   : 'border-transparent text-slate-500 hover:text-slate-800 font-medium dark:text-slate-400'
               }`}
             >
@@ -215,7 +215,7 @@ export default function Checks({
               onClick={() => setActiveTab('history')}
               className={`py-2.5 px-1 border-b-2 text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === 'history'
-                  ? 'border-slate-900 text-slate-900 font-semibold dark:text-slate-100'
+                  ? 'border-slate-900 text-slate-900 font-semibold dark:border-slate-100 dark:text-slate-100'
                   : 'border-transparent text-slate-500 hover:text-slate-800 font-medium dark:text-slate-400'
               }`}
             >

@@ -68,6 +68,26 @@ final class VerifyCandidateUseCaseTest extends TestCase
         self::assertTrue($result->report['gates']['candidatePassed']);
     }
 
+    public function testPrivateProposalIdIsBoundAtVerificationAndNotTakenFromContext(): void
+    {
+        [, $repair] = $this->fixtureSources();
+        $id = str_repeat('a', 32);
+        $suggestion = ['path' => 'src/OrderTotal.php', 'privateProvenanceRecorded' => true,
+            'privateProvenanceId' => $id, 'candidate' => ['source' => $repair]];
+        $input = VerifyCandidateInput::fromRaw($suggestion, true,
+            ['repository' => 'fixture', 'privateProvenanceId' => str_repeat('b', 32)], false);
+        $result = $this->useCase()->execute($input);
+        self::assertTrue($result->ok, $result->error);
+        $token = $result->report['publicationAuthorizationToken'];
+        $stored = json_decode((string) file_get_contents($this->dir.'/approvals/'.$token.'.json'), true, 16, JSON_THROW_ON_ERROR);
+        self::assertSame($id, $stored['privateProvenanceId']);
+        self::assertTrue($stored['isSimulated'], 'This test must not create a publishable authorization.');
+        unset($suggestion['privateProvenanceId']);
+        $missing = $this->useCase()->execute(VerifyCandidateInput::fromRaw($suggestion, true, ['repository' => 'fixture'], false));
+        self::assertFalse($missing->ok);
+        self::assertStringContainsString('missing', $missing->error);
+    }
+
     public function testModelCandidateWithoutRunnerFailsClosedBeforeAnyRun(): void
     {
         [, $repair] = $this->fixtureSources();

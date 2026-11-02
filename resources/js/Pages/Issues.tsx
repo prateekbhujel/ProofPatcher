@@ -125,17 +125,6 @@ export default function Issues({
         if (match && !match[1].startsWith('tests/')) {
           next[iss.number] = match[1];
           changed = true;
-        } else if (/OrderTotal/i.test(text)) {
-          const repo = githubConnection?.selectedRepo?.toLowerCase() || '';
-          const inferred = repo.includes('proofpatch-workflow-test')
-            ? 'src/OrderTotal.php'
-            : repo.includes('proofpatch-review-demo')
-              ? 'order_total.php'
-              : '';
-          if (inferred) {
-            next[iss.number] = inferred;
-            changed = true;
-          }
         }
       }
       return changed ? next : prev;
@@ -399,6 +388,10 @@ export default function Issues({
     );
   }, [githubConnection?.repoPulls, sidebarQuery]);
 
+  const openPullCount = (githubConnection?.repoPulls ?? []).filter(
+    (pull) => (pull.state ?? '').toLowerCase() === 'open'
+  ).length;
+
   const pipelineGates = verificationReport
     ? [
         {
@@ -524,7 +517,7 @@ export default function Issues({
 
               <div className="flex items-center gap-2 text-xs shrink-0">
                 <span className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium">
-                  {githubConnection?.repoPulls?.length ?? 0} open pull {(githubConnection?.repoPulls?.length ?? 0) === 1 ? 'request' : 'requests'}
+                  {openPullCount} open pull {openPullCount === 1 ? 'request' : 'requests'}
                 </span>
               </div>
             </div>

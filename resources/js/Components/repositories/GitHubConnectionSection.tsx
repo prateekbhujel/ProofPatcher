@@ -213,7 +213,7 @@ export function GitHubConnectionSection({
                       Pull Requests in <span className="font-mono text-accent-900 dark:text-accent-300">{githubConnection.selectedRepo}</span>
                     </h4>
                     <span className="text-[11px] text-slate-500 font-mono dark:text-slate-400">
-                      {githubConnection.repoPulls.length} total
+                      {githubConnection.repoPullsLoaded ? `${githubConnection.repoPulls.length} loaded` : 'not loaded'}
                     </span>
                   </div>
 
@@ -221,7 +221,7 @@ export function GitHubConnectionSection({
                     <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800 flex items-start gap-2 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
                       <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 dark:text-amber-400" />
                       <div>
-                        <span className="font-semibold">Pull Requests Capped:</span> Showing first 500 open pull requests.
+                        <span className="font-semibold">Pull Requests Capped:</span> Only some pull requests were loaded.
                       </div>
                     </div>
                   )}
@@ -239,9 +239,16 @@ export function GitHubConnectionSection({
                     </div>
                   )}
 
-                  {githubConnection.repoPulls.length === 0 ? (
+                  {!githubConnection.repoPullsLoaded ? (
                     <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs text-slate-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
-                      No open pull requests found in {githubConnection.selectedRepo}.
+                      Pull requests have not been loaded.{' '}
+                      <button type="button" onClick={() => handleSelectRepository(githubConnection.selectedRepo!)} className="font-semibold underline">Load pull requests</button>
+                    </div>
+                  ) : githubConnection.repoPulls.length === 0 ? (
+                    <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs text-slate-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
+                      {githubConnection.repoPullsStatus?.truncated || githubConnection.repoPullsStatus?.errors?.length
+                        ? 'The list is incomplete. Refresh to try again.'
+                        : `No pull requests found in ${githubConnection.selectedRepo}.`}
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden bg-white dark:bg-[#141821] dark:border-slate-800 dark:divide-slate-800">

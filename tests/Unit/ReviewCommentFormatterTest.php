@@ -44,6 +44,16 @@ final class ReviewCommentFormatterTest extends TestCase
         self::assertSame(trim($long), $discussion);
     }
 
+    public function testLongUnicodeSubjectRemainsValidUtf8(): void
+    {
+        $comment = str_repeat('शब्द ', 20).'Please clarify this case.';
+        ['subject' => $subject, 'discussion' => $discussion] = ReviewCommentFormatter::split(['comment' => $comment]);
+
+        self::assertTrue(mb_check_encoding($subject, 'UTF-8'));
+        self::assertLessThanOrEqual(160, strlen($subject));
+        self::assertSame($comment, $discussion);
+    }
+
     public function testFormatBlockingIssueWithSuggestion(): void
     {
         $body = ReviewCommentFormatter::format(

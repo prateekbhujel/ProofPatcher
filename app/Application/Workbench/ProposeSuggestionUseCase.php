@@ -103,7 +103,9 @@ final class ProposeSuggestionUseCase
             $suggestion['isDedicated'] = true;
             $suggestion['provenance'] = 'Dedicated test repository';
             if ($isPrivate) {
-                $suggestion['privateProvenanceRecorded'] = $this->recordPrivateProvenance($in, $current, $suggestion);
+                $runId = bin2hex(random_bytes(16));
+                $suggestion['privateProvenanceRecorded'] = $this->recordPrivateProvenance($in, $current, $suggestion, $runId);
+                if ($suggestion['privateProvenanceRecorded']) $suggestion['privateProvenanceId'] = $runId;
             }
 
             return $suggestion;
@@ -304,7 +306,7 @@ final class ProposeSuggestionUseCase
      * @param array<string,mixed> $context
      * @param array<string,mixed> $suggestion
      */
-    private function recordPrivateProvenance(ProposeSuggestionInput $in, array $context, array $suggestion): bool
+    private function recordPrivateProvenance(ProposeSuggestionInput $in, array $context, array $suggestion, string $runId): bool
     {
         try {
             $access = $in->verifiedAccess;
@@ -324,7 +326,8 @@ final class ProposeSuggestionUseCase
                     'candidateSha256' => hash('sha256', $candidateSource)],
                 ['userId' => $access['userId'], 'repositories' => $access['repositories']],
                 ['candidateSource' => $candidateSource, 'model' => $suggestion['model'],
-                    'requestDigest' => $suggestion['requestDigest'], 'usage' => $suggestion['usage']]
+                    'requestDigest' => $suggestion['requestDigest'], 'usage' => $suggestion['usage']],
+                $runId
             );
 
             return true;

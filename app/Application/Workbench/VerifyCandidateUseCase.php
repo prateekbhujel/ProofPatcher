@@ -23,7 +23,23 @@ final class VerifyCandidateUseCase
     public function execute(VerifyCandidateInput $in): VerifyCandidateResult
     {
         try {
-            return VerifyCandidateResult::success($this->verifier->verify($in->candidateSource, $in->context));
+            $context = $in->context;
+            unset($context['privateProvenanceId']);
+            $id = $in->suggestion['privateProvenanceId'] ?? null;
+            if (($in->suggestion['privateProvenanceRecorded'] ?? null) === false) {
+                throw new \InvalidArgumentException('Private proposal provenance was not recorded.');
+            }
+            if (($in->suggestion['privateProvenanceRecorded'] ?? null) === true && $id === null) {
+                throw new \InvalidArgumentException('Private proposal run is missing.');
+            }
+            if ($id !== null) {
+                if (!is_string($id) || !preg_match('/\A[a-f0-9]{32}\z/', $id)
+                    || ($in->suggestion['privateProvenanceRecorded'] ?? null) !== true) {
+                    throw new \InvalidArgumentException('Private proposal provenance is invalid.');
+                }
+                $context['privateProvenanceId'] = $id;
+            }
+            return VerifyCandidateResult::success($this->verifier->verify($in->candidateSource, $context));
         } catch (\Throwable $error) {
             return VerifyCandidateResult::failure($error->getMessage());
         }

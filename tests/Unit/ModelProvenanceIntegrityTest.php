@@ -87,6 +87,21 @@ final class ModelProvenanceIntegrityTest extends TestCase
         self::assertNull($store->lookup($candidateSha), 'Tampered proposal file must fail HMAC verification.');
     }
 
+    public function testDirectMetaStandardModelCanRecordProvenance(): void
+    {
+        $store = new ServerHeldModelProposal($this->proposalsDir, 'test-server-secret-key-1234567890');
+        $source = '<?php return 1;';
+        $sha = hash('sha256', $source);
+        $store->record(['candidateSha256' => $sha, 'sourceSha256' => hash('sha256', 'base'),
+            'model' => 'muse-spark-1.3', 'requestDigest' => hash('sha256', 'request'),
+            'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5], 'candidateSource' => $source]);
+        self::assertSame('muse-spark-1.3', $store->lookup($sha)['model']);
+        $this->expectException(\InvalidArgumentException::class);
+        $store->record(['candidateSha256' => $sha, 'sourceSha256' => hash('sha256', 'base'),
+            'model' => 'untrusted-model', 'requestDigest' => hash('sha256', 'request'),
+            'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5], 'candidateSource' => $source]);
+    }
+
     public function testPublisherRejectsMuseProvenanceWithoutMatchingServerHeldProposal(): void
     {
         $projectRoot = dirname(__DIR__, 2);
@@ -107,7 +122,8 @@ final class ModelProvenanceIntegrityTest extends TestCase
         $token = $report['publicationAuthorizationToken'];
         $evidenceDirectory = $report['evidenceDirectory'];
 
-        $publisher = new DedicatedTestRepoPublisher($approvalStore, disconnected: true);
+        $publisher = new DedicatedTestRepoPublisher($approvalStore, disconnected: true,
+            modelProposals: new ServerHeldModelProposal($this->proposalsDir, 'test-server-secret-key-1234567890'));
 
         // Attempt publication claiming 'muse' origin without any server-held proposal
         $context = [

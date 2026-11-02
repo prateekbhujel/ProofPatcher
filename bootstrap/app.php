@@ -7,6 +7,7 @@ use ProofPatch\Console\Commands\AutoReviewWorkerCommand;
 use ProofPatch\Console\Commands\CheckReceiptCommand;
 use ProofPatch\Console\Commands\KernelReviewsCommand;
 use ProofPatch\Console\Commands\KernelTelemetryCommand;
+use ProofPatch\Console\Commands\KernelMentionsCommand;
 use ProofPatch\Console\Commands\InspectPullRequestCommand;
 use ProofPatch\Console\Commands\RecordPullRequestSnapshotCommand;
 use ProofPatch\Console\Commands\TriagePullRequestCommand;
@@ -30,6 +31,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         AutoReviewWorkerCommand::class,
         KernelReviewsCommand::class,
         KernelTelemetryCommand::class,
+        KernelMentionsCommand::class,
         RecordPullRequestSnapshotCommand::class,
         InspectPullRequestCommand::class,
         TriagePullRequestCommand::class,
