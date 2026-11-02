@@ -30,7 +30,7 @@ import { WorkbenchScreenshot } from '../Components/workbench/WorkbenchScreenshot
 import { ProposalDiffCard } from '../Components/workbench/ProposalDiffCard';
 import { VerificationPipelineCard } from '../Components/workbench/VerificationPipelineCard';
 import { TaskComposerFooter } from '../Components/workbench/TaskComposerFooter';
-import { COMPOSER_DRAFT_KEY } from '../Components/os/DesktopWindows';
+import { COMPOSER_DRAFT_KEY } from '../Components/console/shared';
 import { useKernelPrompt } from '../hooks/useKernelPrompt';
 
 export type { IssueTriage } from '../Components/workbench/types';
@@ -507,7 +507,7 @@ export default function Issues({
                       {privateModelConsentRequired
                         ? 'Private test · consent required'
                         : modelContextAllowed
-                        ? 'Public · Muse + 5-Gate Co-Maintainer'
+                        ? 'Public · gated review'
                         : 'Private · Local Verification Only (No external model transmission)'}
                     </span>
                   </>
@@ -544,7 +544,7 @@ export default function Issues({
               {viewMode === 'new' && (
                 <div className="space-y-6 pt-1">
                   <div className="space-y-1">
-                    <h1 className="text-xl font-serif tracking-tight text-slate-900 dark:text-slate-100">
+                    <h1 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
                       New task
                     </h1>
                     <p className="text-xs text-slate-500 dark:text-slate-400">

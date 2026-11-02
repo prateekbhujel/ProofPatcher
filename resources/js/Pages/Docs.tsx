@@ -109,9 +109,9 @@ export default function Docs() {
         {activeTab === 'workflow' && (
           <div className="space-y-6">
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">End-to-End Co-Maintainer Flow</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">How a change is reviewed</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                ProofPatcher eliminates unverified AI noise by requiring reproduction evidence before proposing code changes.
+                Every proposed change must reproduce the problem first and pass all verification gates before it can be published.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">

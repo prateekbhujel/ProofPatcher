@@ -63,6 +63,23 @@ final class HariRegistryTest extends TestCase
         return $registry;
     }
 
+    public function testIntrospectionListsAbilitiesAndSkills(): void
+    {
+        $registry = new Registry();
+        $registry->registerAbility(new AbilityManifest('proofpatch-verify', 1, ['verify.gate'], [], ['model.exec']));
+        $registry->provideSkill('proofpatch-verify', new FakeSkill('verify.gate', 2, ['model.exec'], ['ok' => true]));
+        $registry->provideSkill('proofpatch-verify', new FakeSkill('verify.gate', 1, ['model.exec'], ['ok' => true]));
+
+        $abilities = $registry->abilities();
+        $this->assertSame('proofpatch-verify', $abilities[0]['name']);
+        $this->assertSame(['verify.gate'], $abilities[0]['provides']);
+
+        $skills = $registry->skills();
+        $this->assertSame('verify.gate', $skills[0]['id']);
+        $this->assertSame([1, 2], $skills[0]['versions']);
+        $this->assertSame(['model.exec'], $skills[0]['capabilities']);
+    }
+
     public function testResolveAndInvokeHappyPath(): void
     {
         $skill = $this->booted()->resolve('demo.echo', 1, 'borrower-b');

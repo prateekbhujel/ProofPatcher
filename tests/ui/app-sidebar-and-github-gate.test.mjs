@@ -73,40 +73,6 @@ const onboarding = loadTsx('../../resources/js/Components/workbench/Disconnected
 
 const baseProps = {};
 
-test('the workspace runs fullscreen in the shell; app pages get the window chrome', () => {
-  const body = React.createElement('p', {}, 'Page content');
-  const workspace = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'issues' }, body));
-  assert.match(workspace, /Page content/);
-  assert.doesNotMatch(workspace, /<aside/);
-  assert.doesNotMatch(workspace, /app window/);
-  assert.match(workspace, /aria-label="ProofPatcher Kernel home"/);
-  assert.match(workspace, /Open start menu/);
-  const settings = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'settings' }, body));
-  assert.match(settings, /settings app window/);
-  assert.match(settings, /Close settings and return to desktop/);
-  assert.match(settings, /href="\/"[^>]*aria-label="ProofPatcher Kernel home"/);
-  assert.match(settings, /Open start menu/);
-});
-
-test('the shell is honest while status loads: placeholders, never offline claims', () => {
-  const body = React.createElement('p', {}, 'Page content');
-  const html = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'settings' }, body));
-  assert.match(html, /status loading/);
-  assert.match(html, /···/);
-  assert.doesNotMatch(html, /not connected/);
-  assert.doesNotMatch(html, /autopilot offline/);
-});
-
-test('embedded pages render bare content with no nested chrome', () => {
-  const shell = shellLoader.load(shellLoader.resolveFile(fileURLToPath(import.meta.url), '../../resources/js/Components/os/OsShell.tsx'));
-  const body = React.createElement('p', {}, 'Page content');
-  const html = renderToStaticMarkup(React.createElement(shell.OsShell, { appId: 'docs', embed: true }, body));
-  assert.match(html, /Page content/);
-  assert.doesNotMatch(html, /ProofPatcher Kernel home/);
-  assert.doesNotMatch(html, /Open start menu/);
-  assert.doesNotMatch(html, /app window/);
-});
-
 test('an unconfigured installation explains the missing GitHub App ID', () => {
   const html = renderToStaticMarkup(React.createElement(onboarding.DisconnectedOnboardingView, baseProps));
   assert.match(html, /Sign in with GitHub/);

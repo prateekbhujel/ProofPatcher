@@ -31,14 +31,11 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
     @inertiaHead
 </head>
-<body class="min-h-full flex flex-col bg-[#f7f6f2] dark:bg-[#0e1117] text-slate-900 dark:text-slate-100 antialiased font-sans">
+<body class="min-h-full flex flex-col bg-[var(--bg)] text-[var(--fg)] antialiased font-mono">
     @inertia
 </body>
 </html>

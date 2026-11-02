@@ -53,6 +53,17 @@ final class KernelController
             ];
         } catch (\Throwable) {}
 
+        $hariSummary = null;
+        try {
+            $registry = ($this->hari ?? \Hari\Hari::registry());
+            $hariSummary = [
+                'frozen' => $registry->isFrozen(),
+                'abilities' => $registry->abilities(),
+                'skills' => $registry->skills(),
+            ];
+        } catch (\Throwable) {
+        }
+
         $autoReview = AutoReviewPanelProps::forRequest($request, 5, $this->hari);
 
         $context = SessionHelper::get($request, 'issue_context');
@@ -117,6 +128,7 @@ final class KernelController
                 'keyReady' => $providerStatus['activeKeyAvailable'],
             ],
             'budget' => $budget,
+            'hari' => $hariSummary,
             'autopilotCaps' => $autopilotCaps,
             'worker' => $autoReview['worker'],
             'autoStats' => $autoReview['stats'],

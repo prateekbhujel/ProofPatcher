@@ -70,8 +70,9 @@ final class KernelShellCommand extends Command
                     $repository = null;
                 }
                 $status = [
-                    'GitHub: '.($state['connected'] ? 'sign-in saved (not checked)' : 'not connected'),
-                    'Selected repository: '.($repository ?? 'none'),
+                    'github: '.($state['connected'] ? 'sign-in saved (not checked)' : 'not connected'),
+                    'repo: '.($repository ?? 'none'),
+                    'hari: '.$this->hariSummary(),
                 ];
                 $action = TerminalDashboard::choose($term, $this->menuOptions(), $status, $lastAction);
             } catch (\RuntimeException $e) {
@@ -80,7 +81,7 @@ final class KernelShellCommand extends Command
             }
 
             if ($action === null || $action === 'quit') {
-                $this->line('Kernel shell closed.');
+                $this->line('shell closed.');
                 return self::SUCCESS;
             }
 
@@ -105,6 +106,16 @@ final class KernelShellCommand extends Command
             // The dashboard uses an alternate screen, so keep command output
             // visible until the user is ready to return.
             $this->promptLine('Press Enter to return');
+        }
+    }
+
+    private function hariSummary(): string
+    {
+        try {
+            $registry = \Hari\Hari::registry();
+            return count($registry->abilities()) . ' abilities · ' . count($registry->skills()) . ' skills · ' . ($registry->isFrozen() ? 'frozen' : 'mutable');
+        } catch (\Throwable) {
+            return 'unavailable';
         }
     }
 

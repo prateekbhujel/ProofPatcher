@@ -23,7 +23,7 @@ final class KernelCli
     {
         return [
             'ProofPatcher Kernel ' . self::VERSION . ' — terminal shell',
-            'Review pull requests and check supported patches.',
+            'Repository maintenance console.',
         ];
     }
 

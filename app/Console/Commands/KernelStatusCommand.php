@@ -71,6 +71,7 @@ final class KernelStatusCommand extends Command
         $this->line('ProofPatcher Kernel ' . KernelCli::VERSION . ' — status');
         $this->line('');
         $this->line('  GitHub      ' . $this->githubLine($state, $selected, $verification));
+        $this->line('  Hari        ' . $this->hariLine());
         $this->line('  Muse        ' . $provider['label'] . ' · ' . $provider['model'] . ' · ' . ($provider['keyReady'] ? 'key ready' : 'key missing'));
         $this->line('  Budget      ' . $this->budgetLine($budget));
         $this->line('  Autopilot   ' . $this->workerLine($worker));
@@ -81,6 +82,18 @@ final class KernelStatusCommand extends Command
         $this->line('  ' . $next['command']);
 
         return self::SUCCESS;
+    }
+
+    private function hariLine(): string
+    {
+        try {
+            $registry = $this->hari ?? Hari::registry();
+            $skills = $registry->skills();
+            $ids = array_map(static fn (array $s): string => $s['id'], $skills);
+            return count($registry->abilities()) . ' abilities · ' . count($skills) . ' skills (' . implode(', ', $ids) . ') · ' . ($registry->isFrozen() ? 'frozen' : 'mutable');
+        } catch (\Throwable) {
+            return 'unavailable';
+        }
     }
 
     /** @param array{connected: bool, user: ?array{login: ?string}, repos: list<array{fullName: string}>} $state */

@@ -35,32 +35,22 @@ const inertiaMock = {
   },
 };
 
-const { exports: kernelTerminalModule } = loadTsxModule('../../resources/js/Components/os/KernelTerminal.tsx');
 const { exports: alertBannerModule } = loadTsxModule(
   '../../resources/js/Components/ui/AlertBanner.tsx',
   (id) => (id === '@inertiajs/react' ? inertiaMock : require(id)),
 );
 const { loadTsModule } = await import('./helpers/loadTsModule.mjs');
 const budgetCopy = loadTsModule(new URL('../../resources/js/Components/ui/budgetCopy.ts', import.meta.url));
-const { exports: desktopWindowsModule } = loadTsxModule(
-  '../../resources/js/Components/os/DesktopWindows.tsx',
-  (id) => {
-    if (id === '@inertiajs/react') return inertiaMock;
-    if (id === './KernelTerminal') return kernelTerminalModule;
-    if (id === '../ui/AlertBanner') return alertBannerModule;
-    if (id === '../ui/budgetCopy') return budgetCopy;
-    return require(id);
-  },
-);
 const { exports: repoPickerModule } = loadTsxModule('../../resources/js/Components/workbench/RepoSearchPicker.tsx');
 
+const consoleShared = loadTsModule(new URL('../../resources/js/Components/console/shared.ts', import.meta.url));
 const { exports: taskCardModule, source: taskCardSource } = loadTsxModule(
   '../../resources/js/Components/TaskCardSection.tsx',
   (id) => {
     if (id === '@inertiajs/react') return inertiaMock;
     if (id === './VoiceDictationButton') return voiceModule;
     if (id === './workbench/RepoSearchPicker') return repoPickerModule;
-    if (id === './os/DesktopWindows') return desktopWindowsModule;
+    if (id === './console/shared') return consoleShared;
     return require(id);
   }
 );
@@ -424,26 +414,4 @@ test('the repo search picker fetches nothing until opened', () => {
   assert.doesNotMatch(html, /role="listbox"/);
 });
 
-test('the notes scratchpad offers a draft handoff to issues', () => {
-  const html = renderToStaticMarkup(React.createElement(desktopWindowsModule.NotesContent, {
-    onSendToIssues: () => {},
-  }));
-  assert.match(html, /Scratchpad/);
-  assert.match(html, /Send to Issues as draft/);
-  assert.match(html, /aria-label="Scratchpad notes"/);
-});
 
-test('mission stages open app windows on the desktop and plain links off it', () => {
-  const props = {
-    nextStep: { key: 'intake', title: 'Pick a repo', detail: 'Choose one.', href: '/repositories', cta: 'Open repositories' },
-    stages: [{ key: 'intake', title: 'Intake', detail: 'Pick.', href: '/repositories', state: 'active' }],
-  };
-  const windowed = renderToStaticMarkup(React.createElement(desktopWindowsModule.MissionContent, {
-    ...props,
-    onOpenApp: () => {},
-  }));
-  assert.doesNotMatch(windowed, /<a /);
-  assert.match(windowed, /<button /);
-  const plain = renderToStaticMarkup(React.createElement(desktopWindowsModule.MissionContent, props));
-  assert.match(plain, /<a /);
-});

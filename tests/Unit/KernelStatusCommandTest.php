@@ -172,6 +172,8 @@ final class KernelStatusCommandTest extends TestCase
 
         $this->assertSame(0, $result['exit']);
         $this->assertStringContainsString('verified just now', $result['display']);
+        $this->assertStringContainsString('Hari', $result['display']);
+        $this->assertStringContainsString('abilities', $result['display']);
     }
 
     public function testRejectedSignInPointsAtReconnect(): void

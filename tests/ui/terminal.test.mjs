@@ -51,14 +51,13 @@ function createLoader() {
 const loader = createLoader();
 const page = loader.load(loader.resolveFile(fileURLToPath(import.meta.url), '../../resources/js/Pages/Terminal.tsx'));
 
-test('the terminal boots read-only inside the OS shell', () => {
+test('the terminal boots read-only inside the console frame', () => {
   const html = renderToStaticMarkup(React.createElement(page.default, {}));
-  assert.match(html, /terminal app window/);
+  assert.match(html, /aria-label="Console"/);
   assert.match(html, /ProofPatcher Kernel web terminal — read-only/);
   assert.match(html, /Type &#x27;help&#x27; to list commands/);
   assert.match(html, /aria-label="Terminal command"/);
   assert.match(html, /aria-label="Terminal transcript"/);
   assert.match(html, /proofpatcher/);
-  assert.match(html, /aria-label="ProofPatcher Kernel home"/);
-  assert.match(html, /Open start menu/);
+  assert.match(html, /aria-label="ProofPatcher console home"/);
 });

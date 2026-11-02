@@ -150,3 +150,10 @@ without a verified GitHub user; repository selection is shared while
 it stays inside the current grant. The shared pieces are
 `GitHubConnectionState`, `ConnectionNextStep`, and `AppRedirectTarget`
 in `app/Application/Settings`.
+
+The registry is inspectable: `Registry::abilities()` and
+`Registry::skills()` return the manifest read-only, and both shells
+show it — the console home's `hari` panel and `kernel:status`'s Hari
+line (`9 abilities · 5 skills · frozen`). Introspection never invokes
+a skill; execution still goes through `resolve()` and its borrow,
+major, and capability checks.

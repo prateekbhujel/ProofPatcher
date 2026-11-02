@@ -1,14 +1,14 @@
 import React from 'react';
-import { usePage } from '@inertiajs/react';
-import { OsShell } from './os/OsShell';
+import { ConsoleLayout } from './console/ConsoleLayout';
+import { ConsoleNavKey } from './console/primitives';
 
 interface AppLayoutProps {
-  activeNav?: 'kernel' | 'overview' | 'repositories' | 'pulls' | 'checks' | 'issues' | 'settings' | 'docs' | 'telemetry' | 'terminal';
+  activeNav?: ConsoleNavKey;
   children: React.ReactNode;
 }
 
-const APP_TITLES: Record<NonNullable<AppLayoutProps['activeNav']>, string> = {
-  kernel: 'kernel',
+const APP_TITLES: Record<ConsoleNavKey, string> = {
+  kernel: 'console',
   overview: 'overview',
   repositories: 'pull requests',
   pulls: 'pull requests',
@@ -20,12 +20,11 @@ const APP_TITLES: Record<NonNullable<AppLayoutProps['activeNav']>, string> = {
   terminal: 'terminal',
 };
 
-/** Every app page runs inside the OS shell: menu bar, app window, taskbar. */
+/** Every page runs inside the console frame. */
 export function AppLayout({ activeNav = 'kernel', children }: AppLayoutProps) {
-  const { embed } = usePage().props as { embed?: boolean };
   return (
-    <OsShell appId={APP_TITLES[activeNav]} fullscreen={activeNav === 'issues'} embed={embed === true} activeNav={activeNav}>
+    <ConsoleLayout activeNav={activeNav} title={APP_TITLES[activeNav]}>
       {children}
-    </OsShell>
+    </ConsoleLayout>
   );
 }

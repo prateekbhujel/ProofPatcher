@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { VoiceDictationButton } from './VoiceDictationButton';
 import { RepoSearchPicker } from './workbench/RepoSearchPicker';
-import { COMPOSER_DRAFT_KEY, ComposerDraft } from './os/DesktopWindows';
+import { COMPOSER_DRAFT_KEY, ComposerDraft } from './console/shared';
 import { Bold, Italic, Code, Quote, List, Link2 } from 'lucide-react';
 
 export interface LocalTaskCard {

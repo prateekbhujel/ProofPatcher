@@ -112,6 +112,49 @@ final class Registry
         return $skill;
     }
 
+    /**
+     * Read-only view of what the kernel coordinates. Lets shells and
+     * diagnostics show the manifest without touching skill behavior.
+     *
+     * @return list<array{name: string, version: int, provides: list<string>, borrows: array<string, int>, needs: list<string>}>
+     */
+    public function abilities(): array
+    {
+        $out = [];
+        foreach ($this->abilities as $ability) {
+            $out[] = [
+                'name' => $ability->name(),
+                'version' => $ability->version(),
+                'provides' => array_values($ability->provides()),
+                'borrows' => $ability->borrows(),
+                'needs' => array_values($ability->needs()),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<array{id: string, versions: list<int>, capabilities: list<string>, describe: string}>
+     */
+    public function skills(): array
+    {
+        $out = [];
+        foreach ($this->skills as $id => $byMajor) {
+            $majors = array_keys($byMajor);
+            sort($majors);
+            $first = $byMajor[$majors[0]];
+            $out[] = [
+                'id' => $id,
+                'versions' => $majors,
+                'capabilities' => array_values($first->capabilities()),
+                'describe' => $first->describe(),
+            ];
+        }
+
+        return $out;
+    }
+
     public function freeze(): void
     {
         $this->frozen = true;
