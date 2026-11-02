@@ -25,6 +25,14 @@ const boot = loadTsx('../../resources/js/Components/os/BootScreen.tsx');
 const terminal = loadTsx('../../resources/js/Components/os/KernelTerminal.tsx');
 const taskbar = loadTsx('../../resources/js/Components/os/KernelTaskbar.tsx');
 const desktop = loadTsx('../../resources/js/Components/os/DesktopIcons.tsx', withInertia);
+const signInButton = loadTsx('../../resources/js/Components/ui/SignInWithGitHubButton.tsx');
+
+test('the sign-in button links to the web flow with its return page', () => {
+  const html = renderToStaticMarkup(React.createElement(signInButton.SignInWithGitHubButton, { redirectTo: '/settings' }));
+  assert.match(html, /href="\/github\/authorize\?redirect_to=%2Fsettings"/);
+  assert.match(html, /Sign in with GitHub/);
+  assert.doesNotMatch(html, /client_secret|access_token/);
+});
 
 test('the boot screen shows every line and a skip hint in static markup', () => {
   const html = renderToStaticMarkup(React.createElement(boot.BootScreen, {

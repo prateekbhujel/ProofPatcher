@@ -144,6 +144,28 @@ final class OsShellControllerTest extends TestCase
         $this->assertFalse($middleware->share($plain)['embed']);
     }
 
+    public function testOsStatusCountsOnlyOpenItems(): void
+    {
+        $request = $this->request('/os/status', 'GET', [], [
+            'github_auth' => [
+                'token' => 'session-token',
+                'user' => ['login' => 'maintainer'],
+                'repositories' => [['fullName' => 'acme/repo']],
+            ],
+            'github_repo_issues' => [
+                ['number' => 1, 'state' => 'open'], ['number' => 2, 'state' => 'closed'], ['number' => 3, 'state' => 'open'],
+            ],
+            'github_repo_pulls' => [
+                ['number' => 4, 'state' => 'open'], ['number' => 5, 'state' => 'merged'],
+            ],
+        ]);
+
+        $payload = json_decode((string) (new OsStatusController())->show($request)->getContent(), true);
+
+        $this->assertSame(2, $payload['openIssues']);
+        $this->assertSame(1, $payload['openPulls']);
+    }
+
     public function testOsStatusReportsSessionState(): void
     {
         $request = $this->request('/os/status', 'GET', [], [
@@ -153,8 +175,8 @@ final class OsShellControllerTest extends TestCase
                 'repositories' => [['fullName' => 'acme/repo']],
             ],
             'selected_github_repo' => 'acme/repo',
-            'github_repo_issues' => [['number' => 1], ['number' => 2]],
-            'github_repo_pulls' => [['number' => 3]],
+            'github_repo_issues' => [['number' => 1, 'state' => 'open'], ['number' => 2, 'state' => 'open']],
+            'github_repo_pulls' => [['number' => 3, 'state' => 'open']],
         ]);
 
         $payload = json_decode((string) (new OsStatusController())->show($request)->getContent(), true);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
-import { copyText } from '../Components/ui/copyText';
+import { SignInWithGitHubButton } from '../Components/ui/SignInWithGitHubButton';
 import { budgetStatusLine, sharedBudgetNote } from '../Components/ui/budgetCopy';
 import { ThemeToggle } from '../Components/ThemeToggle';
 import {
@@ -37,7 +37,6 @@ export default function Settings({
   const [usageSubTab, setUsageSubTab] = useState<'overview' | 'analytics'>('overview');
 
   const [clientIdInput, setClientIdInput] = useState(githubConnection.clientId || '');
-  const [copiedCode, setCopiedCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
   const [pendingReviewRepo, setPendingReviewRepo] = useState<string | null>(null);
@@ -82,31 +81,6 @@ export default function Settings({
       { provider },
       { onFinish: () => setSavingProvider(false) }
     );
-  };
-
-  const copyUserCode = () => {
-    if (githubConnection.deviceFlow?.userCode) {
-      void copyText(githubConnection.deviceFlow.userCode).then((ok) => {
-        if (!ok) return;
-        setCopiedCode(true);
-        setTimeout(() => setCopiedCode(false), 2000);
-      });
-    }
-  };
-
-  const handleInitiate = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    router.post('/github/device/initiate', { client_id: clientIdInput, redirect_to: '/settings' }, {
-      onFinish: () => setIsSubmitting(false),
-    });
-  };
-
-  const handlePoll = () => {
-    setIsSubmitting(true);
-    router.post('/github/device/poll', { redirect_to: '/settings' }, {
-      onFinish: () => setIsSubmitting(false),
-    });
   };
 
   const handleDisconnect = () => {
@@ -547,7 +521,7 @@ export default function Settings({
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
                   <Key className="w-4 h-4 text-accent-700 dark:text-accent-400" />
-                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">GitHub OAuth Device Flow (RFC 8628)</h2>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">GitHub Connection</h2>
                 </div>
                 {githubConnection.isConnected && (
                   <span className="text-xs px-2 py-0.5 rounded font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400">
@@ -593,73 +567,24 @@ export default function Settings({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <form onSubmit={handleInitiate} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-0.5">
-                        GitHub OAuth App Client ID
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Sign in to load your repositories, issues and pull requests. GitHub will ask you to authorize ProofPatcher, then bring you back here.
+                  </p>
+                  {!githubConnection.isConfigured && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        GitHub App Client ID
                       </label>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">
-                        Connects ProofPatcher to your repositories via Device Flow (RFC 8628). Find your Client ID under{' '}
-                        <a
-                          href="https://github.com/settings/developers"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-accent-600 underline font-medium"
-                        >
-                          GitHub &gt; Settings &gt; Developer settings &gt; OAuth Apps
-                        </a>
-                        , or keep the pre-configured default.
-                      </p>
                       <input
                         type="text"
                         value={clientIdInput}
                         onChange={(e) => setClientIdInput(e.target.value)}
-                        placeholder="e.g. Iv1.8f2a1b9c3d4e5f60"
+                        placeholder="Enter client ID"
                         className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-md font-mono"
-                        required
                       />
                     </div>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting || !clientIdInput.trim()}
-                      className="px-4 py-2 text-xs font-semibold rounded-md text-white bg-slate-900 hover:bg-slate-800 transition"
-                    >
-                      {isSubmitting ? 'Starting...' : 'Connect GitHub App'}
-                    </button>
-                  </form>
-
-                  {githubConnection.deviceFlow && (
-                    <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Verification Code: <span className="font-mono text-accent-700 font-bold dark:text-accent-300">{githubConnection.deviceFlow.userCode}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={copyUserCode}
-                          className="px-3 py-1 text-xs font-medium rounded border border-slate-300 bg-white text-slate-700 dark:bg-[#141821] dark:border-slate-700 dark:text-slate-300"
-                        >
-                          {copiedCode ? 'Copied' : 'Copy Code'}
-                        </button>
-                        <a
-                          href={githubConnection.deviceFlow.verificationUri}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1 text-xs font-semibold rounded text-white bg-accent-700"
-                        >
-                          Authorize on GitHub →
-                        </a>
-                        <button
-                          type="button"
-                          onClick={handlePoll}
-                          disabled={isSubmitting}
-                          className="px-3 py-1 text-xs font-medium rounded border border-slate-300 bg-white dark:bg-[#141821] dark:border-slate-700"
-                        >
-                          Check Status
-                        </button>
-                      </div>
-                    </div>
                   )}
+                  <SignInWithGitHubButton redirectTo="/settings" clientId={clientIdInput} />
                 </div>
               )}
             </div>

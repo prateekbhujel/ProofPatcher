@@ -67,7 +67,7 @@ export default function Repositories({
   const [copiedSha, setCopiedSha] = useState(false);
   const [copiedDigest, setCopiedDigest] = useState(false);
   const [copiedReviewDigest, setCopiedReviewDigest] = useState(false);
-  const [copiedUserCode, setCopiedUserCode] = useState(false);
+
   const [copiedFeedback, setCopiedFeedback] = useState(false);
   const [reviewApproved, setReviewApproved] = useState(false);
   const [commentToPost, setCommentToPost] = useState<string | null>(null);
@@ -86,21 +86,6 @@ export default function Repositories({
     approval_token: reviewPreview?.approvalToken || '',
     private_consent: false,
   });
-
-  const { data: deviceFormData, setData: setDeviceFormData, post: postDeviceInitiate, processing: deviceInitiateProcessing } = useForm({
-    client_id: githubConnection?.clientId || '',
-    redirect_to: '/repositories',
-  });
-
-  const handleInitiateDeviceFlow = (e: React.FormEvent) => {
-    e.preventDefault();
-    postDeviceInitiate('/github/device/initiate');
-  };
-
-  const handlePollDeviceFlow = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    router.post('/github/device/poll', { redirect_to: '/repositories' }, { preserveScroll: true });
-  };
 
   const handleDisconnectDevice = (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,20 +208,8 @@ export default function Repositories({
     return (
       <DisconnectedOnboardingView
           error={error}
-          deviceClientIdInput={deviceFormData.client_id}
-          setDeviceClientIdInput={(val: string) => setDeviceFormData('client_id', val)}
-          isSubmittingDevice={deviceInitiateProcessing}
-          handleInitiateDeviceFlow={handleInitiateDeviceFlow}
-          handlePollDeviceFlow={handlePollDeviceFlow}
-          copyDeviceCode={(code: string) => {
-            void writeToClipboard(code).then((ok) => {
-              if (!ok) return;
-              setCopiedUserCode(true);
-              setTimeout(() => setCopiedUserCode(false), 2000);
-            });
-          }}
-          copiedDeviceCode={copiedUserCode}
           githubConnection={githubConnection as any}
+          redirectTo="/repositories"
       />
     );
   }
@@ -258,25 +231,11 @@ export default function Repositories({
           </div>
         )}
 
-        {/* GitHub App Connection Section (RFC 8628 Device Flow) */}
         <GitHubConnectionSection
           githubConnection={githubConnection}
           gitHubSectionOpen={gitHubSectionOpen}
           setGitHubSectionOpen={setGitHubSectionOpen}
-          clientIdInput={deviceFormData.client_id}
-          setClientIdInput={(val) => setDeviceFormData('client_id', val)}
-          isSubmittingDevice={deviceInitiateProcessing}
-          copiedUserCode={copiedUserCode}
-          handleInitiateDeviceFlow={handleInitiateDeviceFlow}
-          handlePollDeviceFlow={handlePollDeviceFlow}
           handleDisconnectDevice={handleDisconnectDevice}
-          copyUserCode={(code) => {
-            void writeToClipboard(code).then((ok) => {
-              if (!ok) return;
-              setCopiedUserCode(true);
-              setTimeout(() => setCopiedUserCode(false), 2000);
-            });
-          }}
           handleSelectRepository={handleSelectRepository}
           handleCaptureGitHubPull={handleCaptureGitHubPull}
         />

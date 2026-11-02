@@ -40,6 +40,7 @@ final class DashboardController
         private ?GitHubAppClient $gitHubAppClient = null,
         private ?GitHubDeviceFlow $deviceFlowClient = null,
         private ?\Hari\Registry $hari = null,
+        private ?\ProofPatch\GitHub\GitHubWebFlow $webFlowClient = null,
     ) {
         $this->project = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
         $this->runsDir = $this->project.'/artifacts/runs';
@@ -61,6 +62,22 @@ final class DashboardController
     private function getDeviceFlowClient(): GitHubDeviceFlow
     {
         return $this->deviceFlowClient ?? new GitHubDeviceFlow(HttpClient::create());
+    }
+
+    private function getWebFlowClient(): \ProofPatch\GitHub\GitHubWebFlow
+    {
+        return $this->webFlowClient ?? new \ProofPatch\GitHub\GitHubWebFlow(HttpClient::create());
+    }
+
+    private function githubClientSecret(): ?string
+    {
+        $secret = trim((string) (getenv('PROOFPATCH_GITHUB_CLIENT_SECRET') ?: getenv('GITHUB_APP_CLIENT_SECRET') ?: ''));
+        return $secret !== '' ? $secret : null;
+    }
+
+    private function githubCallbackUrl(): string
+    {
+        return rtrim((string) (getenv('APP_URL') ?: 'http://127.0.0.1:8000'), '/') . '/github/callback';
     }
 
     public function overview(): InertiaResponse
@@ -738,44 +755,7 @@ final class DashboardController
             $outcome = \ProofPatch\Application\Settings\DeviceFlowPoll::outcome($result);
 
             if ($outcome === 'authorized') {
-                $token = (string) $result['accessToken'];
-                $client = $this->getGitHubAppClient();
-                $user = $client->getCurrentUser($token);
-                $reposStatus = [];
-                $repos = $client->listSelectedRepositories($token, $reposStatus);
-
-                $this->forgetSession($request, ...array_merge(IssueWorkbenchController::CASE_SESSION_KEYS,
-                    ['selected_github_repo', 'github_repo_issues', 'github_repo_pulls', 'notifications']));
-
-                $authData = [
-                    'token' => $token,
-                    'user' => $user,
-                    'repositories' => $repos,
-                    'repositoriesStatus' => $reposStatus,
-                    'connectedAt' => gmdate(DATE_ATOM),
-                    'verified_token_sha256' => hash('sha256', $token),
-                    'verified_at' => time(),
-                ];
-                $this->putSession($request, 'github_auth', $authData);
-                \ProofPatch\GitHub\GitHubTokenStore::save($token, $user, $repos, $reposStatus);
-                try {
-                    // A new grant invalidates any previous shared selection.
-                    \ProofPatch\Support\KernelCli::clearSelectedRepo();
-                } catch (\Throwable) {
-                }
-                $this->forgetSession($request, 'github_device_flow');
-                $this->addNotification($request, 'success', 'GitHub Connected', "Successfully connected as @{$user['login']}.");
-
-                $warn = \ProofPatch\Application\Repository\GitHubListWarning::message(
-                    $reposStatus,
-                    'Repositories list was truncated by pagination limits.',
-                    'Some repositories could not be retrieved: '
-                );
-                if ($warn !== null) {
-                    $this->addNotification($request, 'warning', 'Repositories Incomplete', $warn);
-                }
-
-                return redirect($target)->with('github_status', 'Successfully connected to GitHub as @'.$user['login'].'.');
+                return $this->completeGitHubConnection($request, (string) $result['accessToken'], $target);
             }
 
             if ($outcome === 'pending') {
@@ -801,6 +781,128 @@ final class DashboardController
             return redirect($target)->with('github_error', 'GitHub authorization error: '.($result['error'] ?? 'Unknown error'));
         } catch (\Throwable $e) {
             return redirect($target)->with('github_error', 'Failed to poll GitHub: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Finishes any GitHub sign-in (device or web flow) once a token exists:
+     * verify the user, load the granted repositories, save the shared
+     * sign-in, and return to the page the user started from.
+     */
+    private function completeGitHubConnection(Request $request, string $token, string $target): \Illuminate\Http\RedirectResponse
+    {
+        $client = $this->getGitHubAppClient();
+        $user = $client->getCurrentUser($token);
+        $reposStatus = [];
+        $repos = $client->listSelectedRepositories($token, $reposStatus);
+
+        $this->forgetSession($request, ...array_merge(IssueWorkbenchController::CASE_SESSION_KEYS,
+            ['selected_github_repo', 'github_repo_issues', 'github_repo_pulls', 'notifications']));
+
+        $authData = [
+            'token' => $token,
+            'user' => $user,
+            'repositories' => $repos,
+            'repositoriesStatus' => $reposStatus,
+            'connectedAt' => gmdate(DATE_ATOM),
+            'verified_token_sha256' => hash('sha256', $token),
+            'verified_at' => time(),
+        ];
+        $this->putSession($request, 'github_auth', $authData);
+        \ProofPatch\GitHub\GitHubTokenStore::save($token, $user, $repos, $reposStatus);
+        try {
+            // A new grant invalidates any previous shared selection.
+            \ProofPatch\Support\KernelCli::clearSelectedRepo();
+        } catch (\Throwable) {
+        }
+        $this->forgetSession($request, 'github_device_flow');
+        $this->addNotification($request, 'success', 'GitHub Connected', "Successfully connected as @{$user['login']}.");
+
+        $warn = \ProofPatch\Application\Repository\GitHubListWarning::message(
+            $reposStatus,
+            'Repositories list was truncated by pagination limits.',
+            'Some repositories could not be retrieved: '
+        );
+        if ($warn !== null) {
+            $this->addNotification($request, 'warning', 'Repositories Incomplete', $warn);
+        }
+
+        return redirect($target)->with('github_status', 'Successfully connected to GitHub as @'.$user['login'].'.');
+    }
+
+    /** Flow errors are flashed under both keys: each origin page reads one. */
+    private function githubFlowError(string $target, string $message): \Illuminate\Http\RedirectResponse
+    {
+        return redirect($target)->with('github_error', $message)->with('error', $message);
+    }
+
+    /**
+     * Web sign-in, step 1: remember where the user started, then send the
+     * browser to GitHub. The entry point of the "Sign in with GitHub"
+     * button. No credentials in the URL; the secret stays server-side.
+     */
+    public function redirectToGitHub(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $target = \ProofPatch\Application\Settings\AppRedirectTarget::target($request->query('redirect_to'), '/issues');
+        try {
+            $clientId = \ProofPatch\Application\Settings\DeviceFlowClientId::resolve(
+                $request->query('client_id'), getenv('PROOFPATCH_GITHUB_CLIENT_ID'), getenv('GITHUB_APP_CLIENT_ID')
+            );
+        } catch (\Throwable $e) {
+            return $this->githubFlowError($target, $e->getMessage());
+        }
+        if ($this->githubClientSecret() === null) {
+            return $this->githubFlowError($target, 'Web sign-in is not configured: add the GitHub App client secret as PROOFPATCH_GITHUB_CLIENT_SECRET in .env, then retry.');
+        }
+
+        $state = bin2hex(random_bytes(32));
+        $this->putSession($request, 'github_oauth', ['state' => $state, 'returnTo' => $target, 'createdAt' => time()]);
+
+        return redirect($this->getWebFlowClient()->authorizeUrl($clientId, $this->githubCallbackUrl(), $state));
+    }
+
+    /**
+     * Web sign-in, step 2: GitHub returns here with a code. The state is
+     * single-use and short-lived; the return page comes from the session,
+     * never from the query string.
+     */
+    public function handleGitHubCallback(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $oauth = $this->getSession($request, 'github_oauth');
+        $target = \ProofPatch\Application\Settings\AppRedirectTarget::target(
+            is_array($oauth) ? ($oauth['returnTo'] ?? null) : null,
+            '/issues'
+        );
+        // State is single-use whatever happens next.
+        $this->forgetSession($request, 'github_oauth');
+
+        if ($request->query('error') !== null) {
+            $message = $request->query('error') === 'access_denied'
+                ? 'Authorization was declined on GitHub.'
+                : 'GitHub authorization failed: ' . ((string) $request->query('error_description', 'please try again.'));
+            return $this->githubFlowError($target, $message);
+        }
+
+        $expected = is_array($oauth) ? (string) ($oauth['state'] ?? '') : '';
+        $given = (string) $request->query('state', '');
+        $fresh = is_array($oauth) && is_int($oauth['createdAt'] ?? null) && $oauth['createdAt'] >= time() - 600;
+        if ($expected === '' || $given === '' || !hash_equals($expected, $given) || !$fresh) {
+            return $this->githubFlowError($target, 'Sign-in could not be verified. Please try again.');
+        }
+
+        try {
+            $clientId = \ProofPatch\Application\Settings\DeviceFlowClientId::resolve(
+                null, getenv('PROOFPATCH_GITHUB_CLIENT_ID'), getenv('GITHUB_APP_CLIENT_ID')
+            );
+            $secret = $this->githubClientSecret();
+            if ($secret === null) {
+                throw new \RuntimeException('Web sign-in is not configured: add the GitHub App client secret as PROOFPATCH_GITHUB_CLIENT_SECRET in .env, then retry.');
+            }
+            $tokenData = $this->getWebFlowClient()->exchangeCode($clientId, $secret, (string) $request->query('code', ''), $this->githubCallbackUrl());
+
+            return $this->completeGitHubConnection($request, $tokenData['accessToken'], $target);
+        } catch (\Throwable $e) {
+            return $this->githubFlowError($target, 'Failed to connect GitHub: ' . $e->getMessage());
         }
     }
 

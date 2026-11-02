@@ -54,6 +54,7 @@ const inertia = {
   usePage: () => ({ props: {} }),
 };
 const logo = loadTsx('../../resources/js/Components/ui/BrandMark.tsx');
+const signInButtonModule = loadTsx('../../resources/js/Components/ui/SignInWithGitHubButton.tsx');
 const repoPicker = loadTsx('../../resources/js/Components/workbench/RepoSearchPicker.tsx');
 const sidebarRequire = (id) => {
   if (id === '@inertiajs/react') return inertia;
@@ -66,13 +67,11 @@ const onboarding = loadTsx('../../resources/js/Components/workbench/Disconnected
   if (id === '@inertiajs/react') return inertia;
   if (id === '../AppLayout') return layout;
   if (id === '../ui/BrandMark') return logo;
+  if (id === '../ui/SignInWithGitHubButton') return signInButtonModule;
   return require(id);
 });
 
-const baseProps = {
-  deviceClientIdInput: '', setDeviceClientIdInput() {}, isSubmittingDevice: false,
-  handleInitiateDeviceFlow() {}, handlePollDeviceFlow() {}, copyDeviceCode() {}, copiedDeviceCode: false,
-};
+const baseProps = {};
 
 test('the workspace runs fullscreen in the shell; app pages get the window chrome', () => {
   const body = React.createElement('p', {}, 'Page content');
@@ -110,9 +109,9 @@ test('embedded pages render bare content with no nested chrome', () => {
 
 test('an unconfigured installation explains the missing GitHub App ID', () => {
   const html = renderToStaticMarkup(React.createElement(onboarding.DisconnectedOnboardingView, baseProps));
-  assert.match(html, /Continue with GitHub/);
+  assert.match(html, /Sign in with GitHub/);
   assert.match(html, /GitHub App client ID/);
-  assert.match(html, /<button[^>]*\sdisabled=""/);
+  assert.match(html, /href="\/github\/authorize\?redirect_to=%2Fissues"/);
   assert.match(html, /href="\/settings"/);
   assert.doesNotMatch(html, /\$15\.00|\$100\.00|Open OrderTotal|Launch Interactive/);
 });
@@ -121,9 +120,9 @@ test('a configured installation offers sign-in without asking the user for an Ap
   const html = renderToStaticMarkup(React.createElement(onboarding.DisconnectedOnboardingView, {
     ...baseProps, githubConnection: { isConfigured: true },
   }));
-  assert.match(html, /Continue with GitHub/);
-  assert.match(html, /short code on GitHub/);
-  assert.doesNotMatch(html, /GitHub App client ID|<button[^>]*\sdisabled=""/);
+  assert.match(html, /Sign in with GitHub/);
+  assert.match(html, /bring you back here/);
+  assert.doesNotMatch(html, /GitHub App client ID|short code/);
 });
 
 test('the repository sidebar shows tasks only for the selected repository', () => {
@@ -162,13 +161,12 @@ test('the dedicated test issue opens without a file path while other issues stil
   assert.equal((html.match(/<button[^>]*disabled=""[^>]*>Open<\/button>/g) || []).length, 1);
 });
 
-test('a pending connection displays the actual device code and a way to finish', () => {
+test('the web onboarding has no device-code fallback', () => {
   const html = renderToStaticMarkup(React.createElement(onboarding.DisconnectedOnboardingView, {
-    ...baseProps, githubConnection: { deviceFlow: { userCode: 'TEST-1234', verificationUri: 'https://github.com/login/device' } },
+    ...baseProps, githubConnection: { isConfigured: true },
   }));
-  assert.match(html, /TEST-1234/);
-  assert.match(html, /href="https:\/\/github.com\/login\/device"/);
-  assert.match(html, /Check connection/);
+  assert.match(html, /Sign in with GitHub/);
+  assert.doesNotMatch(html, /device|user code|verification code/i);
 });
 
 test('provider balances and inactive automation preferences are not presented as live services', () => {

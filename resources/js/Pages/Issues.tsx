@@ -108,9 +108,7 @@ export default function Issues({
   const [issuePathMap, setIssuePathMap] = useState<Record<number, string>>({});
   const [copiedReceipt, setCopiedReceipt] = useState(false);
   const [copiedCandidateSha, setCopiedCandidateSha] = useState(false);
-  const [copiedDeviceCode, setCopiedDeviceCode] = useState(false);
-  const [isSubmittingDevice, setIsSubmittingDevice] = useState(false);
-  const [deviceClientIdInput, setDeviceClientIdInput] = useState(githubConnection?.clientId || '');
+
   const [copiedBotComment, setCopiedBotComment] = useState(false);
 
 
@@ -273,40 +271,6 @@ export default function Issues({
         onFinish: () => setLoadingIssueNum(null),
       }
     );
-  }
-
-  function handleInitiateDeviceFlow(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    setIsSubmittingDevice(true);
-    router.post(
-      '/github/device/initiate',
-      { client_id: deviceClientIdInput, redirect_to: '/issues' },
-      {
-        preserveScroll: true,
-        onFinish: () => setIsSubmittingDevice(false),
-      }
-    );
-  }
-
-  function handlePollDeviceFlow(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    setIsSubmittingDevice(true);
-    router.post(
-      '/github/device/poll',
-      { redirect_to: '/issues' },
-      {
-        preserveScroll: true,
-        onFinish: () => setIsSubmittingDevice(false),
-      }
-    );
-  }
-
-  function copyDeviceCode(code: string) {
-    void copyText(code).then((ok) => {
-      if (!ok) return;
-      setCopiedDeviceCode(true);
-      setTimeout(() => setCopiedDeviceCode(false), 2000);
-    });
   }
 
   function captureIssue(event: React.FormEvent) {
@@ -486,14 +450,8 @@ export default function Issues({
     return (
       <DisconnectedOnboardingView
         error={error}
-        deviceClientIdInput={deviceClientIdInput}
-        setDeviceClientIdInput={setDeviceClientIdInput}
-        isSubmittingDevice={isSubmittingDevice}
-        handleInitiateDeviceFlow={handleInitiateDeviceFlow}
-        handlePollDeviceFlow={handlePollDeviceFlow}
-        copyDeviceCode={copyDeviceCode}
-        copiedDeviceCode={copiedDeviceCode}
         githubConnection={githubConnection}
+        redirectTo="/issues"
       />
     );
   }

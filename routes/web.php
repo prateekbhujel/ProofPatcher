@@ -62,7 +62,10 @@ Route::get('/repositories/auto-review/results', [AutoReviewController::class, 'r
 Route::get('/repositories/auto-comments', [AutomaticInlineSettingController::class, 'status']);
 Route::post('/repositories/auto-comments', [AutomaticInlineSettingController::class, 'toggle']);
 
-// GitHub App Device Flow (Local Desktop Connection per RFC 8628)
+// GitHub web authorization flow (the "Sign in with GitHub" button)
+Route::get('/github/authorize', [DashboardController::class, 'redirectToGitHub']);
+Route::get('/github/callback', [DashboardController::class, 'handleGitHubCallback']);
+// GitHub App Device Flow (terminal connection per RFC 8628)
 Route::post('/github/device/initiate', [DashboardController::class, 'initiateDeviceFlow']);
 Route::post('/github/device/poll', [DashboardController::class, 'pollDeviceFlow']);
 Route::post('/github/device/disconnect', [DashboardController::class, 'disconnectDeviceFlowRequest']);
