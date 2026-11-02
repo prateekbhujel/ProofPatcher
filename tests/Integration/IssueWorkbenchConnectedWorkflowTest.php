@@ -10,6 +10,7 @@ use ProofPatch\Agent\IssueSuggestion;
 use ProofPatch\Agent\RequestBudget;
 use ProofPatch\Evidence\Receipt;
 use ProofPatch\Http\Controllers\IssueWorkbenchController;
+use ProofPatch\Support\KernelCli;
 use ProofPatch\Tests\Support\InteractsWithIsolatedDatabase;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
@@ -45,6 +46,7 @@ final class IssueWorkbenchConnectedWorkflowTest extends TestCase
             @session_start();
         }
         $_SESSION = [];
+        KernelCli::clearSelectedRepo();
     }
 
     protected function tearDown(): void
@@ -65,6 +67,7 @@ final class IssueWorkbenchConnectedWorkflowTest extends TestCase
 
         $this->removeDirectory($this->tempBudgetDir);
         $_SESSION = [];
+        KernelCli::clearSelectedRepo();
         @restore_error_handler();
         @restore_exception_handler();
     }
@@ -261,6 +264,8 @@ final class IssueWorkbenchConnectedWorkflowTest extends TestCase
         self::assertStringEndsWith('/issues', $res->getTargetUrl());
 
         self::assertSame('my-org/my-repo', $session->get('selected_github_repo'));
+        // The terminal reads this same shared selection.
+        self::assertSame('my-org/my-repo', KernelCli::getSelectedRepo());
         $issues = $session->get('github_repo_issues');
         self::assertIsArray($issues);
         self::assertCount(1, $issues);

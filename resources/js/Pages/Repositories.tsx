@@ -89,6 +89,7 @@ export default function Repositories({
 
   const { data: deviceFormData, setData: setDeviceFormData, post: postDeviceInitiate, processing: deviceInitiateProcessing } = useForm({
     client_id: githubConnection?.clientId || '',
+    redirect_to: '/repositories',
   });
 
   const handleInitiateDeviceFlow = (e: React.FormEvent) => {
@@ -98,7 +99,7 @@ export default function Repositories({
 
   const handlePollDeviceFlow = (e?: React.FormEvent) => {
     e?.preventDefault();
-    router.post('/github/device/poll', {}, { preserveScroll: true });
+    router.post('/github/device/poll', { redirect_to: '/repositories' }, { preserveScroll: true });
   };
 
   const handleDisconnectDevice = (e: React.FormEvent) => {

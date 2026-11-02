@@ -22,7 +22,25 @@ final class AuthorizeGithubTasks
     public function handle(Request $request, Closure $next): Response
     {
         $session = $request->session();
+        // The terminal and the web app share one sign-in: a token saved by
+        // `github:connect` is adopted into an empty web session here, then
+        // verified with GitHub below exactly like a web sign-in. Nothing is
+        // trusted until that live check passes.
         $auth = $session->get('github_auth');
+        if (!is_array($auth) || !is_string($auth['token'] ?? null) || trim($auth['token']) === '') {
+            try {
+                $stored = \ProofPatch\GitHub\GitHubTokenStore::get();
+                if (is_array($stored) && is_string($stored['token'] ?? null) && trim($stored['token']) !== '') {
+                    $auth = [
+                        'token' => trim($stored['token']),
+                        'user' => $stored['user'] ?? null,
+                        'repositories' => $stored['repositories'] ?? [],
+                    ];
+                    $session->put('github_auth', $auth);
+                }
+            } catch (\Throwable) {
+            }
+        }
         $previousUserId = is_int($auth['user']['id'] ?? null) ? $auth['user']['id'] : null;
         $token = is_array($auth) && is_string($auth['token'] ?? null) ? trim($auth['token']) : '';
         $userId = null;
@@ -118,8 +136,20 @@ final class AuthorizeGithubTasks
         }
 
         $selected = $session->get('selected_github_repo');
-        if (is_string($selected) && !isset($allowed[strtolower($selected)])) {
+        if (is_string($selected) && trim($selected) !== '' && !isset($allowed[strtolower($selected)])) {
             $session->forget(['selected_github_repo', 'github_repo_issues', 'github_repo_pulls', 'notifications']);
+            $selected = null;
+        }
+        // Repository selection is shared too: when this session has none,
+        // adopt the terminal's selection if it is inside the current grant.
+        if (($selected === null || (is_string($selected) && trim($selected) === '')) && $userId !== null) {
+            try {
+                $shared = \ProofPatch\Support\KernelCli::getSelectedRepo();
+                if ($shared !== null && isset($allowed[strtolower($shared)])) {
+                    $session->put('selected_github_repo', $shared);
+                }
+            } catch (\Throwable) {
+            }
         }
 
         $taskId = $session->get('issue_task_id');

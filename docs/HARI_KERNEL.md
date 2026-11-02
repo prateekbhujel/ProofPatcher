@@ -125,3 +125,28 @@ No auto-discovery (explicit registration is auditable); no web
 transport for skills (see `docs/MCP_SPIKE_EVAL.md`); no write skills
 until consent/budget/GitHub guards are skill-shaped; no second ability
 until a concrete consumer exists.
+
+## 7. Hari and ProofPatcher today (Nov 2026)
+
+Names, pinned so they stop drifting:
+
+- **Hari** is the in-process coordination core: the `Hari\Registry`,
+  the ability manifests, and the skill contracts. It gates WHO may
+  invoke WHAT (declared borrows, pinned majors, capabilities) and
+  fails closed. It is not an operating-system kernel and is never
+  presented as one.
+- **ProofPatcher** is the application on Hari: repository maintenance
+  and issue-solving abilities (`proofpatch-budget`,
+  `proofpatch-evidence`, `proofpatch-review`, `proofpatch-verify`)
+  plus their borrowers (`web`, `workbench`, `kernel-cli`,
+  `telemetry`, `mcp`).
+- **Kernel** on screen (desktop, `kernel:*` commands, `OsStatus`) is
+  the operator shell: connection state, next step, and status. It
+  reads Hari skills but is not Hari.
+
+Connection state follows one rule on every surface: the web session
+and the terminal share the file sign-in; nothing shows "connected"
+without a verified GitHub user; repository selection is shared while
+it stays inside the current grant. The shared pieces are
+`GitHubConnectionState`, `ConnectionNextStep`, and `AppRedirectTarget`
+in `app/Application/Settings`.

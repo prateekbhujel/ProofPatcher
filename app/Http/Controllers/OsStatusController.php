@@ -23,7 +23,7 @@ final class OsStatusController
     public function show(Request $request): JsonResponse
     {
         $auth = SessionHelper::get($request, 'github_auth');
-        $connected = is_array($auth) && isset($auth['token']) && is_string($auth['token']) && trim($auth['token']) !== '';
+        $connected = \ProofPatch\Application\Settings\GitHubConnectionState::isConnected($auth);
         $repos = ($connected && is_array($auth['repositories'] ?? null)) ? array_values(array_filter(
             $auth['repositories'],
             static fn(mixed $repo): bool => is_array($repo) && is_string($repo['fullName'] ?? null)
@@ -67,19 +67,9 @@ final class OsStatusController
         ]);
     }
 
-    /** @return array{title: string, detail: string, href: string, cta: string} */
+    /** @return array{key: string, title: string, detail: string, href: string, cta: string} */
     private function nextStep(bool $connected, int $reposCount, ?string $selectedRepo): array
     {
-        if (!$connected) {
-            return ['title' => 'Connect GitHub', 'detail' => 'Link your account.', 'href' => '/issues', 'cta' => 'Continue with GitHub'];
-        }
-        if ($reposCount === 0) {
-            return ['title' => 'Grant repository access', 'detail' => 'Install the GitHub App, then reconnect.', 'href' => '/settings', 'cta' => 'Open Settings'];
-        }
-        if ($selectedRepo === null) {
-            return ['title' => 'Pick a target repository', 'detail' => 'Choose a granted repository.', 'href' => '/issues', 'cta' => 'Choose a repository'];
-        }
-
-        return ['title' => 'Open an issue or pull request', 'detail' => 'Pick a target from the workbench.', 'href' => '/issues', 'cta' => 'Open the workbench'];
+        return \ProofPatch\Application\Settings\ConnectionNextStep::for($connected, $reposCount, $selectedRepo);
     }
 }

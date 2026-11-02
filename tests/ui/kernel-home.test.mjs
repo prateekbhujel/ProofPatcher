@@ -196,3 +196,18 @@ test('the menu bar shows the connected account', () => {
   }));
   assert.match(html, /Connected as @maintainer/);
 });
+
+test('the menu bar links the primary pages and marks the current one', () => {
+  const menubar = root.load(root.resolveFile(HERE, '../../resources/js/Components/os/MenuBar.tsx'));
+  const html = renderToStaticMarkup(React.createElement(menubar.MenuBar, {
+    center: '→ Connect GitHub — Link your account.',
+    connected: false,
+    userLogin: null,
+    activeNav: 'issues',
+  }));
+  assert.match(html, /<nav aria-label="Primary"[^>]*>/);
+  assert.match(html, /href="\/issues"[^>]*aria-current="page"[^>]*>.*Issues/s);
+  assert.match(html, /href="\/repositories"[^>]*>.*Pull Requests/s);
+  assert.match(html, /href="\/settings"[^>]*>.*Settings/s);
+  assert.doesNotMatch(html, /href="\/settings"[^>]*aria-current="page"/);
+});

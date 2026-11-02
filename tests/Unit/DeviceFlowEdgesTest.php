@@ -12,10 +12,10 @@ final class DeviceFlowEdgesTest extends TestCase
 {
     public function testDisconnectTargetAllowlist(): void
     {
-        foreach (['/issues', '/repositories', '/settings', '/checks'] as $allowed) {
+        foreach (['/', '/issues', '/repositories', '/settings', '/checks'] as $allowed) {
             self::assertSame($allowed, DisconnectRedirect::target($allowed), $allowed);
         }
-        foreach (['', '/', '/evil', '/settings?x=1', 'https://evil.invalid', '//evil.invalid', '/Repositories', 0, null, false] as $bad) {
+        foreach (['', '/evil', '/settings?x=1', 'https://evil.invalid', '//evil.invalid', '/Repositories', 0, null, false] as $bad) {
             self::assertSame('/repositories', DisconnectRedirect::target($bad), var_export($bad, true));
         }
     }

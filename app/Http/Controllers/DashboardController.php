@@ -690,6 +690,7 @@ final class DashboardController
 
     public function initiateDeviceFlow(Request $request): \Illuminate\Http\RedirectResponse
     {
+        $target = \ProofPatch\Application\Settings\AppRedirectTarget::target($request->input('redirect_to'), '/repositories');
         try {
             $clientId = \ProofPatch\Application\Settings\DeviceFlowClientId::resolve(
                 $request->input('client_id'), getenv('PROOFPATCH_GITHUB_CLIENT_ID'), getenv('GITHUB_APP_CLIENT_ID')
@@ -710,24 +711,25 @@ final class DashboardController
             $this->forgetSession($request, 'github_auth', 'selected_github_repo', 'github_repo_pulls');
             $this->addNotification($request, 'info', 'Device Flow Started', "Enter code {$initData['userCode']} at GitHub to authorize.");
 
-            return redirect('/repositories')->with('github_status', 'Device flow initiated. Enter code '.$initData['userCode'].' on GitHub.');
+            return redirect($target)->with('github_status', 'Device flow initiated. Enter code '.$initData['userCode'].' on GitHub.');
         } catch (\Throwable $e) {
             $this->putSession($request, 'github_error', $e->getMessage());
-            return redirect('/repositories')->with('github_error', $e->getMessage());
+            return redirect($target)->with('github_error', $e->getMessage());
         }
     }
 
     public function pollDeviceFlow(Request $request): \Illuminate\Http\RedirectResponse
     {
+        $target = \ProofPatch\Application\Settings\AppRedirectTarget::target($request->input('redirect_to'), '/repositories');
         $flow = $this->getSession($request, 'github_device_flow');
         $sessionState = \ProofPatch\Application\Settings\DeviceFlowSession::check($flow, time());
         if ($sessionState === 'missing') {
-            return redirect('/repositories')->with('github_error', 'No active device flow session. Please initiate first.');
+            return redirect($target)->with('github_error', 'No active device flow session. Please initiate first.');
         }
 
         if ($sessionState === 'expired') {
             $this->forgetSession($request, 'github_device_flow');
-            return redirect('/repositories')->with('github_error', 'Verification code expired. Please initiate connection again.');
+            return redirect($target)->with('github_error', 'Verification code expired. Please initiate connection again.');
         }
 
         try {
@@ -756,6 +758,11 @@ final class DashboardController
                 ];
                 $this->putSession($request, 'github_auth', $authData);
                 \ProofPatch\GitHub\GitHubTokenStore::save($token, $user, $repos, $reposStatus);
+                try {
+                    // A new grant invalidates any previous shared selection.
+                    \ProofPatch\Support\KernelCli::clearSelectedRepo();
+                } catch (\Throwable) {
+                }
                 $this->forgetSession($request, 'github_device_flow');
                 $this->addNotification($request, 'success', 'GitHub Connected', "Successfully connected as @{$user['login']}.");
 
@@ -768,32 +775,32 @@ final class DashboardController
                     $this->addNotification($request, 'warning', 'Repositories Incomplete', $warn);
                 }
 
-                return redirect('/repositories')->with('github_status', 'Successfully connected to GitHub as @'.$user['login'].'.');
+                return redirect($target)->with('github_status', 'Successfully connected to GitHub as @'.$user['login'].'.');
             }
 
             if ($outcome === 'pending') {
-                return redirect('/repositories')->with('github_status', 'Authorization pending. Enter user code '.$flow['userCode'].' at '.$flow['verificationUri'].'.');
+                return redirect($target)->with('github_status', 'Authorization pending. Enter user code '.$flow['userCode'].' at '.$flow['verificationUri'].'.');
             }
 
             if ($outcome === 'slow_down') {
                 $flow['interval'] = $result['interval'] ?? 10;
                 $this->putSession($request, 'github_device_flow', $flow);
-                return redirect('/repositories')->with('github_status', 'Rate limited by GitHub. Please wait a few seconds before checking again.');
+                return redirect($target)->with('github_status', 'Rate limited by GitHub. Please wait a few seconds before checking again.');
             }
 
             if ($outcome === 'expired') {
                 $this->forgetSession($request, 'github_device_flow');
-                return redirect('/repositories')->with('github_error', 'Verification code expired. Please initiate connection again.');
+                return redirect($target)->with('github_error', 'Verification code expired. Please initiate connection again.');
             }
 
             if ($outcome === 'denied') {
                 $this->forgetSession($request, 'github_device_flow');
-                return redirect('/repositories')->with('github_error', 'Authorization was declined on GitHub.');
+                return redirect($target)->with('github_error', 'Authorization was declined on GitHub.');
             }
 
-            return redirect('/repositories')->with('github_error', 'GitHub authorization error: '.($result['error'] ?? 'Unknown error'));
+            return redirect($target)->with('github_error', 'GitHub authorization error: '.($result['error'] ?? 'Unknown error'));
         } catch (\Throwable $e) {
-            return redirect('/repositories')->with('github_error', 'Failed to poll GitHub: '.$e->getMessage());
+            return redirect($target)->with('github_error', 'Failed to poll GitHub: '.$e->getMessage());
         }
     }
 
@@ -834,6 +841,10 @@ final class DashboardController
         );
         $this->forgetSession($request, ...array_merge(IssueWorkbenchController::CASE_SESSION_KEYS, ['notifications']));
         \ProofPatch\GitHub\GitHubTokenStore::clear();
+        try {
+            \ProofPatch\Support\KernelCli::clearSelectedRepo();
+        } catch (\Throwable) {
+        }
         $this->addNotification($request, 'info', 'GitHub Disconnected', 'Disconnected from GitHub device session.');
 
         $target = \ProofPatch\Application\Settings\DisconnectRedirect::target(
@@ -887,6 +898,11 @@ final class DashboardController
             $this->putSession($request, 'github_repo_issues', $issues);
             $this->putSession($request, 'github_repo_pulls', $pulls);
             $this->putSession($request, 'github_repo_pulls_status', $pullsStatus);
+            try {
+                // The terminal reads this same selection file.
+                \ProofPatch\Support\KernelCli::setSelectedRepo($repoName);
+            } catch (\Throwable) {
+            }
 
             $warn = \ProofPatch\Application\Repository\GitHubListWarning::message(
                 $pullsStatus,

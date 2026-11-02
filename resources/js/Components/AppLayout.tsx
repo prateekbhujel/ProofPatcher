@@ -24,7 +24,7 @@ const APP_TITLES: Record<NonNullable<AppLayoutProps['activeNav']>, string> = {
 export function AppLayout({ activeNav = 'kernel', children }: AppLayoutProps) {
   const { embed } = usePage().props as { embed?: boolean };
   return (
-    <OsShell appId={APP_TITLES[activeNav]} fullscreen={activeNav === 'issues'} embed={embed === true}>
+    <OsShell appId={APP_TITLES[activeNav]} fullscreen={activeNav === 'issues'} embed={embed === true} activeNav={activeNav}>
       {children}
     </OsShell>
   );

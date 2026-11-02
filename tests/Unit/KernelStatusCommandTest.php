@@ -12,6 +12,8 @@ use ProofPatch\Models\RepositoryAutoReviewSetting;
 use ProofPatch\Support\KernelCli;
 use ProofPatch\Tests\Support\InteractsWithIsolatedDatabase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
 
 final class KernelStatusCommandTest extends TestCase
 {
@@ -54,9 +56,12 @@ final class KernelStatusCommandTest extends TestCase
     }
 
     /** @return array{exit: int, display: string} */
-    private function runCommand(array $input = []): array
+    private function runCommand(array $input = [], ?MockHttpClient $http = null): array
     {
-        $command = new KernelStatusCommand();
+        // Status live-checks the saved sign-in; tests answer with a mock so
+        // they never touch the network.
+        $http ??= new MockHttpClient([new MockResponse(json_encode(['login' => 'maintainer']))]);
+        $command = new KernelStatusCommand(null, $http);
         $command->setLaravel($this->app);
         $tester = new CommandTester($command);
         $exit = $tester->execute($input);
@@ -157,5 +162,54 @@ final class KernelStatusCommandTest extends TestCase
         $this->assertSame(0, $result['exit']);
         $this->assertStringContainsString('not connected', $result['display']);
         $this->assertStringContainsString('github:connect', $result['display']);
+    }
+
+    public function testVerifiedSignInIsReported(): void
+    {
+        $this->connect();
+
+        $result = $this->runCommand([]);
+
+        $this->assertSame(0, $result['exit']);
+        $this->assertStringContainsString('verified just now', $result['display']);
+    }
+
+    public function testRejectedSignInPointsAtReconnect(): void
+    {
+        $this->connect();
+        $http = new MockHttpClient([new MockResponse('{"message":"Bad credentials"}', ['http_code' => 401])]);
+
+        $result = $this->runCommand([], $http);
+
+        $this->assertSame(0, $result['exit']);
+        $this->assertStringContainsString('saved sign-in rejected by GitHub', $result['display']);
+        $this->assertStringContainsString('github:connect --force', $result['display']);
+        $this->assertStringNotContainsString('test-token-value', $result['display']);
+    }
+
+    public function testUnreachableGitHubFallsBackToSavedSignIn(): void
+    {
+        $this->connect();
+        $http = new MockHttpClient([new MockResponse('error', ['http_code' => 500])]);
+
+        $result = $this->runCommand([], $http);
+
+        $this->assertSame(0, $result['exit']);
+        $this->assertStringContainsString('could not reach GitHub; showing saved sign-in', $result['display']);
+        $this->assertStringContainsString('@maintainer', $result['display']);
+    }
+
+    public function testJsonOutputReportsVerification(): void
+    {
+        $this->connect();
+
+        $verified = json_decode($this->runCommand(['--json' => true])['display'], true);
+        $this->assertTrue($verified['connected']);
+        $this->assertTrue($verified['verified']);
+
+        $rejected = new MockHttpClient([new MockResponse('{}', ['http_code' => 403])]);
+        $denied = json_decode($this->runCommand(['--json' => true], $rejected)['display'], true);
+        $this->assertTrue($denied['connected']);
+        $this->assertFalse($denied['verified']);
     }
 }

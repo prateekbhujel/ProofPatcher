@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { APP_FOLDERS } from './apps';
 import { AppWindow } from './AppWindow';
 import { KernelTaskbar } from './KernelTaskbar';
-import { MenuBar } from './MenuBar';
+import { MenuBar, MenuBarNav } from './MenuBar';
 import { StartMenu } from './StartMenu';
 import { useOsStatus } from './useOsStatus';
 
@@ -13,6 +13,8 @@ interface OsShellProps {
   fullscreen?: boolean;
   /** Embedded in a desktop window: bare content, no nested chrome. */
   embed?: boolean;
+  /** Current page, highlighted in the menu-bar navigation. */
+  activeNav?: MenuBarNav;
   children: React.ReactNode;
 }
 
@@ -21,7 +23,7 @@ interface OsShellProps {
  * start menu. Status loads client-side; until then the chrome shows honest
  * placeholders instead of claiming offline.
  */
-export function OsShell({ appId, fullscreen = false, embed = false, children }: OsShellProps) {
+export function OsShell({ appId, fullscreen = false, embed = false, activeNav = 'kernel', children }: OsShellProps) {
   const status = useOsStatus();
   const [startOpen, setStartOpen] = useState(false);
   // In-iframe navigation can drop ?embed=1; the runtime check keeps nested
@@ -63,6 +65,7 @@ export function OsShell({ appId, fullscreen = false, embed = false, children }: 
           connected={status?.connected ?? false}
           userLogin={status?.userLogin ?? null}
           loading={status === null}
+          activeNav={activeNav}
         />
         {fullscreen ? (
           <main className="pp-page-enter min-h-screen w-full flex-1">{children}</main>

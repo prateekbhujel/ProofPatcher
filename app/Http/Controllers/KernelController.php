@@ -25,7 +25,7 @@ final class KernelController
     public function show(Request $request): InertiaResponse
     {
         $auth = SessionHelper::get($request, 'github_auth');
-        $connected = is_array($auth) && isset($auth['token']) && is_string($auth['token']) && trim($auth['token']) !== '';
+        $connected = \ProofPatch\Application\Settings\GitHubConnectionState::isConnected($auth);
         $repos = ($connected && is_array($auth['repositories'] ?? null)) ? array_values(array_filter(
             $auth['repositories'],
             static fn(mixed $repo): bool => is_array($repo) && is_string($repo['fullName'] ?? null)
@@ -199,43 +199,11 @@ final class KernelController
             ];
         }
 
-        if (!$state['connected']) {
-            return [
-                'key' => 'connect',
-                'title' => 'Connect GitHub',
-                'detail' => 'Link your account so the kernel can load repositories, issues, and pull requests.',
-                'href' => '/issues',
-                'cta' => 'Continue with GitHub',
-            ];
-        }
-
-        if ($state['reposCount'] === 0) {
-            return [
-                'key' => 'grant',
-                'title' => 'Grant repository access',
-                'detail' => 'Install the GitHub App on the repositories the kernel should patch, then reconnect.',
-                'href' => '/settings',
-                'cta' => 'Open Settings',
-            ];
-        }
-
-        if ($state['selectedRepo'] === null) {
-            return [
-                'key' => 'select_repo',
-                'title' => 'Pick a target repository',
-                'detail' => 'Choose which granted repository to work on first.',
-                'href' => '/issues',
-                'cta' => 'Choose a repository',
-            ];
-        }
-
-        return [
-            'key' => 'target',
-            'title' => 'Open an issue or pull request',
-            'detail' => 'Pick a target from the workbench, or enable automatic reviews in Settings and let the worker watch.',
-            'href' => '/issues',
-            'cta' => 'Open the workbench',
-        ];
+        return \ProofPatch\Application\Settings\ConnectionNextStep::for(
+            $state['connected'],
+            $state['reposCount'],
+            $state['selectedRepo']
+        );
     }
 
     /**

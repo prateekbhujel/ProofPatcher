@@ -280,7 +280,7 @@ export default function Issues({
     setIsSubmittingDevice(true);
     router.post(
       '/github/device/initiate',
-      { client_id: deviceClientIdInput },
+      { client_id: deviceClientIdInput, redirect_to: '/issues' },
       {
         preserveScroll: true,
         onFinish: () => setIsSubmittingDevice(false),
@@ -293,7 +293,7 @@ export default function Issues({
     setIsSubmittingDevice(true);
     router.post(
       '/github/device/poll',
-      {},
+      { redirect_to: '/issues' },
       {
         preserveScroll: true,
         onFinish: () => setIsSubmittingDevice(false),

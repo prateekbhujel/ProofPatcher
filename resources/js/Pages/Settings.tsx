@@ -97,14 +97,14 @@ export default function Settings({
   const handleInitiate = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    router.post('/github/device/initiate', { client_id: clientIdInput }, {
+    router.post('/github/device/initiate', { client_id: clientIdInput, redirect_to: '/settings' }, {
       onFinish: () => setIsSubmitting(false),
     });
   };
 
   const handlePoll = () => {
     setIsSubmitting(true);
-    router.post('/github/device/poll', {}, {
+    router.post('/github/device/poll', { redirect_to: '/settings' }, {
       onFinish: () => setIsSubmitting(false),
     });
   };

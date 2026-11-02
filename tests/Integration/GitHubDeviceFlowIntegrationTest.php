@@ -6,7 +6,9 @@ namespace ProofPatch\Tests\Integration;
 
 use Illuminate\Http\Request;
 use PHPUnit\Framework\TestCase;
+use ProofPatch\GitHub\GitHubTokenStore;
 use ProofPatch\Http\Controllers\DashboardController;
+use ProofPatch\Support\KernelCli;
 use ProofPatch\Tests\Support\InteractsWithIsolatedDatabase;
 
 final class GitHubDeviceFlowIntegrationTest extends TestCase
@@ -26,6 +28,8 @@ final class GitHubDeviceFlowIntegrationTest extends TestCase
             @session_start();
         }
         $_SESSION = [];
+        GitHubTokenStore::clear();
+        KernelCli::clearSelectedRepo();
     }
 
     protected function tearDown(): void
@@ -40,6 +44,10 @@ final class GitHubDeviceFlowIntegrationTest extends TestCase
             @rmdir($this->tempSnapshots);
         }
         $_SESSION = [];
+        // Web and terminal genuinely share this state now: poll success
+        // saves the token and selection syncs the repo, so clean both.
+        GitHubTokenStore::clear();
+        KernelCli::clearSelectedRepo();
 
         @restore_error_handler();
         @restore_exception_handler();
@@ -375,6 +383,8 @@ final class GitHubDeviceFlowIntegrationTest extends TestCase
 
         $response = $controller->selectInstalledRepository($selectRequest);
         $this->assertSame(302, $response->getStatusCode());
+        // The terminal reads this same shared selection.
+        $this->assertSame('octocat/repo-alpha', KernelCli::getSelectedRepo());
 
         $pullsStatus = $session->get('github_repo_pulls_status');
         $this->assertIsArray($pullsStatus);
@@ -397,5 +407,27 @@ final class GitHubDeviceFlowIntegrationTest extends TestCase
         $this->assertTrue($props['githubConnection']['repoPullsStatus']['truncated']);
         $this->assertSame(100, $props['githubConnection']['repoPullsStatus']['count']);
         $this->assertNotEmpty($props['githubConnection']['repoPullsStatus']['errors']);
+    }
+
+    public function testPollWithoutFlowReturnsToOriginPage(): void
+    {
+        $controller = new DashboardController();
+        $request = Request::create('/github/device/poll', 'POST', ['redirect_to' => '/issues']);
+
+        $response = $controller->pollDeviceFlow($request);
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertStringEndsWith('/issues', $response->getTargetUrl());
+    }
+
+    public function testPollRejectsOffsiteRedirectTarget(): void
+    {
+        $controller = new DashboardController();
+        $request = Request::create('/github/device/poll', 'POST', ['redirect_to' => 'https://evil.invalid']);
+
+        $response = $controller->pollDeviceFlow($request);
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertStringEndsWith('/repositories', $response->getTargetUrl());
     }
 }

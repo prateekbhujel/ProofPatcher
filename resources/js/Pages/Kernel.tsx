@@ -58,6 +58,7 @@ export default function Kernel(props: KernelProps) {
         center={`→ ${nextStep.title} — ${nextStep.detail}`}
         connected={connected}
         userLogin={user?.login ?? null}
+        activeNav="kernel"
       />
       <main>
         <OsDesktop

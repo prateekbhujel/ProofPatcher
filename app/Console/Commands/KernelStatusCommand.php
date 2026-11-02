@@ -8,9 +8,12 @@ use Hari\Hari;
 use Hari\Registry;
 use Illuminate\Console\Command;
 use ProofPatch\Agent\ProviderConfigStore;
+use ProofPatch\GitHub\GitHubTokenStore;
 use ProofPatch\Models\RepositoryAutoReviewSetting;
 use ProofPatch\Support\KernelCli;
 use ProofPatch\Support\WorkerStatusService;
+use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Terminal twin of the Kernel home: one read-only dashboard for the whole
@@ -28,6 +31,7 @@ final class KernelStatusCommand extends Command
     public function handle(): int
     {
         $state = KernelCli::connectState();
+        $verification = $state['connected'] ? $this->verifyConnection() : 'none';
         $selected = $state['connected'] ? KernelCli::getSelectedRepo() : null;
         $authorized = [];
         $selectedPrivate = false;
@@ -43,12 +47,13 @@ final class KernelStatusCommand extends Command
         $worker = $this->worker();
         $stats = $this->stats(array_keys($authorized));
         $enabled = $this->enabledRepositories();
-        $next = $this->nextStep($state['connected'], $authorized, $selected, $enabled, (bool) ($worker['isLive'] ?? false), $budget === null || (bool) ($budget['canRequest'] ?? false), $selectedPrivate);
+        $next = $this->nextStep($state['connected'], $authorized, $selected, $enabled, (bool) ($worker['isLive'] ?? false), $budget === null || (bool) ($budget['canRequest'] ?? false), $selectedPrivate, $verification);
 
         if ((bool) $this->option('json')) {
             $this->line(json_encode([
                 'kernel' => KernelCli::VERSION,
                 'connected' => $state['connected'],
+                'verified' => $verification === 'verified' ? true : ($verification === 'rejected' ? false : null),
                 'user' => $state['user'],
                 'reposCount' => count($authorized),
                 'selectedRepo' => $selected,
@@ -65,7 +70,7 @@ final class KernelStatusCommand extends Command
 
         $this->line('ProofPatcher Kernel ' . KernelCli::VERSION . ' — status');
         $this->line('');
-        $this->line('  GitHub      ' . $this->githubLine($state, $selected));
+        $this->line('  GitHub      ' . $this->githubLine($state, $selected, $verification));
         $this->line('  Muse        ' . $provider['label'] . ' · ' . $provider['model'] . ' · ' . ($provider['keyReady'] ? 'key ready' : 'key missing'));
         $this->line('  Budget      ' . $this->budgetLine($budget));
         $this->line('  Autopilot   ' . $this->workerLine($worker));
@@ -79,16 +84,20 @@ final class KernelStatusCommand extends Command
     }
 
     /** @param array{connected: bool, user: ?array{login: ?string}, repos: list<array{fullName: string}>} $state */
-    private function githubLine(array $state, ?string $selected): string
+    private function githubLine(array $state, ?string $selected, string $verification): string
     {
         if (!$state['connected']) {
             return 'not connected';
+        }
+        if ($verification === 'rejected') {
+            return 'saved sign-in rejected by GitHub — sign in again';
         }
         $count = count($state['repos']);
         $line = 'connected as @' . ($state['user']['login'] ?? '?') . ' · ' . $count . ' ' . ($count === 1 ? 'repo' : 'repos');
         if ($selected !== null) {
             $line .= ' · selected ' . $selected;
         }
+        $line .= $verification === 'verified' ? ' · verified just now' : ' · could not reach GitHub; showing saved sign-in';
 
         return $line;
     }
@@ -109,9 +118,51 @@ final class KernelStatusCommand extends Command
         ];
     }
 
-    public function __construct(private ?Registry $hari = null)
+    public function __construct(private ?Registry $hari = null, private ?HttpClientInterface $http = null)
     {
         parent::__construct();
+    }
+
+    /**
+     * Live-checks the saved sign-in against GitHub. Read-only: one identity
+     * request with a short timeout. Returns verified, rejected (GitHub said
+     * the token is invalid), or unknown (unreachable or unexpected reply).
+     *
+     * @return 'verified'|'rejected'|'unknown'
+     */
+    private function verifyConnection(): string
+    {
+        try {
+            $token = GitHubTokenStore::getToken();
+            if ($token === null) {
+                return 'unknown';
+            }
+            $client = $this->http ?? HttpClient::create(['timeout' => 8]);
+            $response = $client->request('GET', 'https://api.github.com/user', [
+                'headers' => [
+                    'Accept' => 'application/vnd.github+json',
+                    'Authorization' => 'Bearer ' . $token,
+                    'User-Agent' => 'ProofPatcher',
+                ],
+                'timeout' => 8,
+                'max_redirects' => 0,
+            ]);
+            $status = $response->getStatusCode();
+            if ($status === 401 || $status === 403) {
+                return 'rejected';
+            }
+            if ($status !== 200) {
+                return 'unknown';
+            }
+            $data = json_decode($response->getContent(false), true);
+            if (!is_array($data) || !is_string($data['login'] ?? null)) {
+                return 'unknown';
+            }
+
+            return 'verified';
+        } catch (\Throwable) {
+            return 'unknown';
+        }
     }
 
     /** @return ?array{attempts: int, maxAttempts: int, remainingMicros: int, canRequest: bool} */
@@ -227,15 +278,19 @@ final class KernelStatusCommand extends Command
      * @param array<string, string> $enabled lower => display
      * @return array{title: string, command: string}
      */
-    private function nextStep(bool $connected, array $authorized, ?string $selected, array $enabled, bool $workerLive, bool $canRequest, bool $selectedPrivate): array
+    private function nextStep(bool $connected, array $authorized, ?string $selected, array $enabled, bool $workerLive, bool $canRequest, bool $selectedPrivate, string $verification): array
     {
-        if (!$connected) {
+        $step = \ProofPatch\Application\Settings\ConnectionNextStep::key($connected, count($authorized), $selected);
+        if ($step === 'connect') {
             return ['title' => 'Connect GitHub to authorize repositories.', 'command' => 'php artisan github:connect'];
         }
-        if ($authorized === []) {
+        if ($verification === 'rejected') {
+            return ['title' => 'The saved GitHub sign-in was rejected. Sign in again.', 'command' => 'php artisan github:connect --force'];
+        }
+        if ($step === 'grant') {
             return ['title' => 'Install the GitHub App on a repository, then re-run connect.', 'command' => 'php artisan github:connect'];
         }
-        if ($selected === null || !isset($authorized[strtolower($selected)])) {
+        if ($step === 'select_repo' || ($selected !== null && !isset($authorized[strtolower($selected)]))) {
             return ['title' => 'Select a repository to work on.', 'command' => 'php artisan kernel:select-repo'];
         }
         if ($selectedPrivate) {

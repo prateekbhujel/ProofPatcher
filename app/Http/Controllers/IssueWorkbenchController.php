@@ -243,7 +243,7 @@ final class IssueWorkbenchController
         $githubConnection = [
             'isConfigured' => $clientIdConfigured,
             'clientId' => getenv('PROOFPATCH_GITHUB_CLIENT_ID') ?: getenv('GITHUB_APP_CLIENT_ID') ?: null,
-            'isConnected' => is_array($githubAuth) && isset($githubAuth['token']),
+            'isConnected' => \ProofPatch\Application\Settings\GitHubConnectionState::isConnected($githubAuth),
             'user' => is_array($githubAuth) ? ($githubAuth['user'] ?? null) : null,
             'repositoryCount' => is_array($githubAuth) && is_array($githubAuth['repositories'] ?? null)
                 ? count($githubAuth['repositories'])
@@ -400,6 +400,11 @@ final class IssueWorkbenchController
                 ]));
             }
             $request->session()->put('selected_github_repo', $repoName);
+            try {
+                // The terminal reads this same selection file.
+                \ProofPatch\Support\KernelCli::setSelectedRepo($repoName);
+            } catch (\Throwable) {
+            }
             $request->session()->put('github_repo_issues', $issues);
             $request->session()->put('github_repo_pulls', $pulls);
             $request->session()->put('github_repo_list_incomplete', (bool) ($issueStatus['truncated'] || $pullStatus['truncated']));

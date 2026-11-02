@@ -24,7 +24,7 @@ final class GitHubConnectionProjection
         return [
             'isConfigured' => $ctx['clientIdConfigured'],
             'clientId' => $ctx['clientId'],
-            'isConnected' => is_array($githubAuth) && isset($githubAuth['token']),
+            'isConnected' => GitHubConnectionState::isConnected($githubAuth),
             'user' => is_array($githubAuth) ? ($githubAuth['user'] ?? null) : null,
             'repositories' => is_array($githubAuth) ? ($githubAuth['repositories'] ?? []) : [],
             'repositoriesStatus' => is_array($githubAuth) ? ($githubAuth['repositoriesStatus'] ?? null) : null,
