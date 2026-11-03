@@ -36,7 +36,10 @@ final class FixtureObservationRunner
             $output = is_array($response) ? ($response['output'] ?? '') : '';
             $success = is_array($response) && ($response['success'] ?? false) === true;
         } else {
-            $process = new Process([$python, $script], dirname(__DIR__, 2), null, $request, 540);
+            // The harness locates `php` via PATH; web-server contexts may not
+            // inherit a PATH containing it, so always include PHP's own bin dir.
+            $env = ['PATH' => PHP_BINDIR.PATH_SEPARATOR.(getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin')];
+            $process = new Process([$python, $script], dirname(__DIR__, 2), $env, $request, 540);
             $process->run();
             $output = $process->getOutput();
             $success = $process->isSuccessful();
