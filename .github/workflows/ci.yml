@@ -36,6 +36,7 @@ jobs:
           npm ci
           npm run typecheck
           npm run build
+          node --test tests/ui/console-shell.test.mjs
 
       - name: Ensure ChromeDriver is available
         run: |
