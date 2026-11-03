@@ -20,6 +20,7 @@ import {
 import { SettingsProps } from '../Components/settings/types';
 import { AutoReviewPanel } from '../Components/settings/AutoReviewPanel';
 import { AutomaticCommentsPanel } from '../Components/settings/AutomaticCommentsPanel';
+import { MaintainerAutopilotPanel } from '../Components/settings/MaintainerAutopilotPanel';
 import { AutopilotBudgetCard } from '../Components/settings/AutopilotBudgetCard';
 
 export default function Settings({
@@ -243,6 +244,10 @@ export default function Settings({
             </div>
             <div id="settings-comments" className="scroll-mt-16">
             <AutomaticCommentsPanel connected={githubConnection.isConnected} login={githubConnection.user?.login ?? null}
+              repositories={repositories} csrf={String(props.csrf_token || '')} />
+            </div>
+            <div id="settings-maintainer" className="scroll-mt-16">
+            <MaintainerAutopilotPanel connected={githubConnection.isConnected} login={githubConnection.user?.login ?? null}
               repositories={repositories} csrf={String(props.csrf_token || '')} />
             </div>
 
