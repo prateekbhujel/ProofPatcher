@@ -79,6 +79,41 @@ final class MaintainerAutopilotFlowTest extends TestCase
         self::assertSame('fix_eligible', $result['actions'][0]['action']);
     }
 
+    public function testCommentTimestampAndRepositoryCasingDoNotCauseAnotherIssueAction(): void
+    {
+        $updatedAt = '2026-11-01T00:00:00Z';
+        $http = new MockHttpClient(static function (string $method, string $url) use (&$updatedAt) {
+            if (str_contains($url, '/issues?')) {
+                return new MockResponse(json_encode([['number' => 3, 'title' => 'Broken', 'body' => 'it fails',
+                    'state' => 'open', 'user' => ['login' => 'reporter'], 'updated_at' => $updatedAt, 'labels' => []]]));
+            }
+            return new MockResponse('[]');
+        });
+        $watcher = new MaintainerIssueWatcher(new GitHubAppClient($http));
+        $authorized = [strtolower(self::REPO) => ['isPrivate' => false]];
+        self::assertCount(1, $watcher->poll('tok', 7, $authorized, [self::REPO])['actions']);
+        $updatedAt = '2026-11-01T00:05:00Z';
+        self::assertSame([], $watcher->poll('tok', 7, $authorized, [strtoupper(self::REPO)])['actions']);
+        self::assertSame(1, AutopilotIssueAction::count());
+    }
+
+    public function testIncompleteOpenPullListingBlocksIssueActions(): void
+    {
+        $http = new MockHttpClient(static function (string $method, string $url) {
+            if (str_contains($url, '/issues?')) {
+                return new MockResponse(json_encode([['number' => 3, 'title' => 'Broken', 'body' => 'it fails',
+                    'state' => 'open', 'user' => ['login' => 'reporter'], 'labels' => []]]));
+            }
+            if (str_contains($url, 'state=open')) return new MockResponse('{}', ['http_code' => 503]);
+            return new MockResponse('[]');
+        });
+        $watcher = new MaintainerIssueWatcher(new GitHubAppClient($http));
+        $result = $watcher->poll('tok', 7, [strtolower(self::REPO) => ['isPrivate' => false]], [self::REPO]);
+        self::assertSame([], $result['actions']);
+        self::assertNotEmpty($result['errors']);
+        self::assertSame(0, AutopilotIssueAction::count());
+    }
+
     public function testMarkReadyUsesGraphqlWithPinnedRevision(): void
     {
         $requests = [];

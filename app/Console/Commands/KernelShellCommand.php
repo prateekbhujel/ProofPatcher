@@ -311,9 +311,9 @@ final class KernelShellCommand extends Command
         }
         $map = [
             'fix' => ['fix_issues', 'Fix demo issue', $flags['fixIssues']],
-            'ready' => ['auto_ready', 'Auto-ready', $flags['autoReady']],
-            'merge' => ['auto_merge', 'Auto-merge (gated)', $flags['autoMerge']],
-            'close' => ['auto_close', 'Auto-close slop (gated)', $flags['autoClose']],
+            'ready' => ['auto_ready', 'Auto-ready (unavailable)', $flags['autoReady']],
+            'merge' => ['auto_merge', 'Auto-merge (unavailable)', $flags['autoMerge']],
+            'close' => ['auto_close', 'Auto-close (unavailable)', $flags['autoClose']],
         ];
         $this->line("Maintainer extension for {$repo} (part of autopilot, not a separate system):");
         foreach ($map as $key => [, $label, $on]) {
@@ -324,6 +324,10 @@ final class KernelShellCommand extends Command
             return;
         }
         [$flag, $label, $on] = $map[$choice];
+        if (in_array($flag, ['auto_ready', 'auto_merge', 'auto_close'], true) && !$on) {
+            $this->line('This action is unavailable while its safeguards are verified.');
+            return;
+        }
         try {
             \ProofPatch\Models\MaintainerAutopilotSetting::setFlag($repo, $flag, !$on);
             $this->info($label.' for '.$repo.' is now '.(!$on ? 'on' : 'off').'.');

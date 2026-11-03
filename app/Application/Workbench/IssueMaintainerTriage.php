@@ -37,7 +37,7 @@ final class IssueMaintainerTriage
             }
             if (($pull['isMerged'] ?? false) === true) {
                 return array_merge($base, ['action' => 'already_fixed', 'pullNumber' => $pullNumber,
-                    'reason' => "Pull request #{$pullNumber} referencing this issue is already merged; the issue can be closed."]);
+                    'reason' => "Merged pull request #{$pullNumber} mentions this issue; check whether it resolves the problem."]);
             }
             if (($pull['state'] ?? 'open') === 'open') {
                 return array_merge($base, ['action' => 'has_open_pr', 'pullNumber' => $pullNumber,

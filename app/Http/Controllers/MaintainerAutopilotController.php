@@ -97,6 +97,9 @@ final class MaintainerAutopilotController
             || in_array($parts[2], ['.', '..'], true) || !in_array($flag, self::FLAGS, true) || !is_bool($enabled)) {
             return response()->json(['error' => 'Invalid repository or setting.'], 422);
         }
+        if ($enabled && in_array($flag, ['auto_ready', 'auto_merge', 'auto_close'], true)) {
+            return response()->json(['error' => 'This action is unavailable while its safeguards are verified.'], 422);
+        }
         if (strcasecmp($parts[1], $identity['login']) !== 0 || !isset($identity['grants'][strtolower($repo)])) {
             return response()->json(['error' => 'Only your own installed repositories can be enabled.'], 403);
         }

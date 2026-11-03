@@ -8,9 +8,9 @@ interface Props { connected: boolean; login: string | null; repositories: GitHub
 
 const FLAG_LABELS: { key: keyof Flags; label: string; hint: string }[] = [
   { key: 'fix_issues', label: 'Fix demo issue', hint: 'Complete issues in the dedicated demo scope are marked fix-ready; draft PR publication still needs its server-held approval.' },
-  { key: 'auto_ready', label: 'Auto-ready', hint: 'A gated draft PR is marked ready for review before merging.' },
-  { key: 'auto_merge', label: 'Auto-merge', hint: 'Merges only when the review approves, all checks are green, no review threads are unresolved, and the branch has not moved.' },
-  { key: 'auto_close', label: 'Auto-close slop', hint: 'Closes a PR only when the review asked for changes, checks are red, and there is a real blocker. An explanation comment always lands first.' },
+  { key: 'auto_ready', label: 'Auto-ready', hint: 'Unavailable while automatic merge is under review.' },
+  { key: 'auto_merge', label: 'Auto-merge', hint: 'Unavailable while GitHub check and review safeguards are being verified.' },
+  { key: 'auto_close', label: 'Auto-close', hint: 'Unavailable while revision safeguards are being verified.' },
 ];
 
 export function MaintainerAutopilotPanel({ connected, login, repositories, csrf }: Props) {
@@ -61,7 +61,7 @@ export function MaintainerAutopilotPanel({ connected, login, repositories, csrf 
   return (
     <section className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 text-xs" aria-labelledby="maintainer-autopilot-title">
       <h2 id="maintainer-autopilot-title" className="text-sm font-semibold">Autopilot — maintainer extension</h2>
-      <p>This extends the autopilot above — same worker, same reviews — with maintainer hands. Per public repository you own. Issue watching (ask for info, spot duplicates and existing fixes) runs on repositories with autopilot reviews on plus at least one switch below or automatic comments on. Fixing, auto-ready, and auto-merge each need their own switch. Every switch is off by default, and auto-merge rechecks the exact reviewed commit before merging.</p>
+      <p>Review issues in public repositories you own. Automatic merge, ready and close are unavailable while their safeguards are verified.</p>
       {!connected ? <p>Connect GitHub to choose repositories.</p> : settings === null ? <p>Settings unavailable or loading.</p> : owned.length === 0 ? <p>No eligible public repositories.</p> : (
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
           {owned.map((repo) => {
@@ -76,8 +76,8 @@ export function MaintainerAutopilotPanel({ connected, login, repositories, csrf 
                       <div className="text-slate-500 dark:text-slate-400">{hint}</div>
                     </div>
                     <label className="flex shrink-0 items-center gap-2 text-slate-700 dark:text-slate-300">
-                      <span>{flags[key] ? 'On' : 'Off'}</span>
-                      <input type="checkbox" checked={flags[key]} disabled={pending !== null}
+                      <span>{key !== 'fix_issues' ? 'Unavailable' : flags[key] ? 'On' : 'Off'}</span>
+                      <input type="checkbox" checked={flags[key]} disabled={pending !== null || (key !== 'fix_issues' && !flags[key])}
                         aria-label={`${label} for ${repo.fullName}`}
                         onChange={(event) => void toggle(repo.fullName, key, event.currentTarget.checked)} />
                     </label>

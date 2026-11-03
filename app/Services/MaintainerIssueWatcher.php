@@ -25,7 +25,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class MaintainerIssueWatcher
 {
-    private const COMMENTABLE = ['needs_info', 'duplicate', 'has_open_pr', 'already_fixed', 'fix_eligible'];
+    private const COMMENTABLE = ['needs_info', 'duplicate', 'has_open_pr', 'fix_eligible'];
 
     public function __construct(
         private GitHubAppClient $github,
@@ -64,10 +64,12 @@ final class MaintainerIssueWatcher
                     $summary['errors'][] = "Issue list for {$repoName} was incomplete; no issue actions were taken.";
                     continue;
                 }
-                $pullStatus = [];
-                $openPulls = $this->github->listOpenPullRequests($token, $repoName, $pullStatus);
-                $closedPulls = $this->github->listOpenPullRequests($token, $repoName, $pullStatus, 'closed');
-                if (($pullStatus['truncated'] ?? true) || !empty($pullStatus['errors'])) {
+                $openStatus = [];
+                $closedStatus = [];
+                $openPulls = $this->github->listOpenPullRequests($token, $repoName, $openStatus);
+                $closedPulls = $this->github->listOpenPullRequests($token, $repoName, $closedStatus, 'closed');
+                if (($openStatus['truncated'] ?? true) || !empty($openStatus['errors'])
+                    || ($closedStatus['truncated'] ?? true) || !empty($closedStatus['errors'])) {
                     $summary['errors'][] = "Pull list for {$repoName} was incomplete; no issue actions were taken.";
                     continue;
                 }
@@ -84,7 +86,8 @@ final class MaintainerIssueWatcher
                 if ($number < 1) {
                     continue;
                 }
-                $revision = hash('sha256', ((string) ($issue['title'] ?? ''))."\n".((string) ($issue['body'] ?? ''))."\n".((string) ($issue['updatedAt'] ?? '')));
+                // Comments change updatedAt, including our own. Only the issue text defines this revision.
+                $revision = hash('sha256', json_encode([(string) ($issue['title'] ?? ''), (string) ($issue['body'] ?? '')], JSON_THROW_ON_ERROR));
                 $already = AutopilotIssueAction::whereRaw('LOWER(repository) = ?', [$lower])
                     ->where('issue_number', $number)->where('issue_revision', $revision)->exists();
                 if ($already) {
@@ -96,6 +99,15 @@ final class MaintainerIssueWatcher
                 );
                 $published = false;
                 $detail = $decision['reason'];
+                // Claim before any network write. A crash or uncertain POST is not retried automatically.
+                $claimed = \Illuminate\Support\Facades\DB::table('autopilot_issue_actions')->insertOrIgnore([
+                    'repository' => $lower, 'issue_number' => $number, 'issue_revision' => $revision,
+                    'action' => $decision['action'], 'detail' => $detail, 'published' => false,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                if ($claimed !== 1) {
+                    continue;
+                }
                 if (in_array($decision['action'], self::COMMENTABLE, true)
                     && AutomaticInlineSetting::enabled($userId, $repoName)) {
                     $published = $this->postComment($token, $repoName, $number, self::commentBody($decision));
@@ -103,14 +115,8 @@ final class MaintainerIssueWatcher
                         $detail .= ' GitHub comment was not posted (bot unavailable or not permitted); this action is recorded locally only.';
                     }
                 }
-                AutopilotIssueAction::create([
-                    'repository' => $repoName,
-                    'issue_number' => $number,
-                    'issue_revision' => $revision,
-                    'action' => $decision['action'],
-                    'detail' => $detail,
-                    'published' => $published,
-                ]);
+                AutopilotIssueAction::where('repository', $lower)->where('issue_number', $number)
+                    ->where('issue_revision', $revision)->update(['detail' => $detail, 'published' => $published]);
                 $summary['actions'][] = [
                     'repository' => $repoName, 'number' => $number,
                     'action' => $decision['action'], 'published' => $published,
@@ -123,7 +129,7 @@ final class MaintainerIssueWatcher
     /** @param array{action: string, reason: string, questions: list<string>, duplicateOf: ?int, pullNumber: ?int} $decision */
     private static function commentBody(array $decision): string
     {
-        $lines = ['ProofPatcher here \u2014 I triage issues so maintainers don\'t have to chase the basics.', '', $decision['reason']];
+        $lines = ['ProofPatcher here - a few details would help the review.', '', $decision['reason']];
         if ($decision['action'] === 'needs_info' && $decision['questions'] !== []) {
             $lines[] = '';
             $lines[] = 'Before anyone can sensibly fix this, I need:';
@@ -131,7 +137,7 @@ final class MaintainerIssueWatcher
                 $lines[] = '- '.$question;
             }
             $lines[] = '';
-            $lines[] = 'Add that and I\'ll take another look straight away.';
+            $lines[] = 'Please add any details you can.';
         } elseif ($decision['action'] === 'already_fixed') {
             $lines[] = '';
             $lines[] = 'Maintainer: this one looks closable.';
@@ -140,7 +146,7 @@ final class MaintainerIssueWatcher
             $lines[] = 'Better to keep the conversation in one place.';
         }
         $lines[] = '';
-        $lines[] = 'A human maintainer makes the final call \u2014 I just clear the path.';
+        $lines[] = 'A maintainer can review this suggestion.';
         return implode("\n", $lines);
     }
 

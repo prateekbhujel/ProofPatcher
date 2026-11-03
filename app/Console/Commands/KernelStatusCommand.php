@@ -80,7 +80,7 @@ final class KernelStatusCommand extends Command
         if (is_string($selected) && $selected !== '') {
             $flags = \ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($selected);
             $on = static fn (bool $v): string => $v ? 'on' : 'off';
-            $this->line('  Maintainer  fix '.$on($flags['fixIssues']).' · ready '.$on($flags['autoReady']).' · merge '.$on($flags['autoMerge']).' · close '.$on($flags['autoClose'])." (autopilot extension for {$selected})");
+            $this->line('  Maintainer  fix '.$on($flags['fixIssues'])." · ready / merge / close unavailable (stored preferences may differ) for {$selected}");
         }
         $this->line('');
         $this->line('  Next: ' . $next['title']);

@@ -278,15 +278,8 @@ final class AutoReviewService
                     if ($publication !== null) {
                         $outcome['automaticComment'] = $publication;
                     }
-                    $close = $this->maybeAutoClose($token, (int) $user['id'], $authorizedRepos, $repoName, $pull, $outcome);
-                    if ($close !== null) {
-                        $outcome['autoClose'] = $close;
-                    } else {
-                        $merge = $this->maybeAutoMerge($token, (int) $user['id'], $authorizedRepos, $repoName, $pull, $outcome);
-                        if ($merge !== null) {
-                            $outcome['autoMerge'] = $merge;
-                        }
-                    }
+                    // Automatic merge and close remain suspended until complete GitHub
+                    // status/thread coverage and revision races are independently verified.
                 } elseif ($outcome['status'] === 'skipped_budget') {
                     $summary['reviewsSkipped']++;
                     $summary['budgetExhausted'] = true;
