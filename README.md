@@ -37,7 +37,7 @@ Open [localhost:8000](http://127.0.0.1:8000), connect your GitHub App and config
 
 ### Prefer the terminal?
 
-The interactive terminal uses [php-terminal](https://github.com/prateekbhujel/php-terminal), a PHP extension by Pratik. Install it with [PIE](https://github.com/php/pie), then start Patcher:
+The interactive terminal uses [php-terminal](https://github.com/prateekbhujel/php-terminal). Install the extension with [PIE](https://github.com/php/pie), then start Patcher:
 
 ```bash
 pie install 'prateekbhujel/php-terminal:^1.0'
