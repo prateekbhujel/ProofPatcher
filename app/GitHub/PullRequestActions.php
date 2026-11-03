@@ -48,6 +48,31 @@ final readonly class PullRequestActions
         return ['merged' => true, 'sha' => $data['sha']];
     }
 
+    /** @return array{draft: false} */
+    public function markReady(string $token, array $access, array $pull, string $expectedHead): array
+    {
+        [$repository, $number] = $this->authorize($token, $access, $pull, $expectedHead);
+        $current = $this->read($token, $repository, $number);
+        $this->assertOpen($current, $expectedHead);
+        if (($current['draft'] ?? false) !== true) {
+            return ['draft' => false];
+        }
+        $nodeId = $current['node_id'] ?? null;
+        if (!is_string($nodeId) || $nodeId === '') {
+            throw new \RuntimeException('GitHub did not return an identifier for this pull request.');
+        }
+        $response = $this->send('POST', '/graphql', $token, [
+            'query' => 'mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){pullRequest{isDraft}}}',
+            'variables' => ['id' => $nodeId],
+        ]);
+        $data = $this->decode($response['body']);
+        $isDraft = $data['data']['markPullRequestReadyForReview']['pullRequest']['isDraft'] ?? null;
+        if ($response['status'] !== 200 || $isDraft !== false) {
+            throw new \RuntimeException("GitHub did not mark pull request #{$number} ready for review.");
+        }
+        return ['draft' => false];
+    }
+
     /** @return array{state: 'closed'} */
     public function close(string $token, array $access, array $pull, string $expectedHead): array
     {

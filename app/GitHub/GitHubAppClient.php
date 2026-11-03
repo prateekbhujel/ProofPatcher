@@ -197,6 +197,7 @@ final readonly class GitHubAppClient
                     'headSha' => (string) ($pull['head']['sha'] ?? ''),
                     'baseSha' => (string) ($pull['base']['sha'] ?? ''),
                     'user' => (string) ($pull['user']['login'] ?? 'unknown'),
+                    'body' => (string) ($pull['body'] ?? ''),
                     'isPrivate' => !is_array($pull['base']['repo'] ?? null) || !self::isExplicitlyPublic($pull['base']['repo']),
                 ];
             }
@@ -376,6 +377,7 @@ final readonly class GitHubAppClient
                     'user' => (string) ($issue['user']['login'] ?? 'unknown'),
                     'htmlUrl' => (string) ($issue['html_url'] ?? "https://github.com/{$repository}/issues/{$issue['number']}"),
                     'createdAt' => (string) ($issue['created_at'] ?? ''),
+                    'updatedAt' => (string) ($issue['updated_at'] ?? ''),
                     'labels' => $labels,
                     'isPrivate' => !is_array($issue['repository'] ?? null) || !self::isExplicitlyPublic($issue['repository']),
                 ];
@@ -533,6 +535,100 @@ final readonly class GitHubAppClient
             'filesTruncated' => $changedFiles > count($resultFiles),
             'files' => $resultFiles,
         ];
+    }
+
+    /**
+     * Read-only merge readiness for one pinned PR revision. Unknown check or
+     * thread state is reported as unknown/null, never as passing.
+     *
+     * @return array{state: ?string, isMerged: bool, isDraft: bool, currentHead: ?string, checksState: string, unresolvedThreads: ?int}
+     */
+    public function getMergeReadiness(string $token, string $repository, int $number, string $headSha): array
+    {
+        $this->validateRepositoryName($repository);
+        if ($number < 1 || !preg_match('/\A[a-f0-9]{40}\z/', $headSha)) {
+            throw new \InvalidArgumentException('Invalid pull request revision.');
+        }
+        $pull = $this->get("/repos/{$repository}/pulls/{$number}", $token);
+
+        $checksState = 'unknown';
+        try {
+            $runs = $this->get("/repos/{$repository}/commits/{$headSha}/check-runs?per_page=100", $token);
+            $list = is_array($runs['check_runs'] ?? null) ? $runs['check_runs'] : [];
+            if (($runs['total_count'] ?? 0) > 0 && $list !== []) {
+                $checksState = 'success';
+                foreach ($list as $run) {
+                    if (!is_array($run)) {
+                        $checksState = 'unknown';
+                        break;
+                    }
+                    if (($run['status'] ?? null) !== 'completed') {
+                        $checksState = 'pending';
+                        continue;
+                    }
+                    if ($checksState === 'success' && !in_array($run['conclusion'] ?? null, ['success', 'skipped', 'neutral'], true)) {
+                        $checksState = 'failure';
+                    }
+                }
+            }
+        } catch (\Throwable) {
+            $checksState = 'unknown';
+        }
+
+        $unresolved = null;
+        try {
+            [$owner, $name] = explode('/', $repository, 2);
+            $data = $this->post('/graphql', $token, [
+                'query' => 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){pageInfo{hasNextPage} nodes{isResolved}}}}}',
+                'variables' => ['owner' => $owner, 'name' => $name, 'number' => $number],
+            ]);
+            $threads = $data['data']['repository']['pullRequest']['reviewThreads'] ?? null;
+            if (is_array($threads) && (($threads['pageInfo']['hasNextPage'] ?? true) === false) && is_array($threads['nodes'] ?? null)) {
+                $unresolved = 0;
+                foreach ($threads['nodes'] as $node) {
+                    if (is_array($node) && ($node['isResolved'] ?? true) === false) {
+                        $unresolved++;
+                    }
+                }
+            }
+        } catch (\Throwable) {
+            $unresolved = null;
+        }
+
+        return [
+            'state' => is_string($pull['state'] ?? null) ? $pull['state'] : null,
+            'isMerged' => ($pull['merged'] ?? false) === true || ($pull['merged_at'] ?? null) !== null,
+            'isDraft' => ($pull['draft'] ?? false) === true,
+            'currentHead' => is_string($pull['head']['sha'] ?? null) ? $pull['head']['sha'] : null,
+            'checksState' => $checksState,
+            'unresolvedThreads' => $unresolved,
+        ];
+    }
+
+    /** @param array<string, mixed> $json */
+    private function post(string $path, string $token, array $json): array
+    {
+        $response = $this->http->request('POST', self::API_ROOT.$path, [
+            'headers' => [
+                'Accept' => 'application/vnd.github+json',
+                'Authorization' => 'Bearer '.$token,
+                'User-Agent' => 'ProofPatcher',
+                'X-GitHub-Api-Version' => '2022-11-28',
+            ],
+            'json' => $json,
+            'timeout' => 15,
+            'max_redirects' => 0,
+        ]);
+        $status = $response->getStatusCode();
+        $content = $response->getContent(false);
+        if ($status !== 200 || strlen($content) > self::MAX_RESPONSE_BYTES || str_contains($content, $token)) {
+            throw new \RuntimeException("GitHub API returned HTTP {$status} for path {$path}.");
+        }
+        $data = json_decode($content, true, 32, JSON_THROW_ON_ERROR);
+        if (!is_array($data)) {
+            throw new \RuntimeException('GitHub API returned non-JSON data.');
+        }
+        return $data;
     }
 
     /**

@@ -63,6 +63,8 @@ Route::get('/repositories/auto-review/status', [AutoReviewController::class, 'st
 Route::get('/repositories/auto-review/results', [AutoReviewController::class, 'results']);
 Route::get('/repositories/auto-comments', [AutomaticInlineSettingController::class, 'status']);
 Route::post('/repositories/auto-comments', [AutomaticInlineSettingController::class, 'toggle']);
+Route::get('/repositories/maintainer-autopilot', [\ProofPatch\Http\Controllers\MaintainerAutopilotController::class, 'status']);
+Route::post('/repositories/maintainer-autopilot', [\ProofPatch\Http\Controllers\MaintainerAutopilotController::class, 'toggle']);
 
 // GitHub web authorization flow (the "Sign in with GitHub" button)
 Route::get('/github/authorize', [DashboardController::class, 'redirectToGitHub']);

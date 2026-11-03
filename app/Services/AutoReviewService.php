@@ -25,6 +25,7 @@ final class AutoReviewService
         private ?RequestBudget $budget = null,
         private ?string $basetenKey = null,
         private ?AutomaticInlineCommentPublisher $automaticCommentPublisher = null,
+        private ?MaintainerIssueWatcher $issueWatcher = null,
     ) {
         $this->github ??= new GitHubAppClient(HttpClient::create());
         $this->patchPreviewer ??= new PublicPatchPreview(HttpClient::create());
@@ -277,6 +278,10 @@ final class AutoReviewService
                     if ($publication !== null) {
                         $outcome['automaticComment'] = $publication;
                     }
+                    $merge = $this->maybeAutoMerge($token, (int) $user['id'], $authorizedRepos, $repoName, $pull, $outcome);
+                    if ($merge !== null) {
+                        $outcome['autoMerge'] = $merge;
+                    }
                 } elseif ($outcome['status'] === 'skipped_budget') {
                     $summary['reviewsSkipped']++;
                     $summary['budgetExhausted'] = true;
@@ -290,7 +295,118 @@ final class AutoReviewService
             }
         }
 
+        // Issue watching is part of maintainer autopilot: it only spends
+        // requests on repositories where a maintainer switch or automatic
+        // commenting is on. Autopilot reviews alone keep prior behavior.
+        $summary['issuesInspected'] = 0;
+        $summary['issueActions'] = [];
+        try {
+            $watchRepos = [];
+            foreach ($enabledRepos as $repoName) {
+                $flags = \ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($repoName);
+                if ($flags['fixIssues'] || $flags['autoReady'] || $flags['autoMerge']
+                    || \ProofPatch\Models\AutomaticInlineSetting::enabled((int) $user['id'], $repoName)) {
+                    $watchRepos[] = $repoName;
+                }
+            }
+            if ($watchRepos !== []) {
+                $watcher = $this->issueWatcher ?? new MaintainerIssueWatcher($this->github);
+                $issues = $watcher->poll($token, (int) $user['id'], $authorizedRepos, $watchRepos, $onlyRepo);
+                $summary['issuesInspected'] = $issues['issuesInspected'];
+                $summary['issueActions'] = $issues['actions'];
+                array_push($summary['errors'], ...$issues['errors']);
+            }
+        } catch (\Throwable $e) {
+            $summary['errors'][] = 'Issue watch failed: '.$e->getMessage();
+        }
+
         return $summary;
+    }
+
+    /**
+     * Gated auto-merge after a completed autopilot review. Every gate
+     * condition must pass; the attempt is recorded before merging and is
+     * never retried for the same revision, whatever the outcome.
+     *
+     * @param array<string, mixed> $authorizedRepos
+     * @param array<string, mixed> $pull
+     * @param array<string, mixed> $outcome
+     * @return array{status: string, detail?: string}|null
+     */
+    private function maybeAutoMerge(string $token, int $userId, array $authorizedRepos, string $repoName, array $pull, array $outcome): ?array
+    {
+        $flags = \ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($repoName);
+        if (!$flags['autoMerge']) {
+            return null;
+        }
+        $number = (int) ($pull['number'] ?? 0);
+        $head = (string) ($pull['headSha'] ?? '');
+        if ($number < 1 || !preg_match('/\A[a-f0-9]{40}\z/', $head)) {
+            return ['status' => 'blocked', 'detail' => 'Pull request revision is invalid.'];
+        }
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('autopilot_merge_actions')
+                && \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')
+                    ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
+                    ->where('pull_number', $number)->where('head_sha', $head)->exists()) {
+                return ['status' => 'already_attempted', 'detail' => 'Auto-merge was already attempted for this revision and is never retried automatically.'];
+            }
+        } catch (\Throwable) {
+            return ['status' => 'blocked', 'detail' => 'Auto-merge attempt history could not be checked.'];
+        }
+
+        try {
+            $readiness = $this->github->getMergeReadiness($token, $repoName, $number, $head);
+        } catch (\Throwable $e) {
+            return ['status' => 'blocked', 'detail' => 'Merge readiness could not be read: '.$e->getMessage()];
+        }
+        $gate = \ProofPatch\Application\Repository\AutoMergeGate::evaluate([
+            'autoMergeEnabled' => true,
+            'autoReadyEnabled' => $flags['autoReady'],
+            'reviewStatus' => 'completed',
+            'recommendation' => $outcome['recommendation'] ?? null,
+            'checksState' => $readiness['checksState'],
+            'unresolvedThreads' => $readiness['unresolvedThreads'],
+            'isDraft' => $readiness['isDraft'],
+            'state' => $readiness['state'],
+            'isMerged' => $readiness['isMerged'],
+            'reviewedHead' => $head,
+            'currentHead' => $readiness['currentHead'],
+        ]);
+        if (!$gate['allowed']) {
+            return ['status' => 'blocked', 'detail' => implode(' ', $gate['reasons'])];
+        }
+
+        $access = ['userId' => $userId, 'repositories' => []];
+        foreach (array_keys($authorizedRepos) as $lower) {
+            $access['repositories'][$lower] = true;
+        }
+        $pullDescriptor = ['repository' => $repoName, 'number' => $number, 'headSha' => $head];
+        $actions = new \ProofPatch\GitHub\PullRequestActions(HttpClient::create());
+        try {
+            \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')->insert([
+                'repository' => $repoName, 'pull_number' => $number, 'head_sha' => $head,
+                'outcome' => 'attempting', 'detail' => 'Gate passed; merge in progress.',
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            if ($gate['needsReady']) {
+                $actions->markReady($token, $access, $pullDescriptor, $head);
+            }
+            $result = $actions->merge($token, $access, $pullDescriptor, $head);
+            \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')
+                ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
+                ->where('pull_number', $number)->where('head_sha', $head)
+                ->update(['outcome' => 'merged', 'detail' => 'Merged as '.substr($result['sha'], 0, 12).'.', 'updated_at' => now()]);
+            return ['status' => 'merged', 'detail' => 'Merged as '.substr($result['sha'], 0, 12).'.'];
+        } catch (\Throwable $e) {
+            try {
+                \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')
+                    ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
+                    ->where('pull_number', $number)->where('head_sha', $head)
+                    ->update(['outcome' => 'unknown', 'detail' => 'Merge outcome is unknown; check GitHub before any manual retry. '.$e->getMessage(), 'updated_at' => now()]);
+            } catch (\Throwable) {}
+            return ['status' => 'unknown', 'detail' => 'Merge outcome is unknown; check GitHub before any manual retry.'];
+        }
     }
 
     /** Posting is a separate, owner-bound opt-in and cannot change review status. */
