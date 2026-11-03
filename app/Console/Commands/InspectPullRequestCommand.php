@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use ProofPatch\GitHub\PullRequestReader;
 use ProofPatch\GitHub\PullRequestSnapshot;
+use ProofPatch\Support\RuntimePaths;
 use Symfony\Component\HttpClient\HttpClient;
 
 final class InspectPullRequestCommand extends Command
@@ -37,7 +38,8 @@ final class InspectPullRequestCommand extends Command
         try {
             $token = getenv('GITHUB_TOKEN') ?: null;
             $pull = (new PullRequestReader(HttpClient::create(), $token))->read((string) $target);
-            $directory = getenv('PROOFPATCH_SNAPSHOT_DIR') ?: (function_exists('base_path') ? base_path('artifacts/pull-requests') : dirname(__DIR__, 3).'/artifacts/pull-requests');
+            $project = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
+            $directory = RuntimePaths::snapshots($project);
             $snapshot = (new PullRequestSnapshot($directory))->capture($pull);
         } catch (\InvalidArgumentException|\RuntimeException $error) {
             $this->error($error->getMessage());

@@ -8,6 +8,7 @@ use ProofPatch\Evidence\CanonicalJson;
 use ProofPatch\Evidence\Receipt;
 use ProofPatch\Patch\CssPatch;
 use ProofPatch\Support\LocalProcess;
+use ProofPatch\Support\RuntimePaths;
 
 final readonly class CheckoutVerifier
 {
@@ -33,7 +34,7 @@ final readonly class CheckoutVerifier
         }
 
         $id = gmdate('Ymd\THis\Z').'-'.bin2hex(random_bytes(6));
-        $evidence = ($this->runsRoot ?? $this->project.'/artifacts/runs').'/'.$id;
+        $evidence = ($this->runsRoot ?? RuntimePaths::runs($this->project)).'/'.$id;
         if (!mkdir($evidence, 0700, true)) {
             throw new \RuntimeException('Cannot allocate evidence directory.');
         }

@@ -84,7 +84,7 @@ final class TaskWorkflowHelper
         }
 
         if ($task->verification_report_id !== null) {
-            $evidenceDir = base_path('artifacts/runs/' . $task->verification_report_id);
+            $evidenceDir = RuntimePaths::runs(base_path()).'/'.$task->verification_report_id;
             if (is_dir($evidenceDir) && file_exists($evidenceDir . '/result.json')) {
                 try {
                     $receiptHelper = new Receipt();

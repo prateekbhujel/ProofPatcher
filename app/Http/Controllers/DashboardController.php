@@ -25,6 +25,7 @@ use ProofPatch\GitHub\DedicatedTestRepo;
 use ProofPatch\GitHub\PrivatePullSession;
 use ProofPatch\Patch\CssPatch;
 use ProofPatch\Support\LocalProcess;
+use ProofPatch\Support\RuntimePaths;
 use ProofPatch\Support\NotificationHelper;
 use ProofPatch\Support\SessionHelper;
 use ProofPatch\Verifier\CheckoutVerifier;
@@ -49,10 +50,9 @@ final class DashboardController
         private ?HttpClientInterface $manualGitHubHttp = null,
     ) {
         $this->project = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
-        $this->runsDir = $this->project.'/artifacts/runs';
-        $this->snapshotsDir = getenv('PROOFPATCH_SNAPSHOT_DIR') ?: $this->project.'/artifacts/pull-requests';
-        $home = getenv('HOME');
-        $this->approvalsDir = getenv('PROOFPATCH_APPROVALS_DIR') ?: ($home ? $home.'/.local/share/proofpatch/runtime/approvals' : $this->project.'/artifacts/approvals');
+        $this->runsDir = RuntimePaths::runs($this->project);
+        $this->snapshotsDir = RuntimePaths::snapshots($this->project);
+        $this->approvalsDir = RuntimePaths::approvals($this->project);
         if (session_status() === PHP_SESSION_NONE) {
             session_set_cookie_params(['httponly' => true, 'samesite' => 'Strict', 'path' => '/']);
             @session_start();

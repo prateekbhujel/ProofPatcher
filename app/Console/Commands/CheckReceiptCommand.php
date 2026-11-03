@@ -7,6 +7,7 @@ namespace ProofPatch\Console\Commands;
 use Hari\Hari;
 use Hari\Registry;
 use Illuminate\Console\Command;
+use ProofPatch\Support\RuntimePaths;
 
 final class CheckReceiptCommand extends Command
 {
@@ -24,7 +25,8 @@ final class CheckReceiptCommand extends Command
         $run = (string) $this->argument('run');
         $expected = $this->argument('expected') ? (string) $this->argument('expected') : null;
 
-        $directory = is_dir($run) ? $run : (function_exists('base_path') ? base_path('artifacts/runs/'.$run) : dirname(__DIR__, 3).'/artifacts/runs/'.$run);
+        $project = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
+        $directory = is_dir($run) ? $run : RuntimePaths::runs($project).'/'.$run;
         if (!is_dir($directory)) {
             $this->error("Evidence directory not found: {$run}");
             return self::FAILURE;

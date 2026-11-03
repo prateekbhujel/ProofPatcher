@@ -88,6 +88,8 @@ php artisan serve --host=127.0.0.1 --port=8000
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000). For an existing installation, keep its `.env` and application key, and back up the SQLite database before migrations. Rolling back task-card migrations deletes those cards or their screenshots.
 
+Run evidence and saved PR snapshots stay in `storage/app/private/proofpatch`, outside the public web directory and excluded from Git by the existing storage rule.
+
 ### Connect GitHub
 
 Configure a GitHub App with a client ID and client secret, enable device flow for terminal use, and install the app on the repositories you want to access. For local web sign-in, register `http://127.0.0.1:8000/github/callback` as a callback URL, or use the callback corresponding to your configured `APP_URL`.

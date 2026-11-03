@@ -292,7 +292,7 @@ final readonly class OwnedCaseVerifier
         }
 
         $id = gmdate('Ymd\THis\Z') . '-' . bin2hex(random_bytes(6));
-        $evidence = ($this->runsRoot ?? $this->project . '/artifacts/runs') . '/' . $id;
+        $evidence = ($this->runsRoot ?? \ProofPatch\Support\RuntimePaths::runs($this->project)) . '/' . $id;
 
         if (!mkdir($evidence, 0700, true)) {
             throw new \RuntimeException('Cannot allocate evidence directory.');

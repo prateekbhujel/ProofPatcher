@@ -7,6 +7,7 @@ namespace ProofPatch\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use ProofPatch\GitHub\PullRequestSnapshot;
+use ProofPatch\Support\RuntimePaths;
 
 final class ReviewJobController
 {
@@ -17,7 +18,8 @@ final class ReviewJobController
             return response()->json(['message' => 'Review not found.'], 404)->header('Cache-Control', 'no-store');
         }
 
-        $directory = getenv('PROOFPATCH_SNAPSHOT_DIR') ?: (function_exists('base_path') ? base_path('artifacts/pull-requests') : dirname(__DIR__, 3).'/artifacts/pull-requests');
+        $project = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
+        $directory = RuntimePaths::snapshots($project);
         $store = new PullRequestSnapshot($directory);
         try {
             $store->verify($review->snapshot_id, $review->snapshot_sha256);

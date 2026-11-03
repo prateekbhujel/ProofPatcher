@@ -27,7 +27,7 @@ final class CheckoutRepairTest extends TestCase
         $base = trim($this->command(['git', '-C', $source, 'rev-parse', 'HEAD']));
         $locked = $project.'/tests/Locked/CheckoutLockedTest.php';
         $lockedHash = hash_file('sha256', $locked);
-        $evidence = $project.'/artifacts/first-slice/'.gmdate('Ymd\THis\Z').'-'.bin2hex(random_bytes(3));
+        $evidence = $project.'/storage/app/private/proofpatch/first-slice/'.gmdate('Ymd\THis\Z').'-'.bin2hex(random_bytes(3));
         mkdir($evidence, 0700, true);
         $worktrees = [];
         try {

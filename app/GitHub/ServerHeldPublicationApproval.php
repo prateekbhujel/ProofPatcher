@@ -8,12 +8,12 @@ namespace ProofPatch\GitHub;
  * Manages server-held, single-use cryptographic authorizations for pull request publication.
  *
  * Security guarantees:
- * - Held outside caller-accessible artifacts directory in private server storage (0700/0600).
+ * - Held outside caller-accessible evidence in private server storage (0700/0600).
  * - Cryptographically signed using a server-only HMAC key.
  * - Bound to exact run ID, receipt digest, base commit, repository, issue, file path, and candidate/test SHA-256 digests.
  * - Atomic single-use consumption via POSIX rename: completely prevents race conditions and duplicate spends.
  * - Explicitly rejects simulated or mocked execution runs from ever being published.
- * - Prevents an attacker who controls artifacts/runs/ from forging result.json and receipt.json.
+ * - Prevents an attacker who controls run evidence from forging result.json and receipt.json.
  */
 final class ServerHeldPublicationApproval
 {

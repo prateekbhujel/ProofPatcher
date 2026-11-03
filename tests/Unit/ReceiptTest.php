@@ -56,6 +56,25 @@ final class ReceiptTest extends TestCase
         (new Receipt())->verify($this->directory, str_repeat('b', 64));
     }
 
+    public function testEvidenceCanMoveWithoutRewritingItsReportOrDigest(): void
+    {
+        $validator = new Receipt();
+        $report = json_decode((string) file_get_contents($this->directory.'/result.json'), true, 64, JSON_THROW_ON_ERROR);
+        $report['evidenceDirectory'] = $this->directory;
+        file_put_contents($this->directory.'/result.json', json_encode($report, JSON_THROW_ON_ERROR));
+        file_put_contents($this->directory.'/receipt.json', json_encode($validator->create($this->directory), JSON_THROW_ON_ERROR));
+        $before = $validator->verify($this->directory);
+        $reportBytes = file_get_contents($this->directory.'/result.json');
+        $receiptBytes = file_get_contents($this->directory.'/receipt.json');
+        $destination = $this->directory.'-moved';
+        self::assertTrue(rename($this->directory, $destination));
+        $this->directory = $destination;
+
+        self::assertSame($before, $validator->verify($destination));
+        self::assertSame($reportBytes, file_get_contents($destination.'/result.json'));
+        self::assertSame($receiptBytes, file_get_contents($destination.'/receipt.json'));
+    }
+
     public function testRejectsMissingEvidence(): void
     {
         unlink($this->directory.'/baseline/junit.xml');

@@ -7,6 +7,7 @@ namespace ProofPatch\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use ProofPatch\GitHub\PullRequestSnapshot;
+use ProofPatch\Support\RuntimePaths;
 
 final class RecordPullRequestSnapshotCommand extends Command
 {
@@ -17,7 +18,7 @@ final class RecordPullRequestSnapshotCommand extends Command
     public function handle(): int
     {
         $root = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
-        $directory = getenv('PROOFPATCH_SNAPSHOT_DIR') ?: $root.'/artifacts/pull-requests';
+        $directory = RuntimePaths::snapshots($root);
         $id = (string) $this->argument('snapshot');
 
         try {
