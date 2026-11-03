@@ -83,19 +83,11 @@ After the listener reports that it is ready, a maintainer can post `@proofpatche
 - Local task cards and images are not autonomous jobs. The app does not understand attached screenshots in the task-card workflow or automatically solve issues. The dedicated demo issue can be marked eligible for a separate manual fix flow; draft publication requires server-held approval. Automatic merge requires explicit opt-in and strict branch protection; ready and close remain unavailable.
 - A snapshot digest or receipt supports integrity checking; it does not independently prove the origin, correctness, or safety of a change.
 
-### Tested vs. untested
+### Demonstrated workflows
 
-- **Tested in live checks**:
-  - In a dedicated test repository, isolated fixture checks passed (`OBSERVED_PASS`) and the workbench displayed a link to an existing draft PR. Duplicate-draft handling is covered by an integration test with a simulated GitHub client.
-  - Public PR review, multi-issue triage, and inline comments were demonstrated using a separate test repository.
-  - Browser-based visual verification of controlled checkout fixtures with damaging shortcut rejection.
-  - The local test suite was run; the commands below can be used to run it again.
-- **Untested / unverified**:
-  - A fresh end-to-end run from a new Muse proposal through live draft creation, including the publication endpoint, has not been demonstrated.
-  - Arbitrary-code verification and general repository automation are not complete or claimed. The isolated runner supports only the pinned, stateless `src/OrderTotal.php` fixture.
-  - Automatic merge has unit tests against simulated branch protection rules, but has not been demonstrated with a live automatic merge against protected branches.
-  - Automatic ready and close remain disabled.
-  - Local task card screenshots are stored locally only; model interpretation of attached images is not active in this workflow.
+- A fresh Muse proposal for the dedicated private test issue passed the isolated fixture checks. The live publication flow found and linked an identical existing draft; creating a new draft through that flow has not yet been demonstrated.
+- Public PR review, multi-issue triage and inline comments were demonstrated using a separate test repository. The checkout example also demonstrates visual checks and rejection of a damaging shortcut.
+- Automatic merge is covered by tests using simulated branch protection, but has not been demonstrated against a live protected branch. Automatic ready and close remain disabled. Task-card screenshots stay local and are not interpreted by Muse.
 
 ## Tests
 

@@ -23,9 +23,9 @@ shares a process with the test harness that judges it.
    If an open draft already contains identical bytes, the app links to that
    draft instead of opening a duplicate. Concurrent attempts are claimed
    against the task record, so a double submit cannot create two drafts.
-   In live checks, the workbench displayed a link to an existing draft.
-   Duplicate detection is covered by an integration test with a simulated
-   GitHub client; a fresh live draft publication has not yet been demonstrated.
+   A live run generated a new Muse proposal, ran the isolated checks, and
+   invoked publication; the app found an identical open draft and linked it.
+   Creating a new draft through this flow has not yet been demonstrated live.
 
 ## Boundaries
 
