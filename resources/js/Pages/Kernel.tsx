@@ -18,20 +18,22 @@ interface KernelProps {
   provider: { label: string; model: string; keyReady: boolean };
   budget: { attempts: number | null; reservedMicros: number | null; canRequest: boolean } | null;
   hari: { frozen: boolean; abilities: HariAbility[]; skills: HariSkill[] } | null;
-  autopilotCaps: { remaining: number; maxAttempts: number };
+  autopilotCaps: { maxAttempts: number; maxReservedDollars: number | null } | null;
   worker: { isLive: boolean; status: string };
-  autoStats: { total: number; completed: number; failed: number; skippedPrivate: number; skippedBudget: number; enabledRepositories: string[] };
+  autoStats: { totalReviews: number; completed: number; failed: number; skippedPrivate: number; skippedBudget: number };
   recentFindings: KernelFinding[];
   stages: KernelStage[];
   nextStep: KernelNextStep;
   lastVerification: KernelVerification | null;
-  publishedPr: { repository: string; number: number; url: string } | null;
+  publishedPr: { repository: string | null; prNumber: number | null; prUrl: string | null } | null;
 }
 
 const STATE_MARK = { done: '[x]', active: '[>]', todo: '[ ]' } as const;
 
 export default function Kernel(props: KernelProps) {
   const { connected, user, reposCount, selectedRepo, provider, budget, hari, worker, autoStats, recentFindings, stages, nextStep, lastVerification, publishedPr } = props;
+  const publishedNumber = typeof publishedPr?.prNumber === 'number' && Number.isInteger(publishedPr.prNumber) && publishedPr.prNumber > 0 ? publishedPr.prNumber : null;
+  const publishedUrl = typeof publishedPr?.prUrl === 'string' && publishedPr.prUrl.trim() !== '' ? publishedPr.prUrl : null;
   return (
     <AppLayout activeNav="kernel">
       <Head title="Console" />
@@ -109,16 +111,16 @@ export default function Kernel(props: KernelProps) {
             )}
           </Panel>
 
-          <Panel title="verification" right={publishedPr ? <span className="text-[11px] text-[var(--fg-muted)]">draft PR #{publishedPr.number}</span> : undefined}>
+          <Panel title="verification" right={publishedNumber !== null ? <span className="text-[11px] text-[var(--fg-muted)]">draft PR #{publishedNumber}</span> : undefined}>
             {lastVerification ? (
               <div className="text-xs">
-                <Stat label="last decision" value={lastVerification.decision} tone={lastVerification.decision === 'allow' ? 'ok' : 'danger'} />
-                <Stat label="run" value={lastVerification.isSimulated ? 'simulated' : 'genuine'} />
+                <Stat label="last decision" value={lastVerification.decision} tone={lastVerification.decision === 'VERIFIED' ? 'ok' : lastVerification.decision === 'FAILED' ? 'danger' : 'default'} />
+                <Stat label="run" value={lastVerification.isSimulated === true ? 'simulated' : lastVerification.isSimulated === false ? 'not simulated' : 'unknown'} />
                 <Stat label="repository" value={lastVerification.repository ?? 'n/a'} />
                 <Stat label="receipt" value={lastVerification.receiptSha256 ? `${lastVerification.receiptSha256.slice(0, 12)}…` : 'n/a'} />
-                {publishedPr && (
-                  <a href={publishedPr.url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-medium text-[var(--accent-text)] hover:underline">
-                    {publishedPr.repository}#{publishedPr.number} <ExternalLink className="h-3 w-3" />
+                {publishedPr && publishedNumber !== null && publishedUrl !== null && (
+                  <a href={publishedUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-medium text-[var(--accent-text)] hover:underline">
+                    {publishedPr.repository ?? 'Repository'}#{publishedNumber} <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
               </div>
