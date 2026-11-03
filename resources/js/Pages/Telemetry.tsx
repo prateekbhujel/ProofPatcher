@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
+import { formatDate, formatDateTime } from '../Components/ui/date';
 
 export interface TelemetryData {
   requests: { total: number; received: number; uncertain: number; reserved: number; reservedMicros: number };
@@ -39,7 +40,7 @@ export default function Telemetry({ telemetry }: { telemetry: TelemetryData }) {
             </p>
           </div>
           <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
-            {new Date(telemetry.generatedAt).toLocaleString()}
+            {formatDateTime(telemetry.generatedAt)}
           </span>
         </div>
 
@@ -108,7 +109,7 @@ export default function Telemetry({ telemetry }: { telemetry: TelemetryData }) {
               <ol className="mt-3 space-y-1.5">
                 {telemetry.perDay.map((day) => (
                   <li key={day.day} className="flex items-center gap-2 text-[11px] font-mono">
-                    <span className="w-[76px] shrink-0 text-slate-500 dark:text-slate-400">{day.day.slice(5)}</span>
+                    <span className="w-[92px] shrink-0 text-slate-500 dark:text-slate-400">{formatDate(day.day)}</span>
                     <span className="h-3 flex-1 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
                       <span
                         className="block h-full rounded bg-accent-600 dark:bg-accent-400"
@@ -146,7 +147,7 @@ export default function Telemetry({ telemetry }: { telemetry: TelemetryData }) {
                   {telemetry.feed.map((event, index) => (
                     <tr key={`${event.at}-${index}`} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="py-2 pr-3 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                        {(event.at || '').slice(0, 19).replace('T', ' ')}
+                        {formatDateTime(event.at)}
                       </td>
                       <td className="py-2 pr-3 text-slate-600 dark:text-slate-300">{event.kind === 'review' ? 'review' : 'request'}</td>
                       <td className="py-2 pr-3 text-slate-600 dark:text-slate-300">{event.status.replace(/_/g, ' ')}</td>

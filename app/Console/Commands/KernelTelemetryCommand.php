@@ -6,6 +6,7 @@ namespace ProofPatch\Console\Commands;
 
 use Illuminate\Console\Command;
 use ProofPatch\Support\Telemetry;
+use ProofPatch\Support\DisplayDate;
 
 /**
  * Terminal twin of the Telemetry page: the same local usage numbers as
@@ -30,7 +31,7 @@ final class KernelTelemetryCommand extends Command
         $data = Telemetry::collect(is_string($ledger) && trim($ledger) !== '' ? trim($ledger) : null, null, true, $this->hari);
         $width = $this->terminalWidth();
 
-        $this->line('ProofPatcher Kernel telemetry (local estimates, generated '.$data['generatedAt'].')');
+        $this->line('ProofPatcher Kernel telemetry (local estimates, generated '.DisplayDate::dateTime($data['generatedAt']).' UTC)');
         $this->newLine();
 
         $r = $data['requests'];
@@ -62,7 +63,7 @@ final class KernelTelemetryCommand extends Command
             $this->line('Daily volume (last 14 days)');
             $rows = [];
             foreach ($data['perDay'] as $day) {
-                $rows[] = [$day['day'], (string) $day['requests'], '$'.number_format($day['micros'] / 1000000, 4)];
+                $rows[] = [DisplayDate::date($day['day']), (string) $day['requests'], '$'.number_format($day['micros'] / 1000000, 4)];
             }
             $this->table(['Day', 'Requests', 'Held'], $rows);
         }
@@ -83,7 +84,7 @@ final class KernelTelemetryCommand extends Command
                 default => 'comment',
             };
             $rows[] = [
-                    substr((string) $event['at'], 0, 19),
+                    DisplayDate::dateTime((string) $event['at']),
                     $event['kind'] === 'review' ? 'review' : 'request',
                     "<{$statusTag}>{$event['status']}</{$statusTag}>",
                     mb_strimwidth($event['detail'], 0, $detailWidth, '…'),

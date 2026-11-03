@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, Copy } from 'lucide-react';
 import { SnapshotData } from './types';
+import { formatDateTime } from '../ui/date';
 
 interface PrReceiptTabProps {
   snapshot?: SnapshotData | null;
@@ -34,7 +35,7 @@ export function PrReceiptTab({ snapshot, copiedDigest, copyText }: PrReceiptTabP
           <div className="font-mono text-xs text-accent-900 bg-white p-3 rounded-lg border border-slate-200 break-all select-all dark:bg-[#141821] dark:border-slate-800 dark:text-accent-300">
             {snapshot.sha256}
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">Captured: {snapshot.capturedAt}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">Captured: {formatDateTime(snapshot.capturedAt)}</div>
         </div>
       ) : (
         <p className="text-xs text-slate-500 dark:text-slate-400">Snapshot digest unavailable for this session.</p>

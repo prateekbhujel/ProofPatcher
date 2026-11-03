@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
 import { StateChip } from '../Components/console/primitives';
+import { formatDateTime } from '../Components/ui/date';
 import {
   GitPullRequest,
   ArrowRight,
@@ -42,14 +43,6 @@ export default function Overview({
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
-
-  const formatTime = (ts: string) => {
-    try {
-      return new Date(ts).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
-    } catch {
-      return ts;
-    }
-  };
 
   const filteredPulls = useMemo(() => {
     if (!searchQuery.trim()) return recent;
@@ -291,7 +284,7 @@ export default function Overview({
                             {item.pull.isPrivate && <> <StateChip state="private" /></>}
                           </td>
                           <td className="py-3 px-5 text-slate-500 whitespace-nowrap font-mono text-[11px] dark:text-slate-400">
-                            {formatTime(item.capturedAt)}
+                            {formatDateTime(item.capturedAt)}
                           </td>
                           <td className="py-3 px-5 text-right whitespace-nowrap">
                             <Link

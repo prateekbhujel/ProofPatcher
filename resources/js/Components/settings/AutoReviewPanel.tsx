@@ -1,5 +1,6 @@
 import React from 'react';
 import { GitHubRepo, SettingsProps } from './types';
+import { formatDateTime } from '../ui/date';
 
 interface Props {
   connected: boolean;
@@ -141,7 +142,7 @@ export function AutoReviewPanel({ connected, repositories, autoReview, pendingRe
                   )}
                   <div className="text-[11px] text-slate-400 dark:text-slate-500">
                     {result.published_status === 'one_inline_comment' ? 'One suggestion posted to GitHub' : result.published_status === 'review_summary' ? 'Review summary posted to GitHub' : result.published_status === 'publication_unknown' ? 'Comment outcome unknown · Check GitHub' : 'Stored locally · Not posted to GitHub'}
-                    {result.reviewed_at ? ` · ${new Date(result.reviewed_at).toLocaleString()}` : ''}
+                    {result.reviewed_at ? ` · ${formatDateTime(result.reviewed_at)}` : ''}
                   </div>
                 </li>
               ))}

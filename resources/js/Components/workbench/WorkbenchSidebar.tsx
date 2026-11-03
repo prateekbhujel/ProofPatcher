@@ -15,6 +15,7 @@ import {
 } from './types';
 import { LocalTaskCard } from '../TaskCardSection';
 import { RepoSearchPicker } from './RepoSearchPicker';
+import { formatDate } from '../ui/date';
 
 interface WorkbenchSidebarProps {
   githubConnection: GitHubConnectionData | null;
@@ -278,7 +279,7 @@ export function WorkbenchSidebar({
                         </span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5 truncate">
-                        @{issue.user} · {new Date(issue.createdAt).toLocaleDateString()}
+                        @{issue.user} · {formatDate(issue.createdAt)}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-1">

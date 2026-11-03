@@ -41,6 +41,7 @@ const { exports: alertBannerModule } = loadTsxModule(
 );
 const { loadTsModule } = await import('./helpers/loadTsModule.mjs');
 const budgetCopy = loadTsModule(new URL('../../resources/js/Components/ui/budgetCopy.ts', import.meta.url));
+const dateFormat = loadTsModule(new URL('../../resources/js/Components/ui/date.ts', import.meta.url));
 const { exports: repoPickerModule } = loadTsxModule('../../resources/js/Components/workbench/RepoSearchPicker.tsx');
 
 const consoleShared = loadTsModule(new URL('../../resources/js/Components/console/shared.ts', import.meta.url));
@@ -242,6 +243,7 @@ test('public Muse review is enabled only when approved, funded and configured', 
     (id) => {
       if (id === '@inertiajs/react') return inertiaMock;
       if (id === '../ui/budgetCopy') return budgetCopy;
+      if (id === '../ui/date') return dateFormat;
       return require(id);
     });
   const props = {

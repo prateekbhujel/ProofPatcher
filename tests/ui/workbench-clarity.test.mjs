@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { transformSync } from 'esbuild';
+import { loadTsModule as loadModule } from './helpers/loadTsModule.mjs';
 
 const require = createRequire(import.meta.url);
 function component(path, customRequire = require) {
@@ -22,7 +23,9 @@ const { PrHeaderCard } = component('../../resources/js/Components/repositories/P
   (id) => id === '@inertiajs/react' ? { router: { post() {} } } : require(id));
 const { TaskComposerFooter } = component('../../resources/js/Components/workbench/TaskComposerFooter.tsx',
   (id) => id === '../VoiceDictationButton' ? { VoiceDictationButton: () => null } : require(id));
-const { AutoReviewPanel } = component('../../resources/js/Components/settings/AutoReviewPanel.tsx');
+const dateFormat = loadModule(new URL('../../resources/js/Components/ui/date.ts', import.meta.url));
+const { AutoReviewPanel } = component('../../resources/js/Components/settings/AutoReviewPanel.tsx',
+  (id) => id === '../ui/date' ? dateFormat : require(id));
 const { ChecksEvidenceTab } = component('../../resources/js/Components/checks/ChecksEvidenceTab.tsx');
 const Kernel = component('../../resources/js/Pages/Kernel.tsx', (id) => {
   if (id === '@inertiajs/react') return { Head: () => null, Link: ({ children }) => React.createElement('span', null, children) };
@@ -198,6 +201,7 @@ const { PrReviewTab } = component('../../resources/js/Components/repositories/Pr
   (id) => {
     if (id === '@inertiajs/react') return { router: { post() {} } };
     if (id === '../ui/budgetCopy') return budgetCopy;
+    if (id === '../ui/date') return dateFormat;
     return require(id);
   });
 

@@ -8,6 +8,7 @@ use Hari\Hari;
 use Hari\Registry;
 use Illuminate\Console\Command;
 use ProofPatch\Support\TerminalWidth;
+use ProofPatch\Support\DisplayDate;
 
 /**
  * Terminal twin of the review findings lists: recent automatic review
@@ -73,6 +74,7 @@ final class KernelReviewsCommand extends Command
             if (!is_array($row)) {
                 continue;
             }
+            $reviewedAt = $row['reviewed_at'] ?? $row['reviewed_at_display'] ?? null;
             $rowStatus = (string) ($row['status'] ?? '');
             $status = str_replace('_', ' ', $rowStatus);
             $statusTag = match ($rowStatus) {
@@ -86,7 +88,7 @@ final class KernelReviewsCommand extends Command
                 "<{$statusTag}>{$status}</{$statusTag}>",
                 !empty($row['recommendation']) ? str_replace('_', ' ', (string) $row['recommendation']) : '—',
                 !empty($row['risk_level']) ? (string) $row['risk_level'] : '—',
-                is_string($row['reviewed_at_display'] ?? null) ? $row['reviewed_at_display'] : '—',
+                DisplayDate::dateTime(is_string($reviewedAt) ? $reviewedAt : null),
                 mb_strimwidth((string) ($row['summary'] ?? ''), 0, $detailWidth, '…'),
             ];
         }

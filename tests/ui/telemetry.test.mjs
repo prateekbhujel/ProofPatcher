@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { transformSync } from 'esbuild';
+import { loadTsModule } from './helpers/loadTsModule.mjs';
 
 const require = createRequire(import.meta.url);
 function loadTsx(relativePath, resolve = require) {
@@ -21,6 +22,7 @@ const inertia = {
 };
 const telemetry = loadTsx('../../resources/js/Pages/Telemetry.tsx', (id) => {
   if (id === '@inertiajs/react') return inertia;
+  if (id === '../Components/ui/date') return loadTsModule(new URL('../../resources/js/Components/ui/date.ts', import.meta.url));
   if (id === '../Components/AppLayout') return { AppLayout: ({ children }) => React.createElement('div', {}, children) };
   return require(id);
 });
@@ -62,7 +64,7 @@ test('telemetry shows totals, models, daily bars, and the request feed', () => {
   assert.match(html, /11064 \/ 5531/);
   assert.match(html, /\$0\.2648/);
   assert.match(html, /muse-spark-1\.3/);
-  assert.match(html, /10-31/);
+  assert.match(html, /31 Oct 2026/);
   assert.match(html, /acme\/repo#1 · approve/);
   assert.match(html, /350 tok/);
   assert.match(html, /kernel:telemetry/);

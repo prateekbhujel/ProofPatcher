@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { BudgetData, ReviewPreviewData, ReviewResult } from './types';
 import { reviewUsageLine } from '../ui/budgetCopy';
+import { formatDateTime } from '../ui/date';
 
 interface PrReviewTabProps {
   review?: ReviewResult | null;
@@ -102,7 +103,7 @@ export function PrReviewTab({
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-mono dark:border-slate-800 dark:text-slate-400">
             <span>Tokens: {review.usage.prompt_tokens} in / {review.usage.completion_tokens} out</span>
-            <span>Reviewed: {new Date(review.reviewedAt).toLocaleString()}</span>
+            <span>Reviewed: {formatDateTime(review.reviewedAt)}</span>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
             Advisory only · {review.publishedStatus === 'one_inline_comment' ? 'One suggestion posted to GitHub.' : review.publishedStatus === 'review_summary' ? 'Review summary posted to GitHub.' : review.publishedStatus === 'publication_unknown' ? 'Comment outcome unknown. Check GitHub.' : 'Stored in ProofPatcher · Not posted to GitHub.'} External repository tests were not run here.

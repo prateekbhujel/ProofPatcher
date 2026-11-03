@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { transformSync } from 'esbuild';
+import { loadTsModule } from './helpers/loadTsModule.mjs';
 
 const require = createRequire(import.meta.url);
 function loadTsx(relativePath, resolve = require) {
@@ -58,6 +59,7 @@ const signInButtonModule = loadTsx('../../resources/js/Components/ui/SignInWithG
 const repoPicker = loadTsx('../../resources/js/Components/workbench/RepoSearchPicker.tsx');
 const sidebarRequire = (id) => {
   if (id === '@inertiajs/react') return inertia;
+  if (id === '../ui/date') return loadTsModule(new URL('../../resources/js/Components/ui/date.ts', import.meta.url));
   if (id === './RepoSearchPicker') return repoPicker;
   return require(id);
 };
