@@ -18,7 +18,7 @@ GitHub user authorization and installation scope are separate. Being able to see
 - Use manual merge and close controls when authorized; those actions require confirmation and recheck the pull request.
 - Prepare a draft pull request for the configured, pinned test-repository workflow after its supported verification and server-held publication approval.
 
-Automatic ready, merge and close controls are unavailable. General private pull-request review, arbitrary issue repair and automatic issue-to-PR publication are not supported. A saved repository opt-in does not bypass these limits.
+Automatic merge is opt-in for owned public repositories with strict branch protection and passing review gates. Automatic ready and close are unavailable. General private pull-request review, arbitrary issue repair and automatic issue-to-PR publication are not supported. A saved repository opt-in does not bypass these limits.
 
 ## Permissions and attribution
 

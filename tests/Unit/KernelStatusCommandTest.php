@@ -91,6 +91,7 @@ final class KernelStatusCommandTest extends TestCase
         $this->assertStringContainsString('@maintainer', $result['display']);
         $this->assertStringContainsString('2 repos', $result['display']);
         $this->assertStringContainsString('acme/repo', $result['display']);
+        $this->assertStringContainsString('merge off', $result['display']);
         $this->assertStringContainsString('kernel:select-repo', $result['display']);
     }
 

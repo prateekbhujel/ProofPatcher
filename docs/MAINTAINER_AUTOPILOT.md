@@ -1,6 +1,6 @@
 # Maintainer autopilot
 
-Autopilot reviews pull requests and triages issues in enabled public repositories while the local worker is running. Each action has its own per-repository setting. Automatic review and bot comments are separate opt-ins. Automatic ready, merge and close are unavailable.
+Autopilot reviews pull requests and triages issues in enabled public repositories while the local worker is running. Each action has its own per-repository setting. Automatic review, bot comments and automatic merge are separate opt-ins. Automatic ready and close are unavailable.
 
 ## Switches
 
@@ -13,7 +13,7 @@ signed-in user owns and has installed:
 | Automatic comments | Settings → Automatic GitHub comments | The GitHub App bot may post suggestions; requires bot credentials |
 | Fix demo issue | Settings → Maintainer autopilot | Complete issues in the dedicated demo scope are marked fix-ready |
 | Auto-ready | Settings → Maintainer autopilot | Unavailable while safeguards are reviewed |
-| Auto-merge | Settings → Maintainer autopilot | Unavailable while safeguards are reviewed |
+| Auto-merge | Settings → Maintainer autopilot | Merge an approved, non-draft revision only when checks and strict branch protection pass |
 | Auto-close | Settings → Maintainer autopilot | Unavailable while safeguards are reviewed |
 | Spend caps | Settings → Autopilot budget | Optional request/spend limits for all autopilot model calls |
 
@@ -52,18 +52,17 @@ locally and marked as not posted. Autopilot never posts as the user.
 3. When the author pushes a fix or a maintainer comments
    `@proofpatcher review` (while `kernel:mentions` runs), the new revision
    is reviewed again; replies to bot comments are tracked as follow-ups.
-4. A maintainer decides whether to merge or close. Automatic merge and close are suspended.
+4. A maintainer can merge manually or opt in to automatic merging for eligible repositories. Automatic close is unavailable.
 
 ## Automatic actions
 
-Automatic ready, merge and close are suspended. The current implementation checks pull-request readiness but does not enable these actions. Revision-race protection and live testing are required. Existing saved opt-ins do not
-bypass this suspension. Manual actions retain their confirmation.
+Automatic merge requires a fresh per-repository opt-in, a completed approval for the same head and base, passing checks and no unresolved review threads. GitHub must enforce strict required checks, resolved conversations and administrator protection on the base branch. If protection cannot be read or does not meet those requirements, the merge is blocked. The worker rechecks the opt-in and pins the pull request head; GitHub does not atomically pin the base when the merge is requested. This path has automated tests but has not been demonstrated by a live automatic merge. Automatic ready and close remain unavailable. Manual actions retain their confirmation.
 
 ## Terminal (TUI) parity
 
 The same switches live in the terminal: `php artisan kernel` → **Maintainer
-autopilot** toggles fix / ready / merge / close for the selected
-repository (ready, merge and close are unavailable), `kernel:status` shows stored preferences, and `kernel:autopilot`
+autopilot** provides fix and merge settings for the selected
+repository (ready and close are unavailable), `kernel:status` shows stored preferences, and `kernel:autopilot`
 prints issue actions plus merge/close outcomes per cycle. Manual merge
 and close stay where they already were: the pull request page's Merge /
 Close buttons with their confirmation step.
@@ -96,4 +95,4 @@ php artisan review:poll --daemon
 
 The worker only runs while the local process runs; there is no webhook.
 Without GitHub App bot credentials, comments are not posted and reviews
-stay local. Automatic merge and close remain unavailable.
+stay local. Automatic merge requires the separate opt-in and branch protection described above; automatic close remains unavailable.
