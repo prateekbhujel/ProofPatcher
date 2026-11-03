@@ -33,6 +33,7 @@ final class KernelShellCommand extends Command
             ['key' => 'telemetry', 'label' => 'Usage', 'detail' => 'View local usage estimates'],
             ['key' => 'verify', 'label' => 'Verify a patch', 'detail' => 'Run verification for a supported patch'],
             ['key' => 'mentions', 'label' => 'Listen for review requests', 'detail' => 'Watch public PR mentions while this runs'],
+            ['key' => 'context', 'label' => 'Search local code', 'detail' => 'Find matching lines in local Git repositories'],
             ['key' => 'quit', 'label' => 'Quit', 'detail' => 'Close the terminal dashboard'],
         ];
     }
@@ -104,6 +105,7 @@ final class KernelShellCommand extends Command
                 'telemetry' => $this->call('kernel:telemetry'),
                 'verify' => $this->verifyOnce(),
                 'mentions' => $this->mentionsOnce(),
+                'context' => $this->contextOnce(),
                 default => null,
             };
             $this->line('');
@@ -187,6 +189,21 @@ final class KernelShellCommand extends Command
         $options = ['--repo' => $repo, '--minutes' => (int) $minutes];
         if ($answer === 'y' || $answer === 'yes') $options['--publish'] = true;
         $this->call('kernel:mentions', $options);
+    }
+
+    private function contextOnce(): void
+    {
+        $path = $this->promptLine('Local Git repository path');
+        if ($path === '') return;
+        $repositories = [$path];
+        while (count($repositories) < 5) {
+            $path = $this->promptLine('Another repository path (Enter to search)');
+            if ($path === '') break;
+            $repositories[] = $path;
+        }
+        $query = $this->promptLine('Find text');
+        if ($query === '') return;
+        $this->call('kernel:context', ['query' => $query, '--repo' => $repositories, '--content' => true]);
     }
 
     private function extensionVersion(): string

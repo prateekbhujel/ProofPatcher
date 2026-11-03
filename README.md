@@ -1,10 +1,22 @@
 # ProofPatcher
 
-**A local GitHub co-maintainer powered by Meta Muse.**
+**Muse proposes. ProofPatcher checks. Maintainers decide.**
 
-ProofPatcher helps maintainers inspect pull requests, find potential issues, and review suggested changes. It brings a GitHub workspace, model-assisted review, and verification tools together in a web app and terminal interface.
+A patch can look right and still be wrong. Maintainers need to understand the change, reproduce the problem, and see what the proposed fix actually passed.
+
+ProofPatcher brings Meta Muse reviews, focused repair proposals, verification evidence and controlled GitHub actions into one local workspace. Its strongest demonstration is a checkout repair that Muse proposes and the browser-based verifier checks, including a damaging shortcut that the checks reject.
 
 Built for the **Meta Global AI Developer Hackathon 2026**, Indie Developer track.
+
+## See it work
+
+1. **Inspect a public pull request.** Read the diff and Muse's findings, then edit an inline draft. Opt-in automatic review can handle new revisions while its local worker runs.
+2. **Check a checkout repair.** In **Visual demo**, generate a patch with Muse, run verification and inspect the recorded model and check results. The bundled damaging shortcut demonstrates rejection. The included checkout is a controlled example, separate from arbitrary GitHub PRs.
+3. **Inspect the evidence.** The receipt records the tested candidate and results. Its digest lets you check that the saved evidence has not changed.
+
+![Four passing checks and the saved integrity receipt in the light-mode checkout workspace](docs/assets/checkout-evidence-light.jpg)
+
+*Actual local run, November 3. This screenshot shows a manual preset passing the controlled checkout checks. A live Muse-to-checkout run was also rehearsed on November 2; provider requests require your own configured key.*
 
 ## What it does today
 
@@ -12,27 +24,45 @@ Built for the **Meta Global AI Developer Hackathon 2026**, Indie Developer track
 - **Review pull requests with Muse.** Opt-in autopilot polls enabled public repositories, saves findings, and skips revisions it already reviewed. A separate opt-in permits an automated inline comment on eligible public repositories. A maintainer can also request a review with a mention while the local mention listener is running. Bot comments require GitHub App credentials.
 - **Work with issues and tasks.** Save local task cards, inspect supported issue content, and request suggestions in the available workflows. Attached screenshots are stored locally; they are not interpreted by Muse in this workflow.
 - **Check a supported patch.** A visual verifier exercises included checkout examples. A separate, configured test-repository workflow can verify pinned candidates and create a draft pull request after the required checks and authorization.
-- **Use the terminal.** The interactive menu and direct Artisan commands share connection state with the web app.
+- **Use the terminal.** The interactive menu and direct Artisan commands share connection state with the web app. The read-only local MCP server exposes usage, saved review results and receipt checks.
+- **Reuse engineering skills.** Hari resolves a declared `engineering.workflow` skill for PR reviews, issue suggestions and task proposals. It guides Muse toward concrete evidence, relevant edge cases and focused fixes; the existing verifier supplies test results.
 
 Model findings are suggestions: review them before acting. The application is an early local prototype, not a production service.
+
+Large public pull requests can exceed the review limits. When a complete captured file is available, a maintainer can request a review of that file alone; the result identifies the limited scope and is not a review of the whole pull request. Some files may be unavailable when the captured diff exceeds the size limit.
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    User --> Web["Web · React + Inertia"]
-    User --> CLI["Terminal · Artisan"]
-    Web --> App["Laravel application"]
-    CLI --> App
-    App --> Hari["Hari · ability and skill registry"]
-    App --> GitHub["GitHub App and API"]
-    App --> Muse["Muse · Baseten or Meta Model API"]
-    App --> Store["Local SQLite and evidence"]
-    Hari --> Verifier["Supported patch verifiers"]
-    Verifier -. "configured fixture runner" .-> Modal["Modal"]
+flowchart TB
+    Operator["Maintainer"] --> UI["Web · Inertia + React / Terminal · PHP"]
+    UI --> App["ProofPatcher · Laravel workflows"]
+    App <--> GitHub["GitHub · issues, diffs and permitted actions"]
+    App --> Hari["Hari · declared abilities and versioned skills"]
+    Hari --> Guidance["Engineering workflow guidance"]
+    Guidance --> Muse["Meta Muse · Baseten or Meta Model API"]
+    Muse --> Proposal["Advisory findings / focused patch proposal"]
+    Proposal --> Review["PR review · maintainer draft or opted-in bot comment"]
+    Proposal --> Check["Supported checkout / pinned-fixture checks"]
+    Check --> Evidence["Results + integrity receipt"]
+    App <--> Store["Local SQLite + evidence files"]
+    Evidence --> Action["Inspect result / authorized dedicated draft PR"]
 ```
 
-**Hari** is an in-process coordination core: abilities declare the skills they provide or use, and the registry checks those relationships. ProofPatcher is the application built on top. Hari is not a system kernel or a sandbox for untrusted code. See [Hari's design and boundaries](docs/HARI_KERNEL.md).
+
+**Hari** is the reusable coordination core beneath ProofPatcher. Abilities declare what they provide and borrow; the registry checks skill versions and capabilities before resolving them. The “OS on a kernel” description is a product analogy: the implementation is an in-process PHP registry. Execution isolation belongs to the configured runner. See [Hari's design and boundaries](docs/HARI_KERNEL.md).
+
+The source follows the workflow:
+
+| Directory | Responsibility |
+| --- | --- |
+| `app/Hari`, `app/Abilities` | Registry, ability manifests and skill implementations |
+| `app/Application` | Workflow inputs, decisions and use cases |
+| `app/Agent`, `app/GitHub` | Model requests and GitHub integrations |
+| `app/Verifier`, `app/Evidence` | Supported checks and evidence integrity |
+| `app/Http`, `app/Console` | Web and terminal entry points |
+| `resources/js` | React pages and workflow components |
+| `tests` | Regression, negative-control and integration checks |
 
 ## Run locally
 
@@ -64,7 +94,9 @@ Configure a GitHub App with a client ID and client secret, enable device flow fo
 
 Set `PROOFPATCH_GITHUB_CLIENT_ID` and `PROOFPATCH_GITHUB_CLIENT_SECRET` in your private `.env`. Do not commit credentials. Choose **Sign in with GitHub** in the web app; the terminal uses GitHub's device authorization flow.
 
-Select a Muse provider and add its key in Settings, or configure the appropriate provider key privately in the environment. The current app supports Baseten and Meta Model API configuration. Model requests may consume provider credits or incur charges; the local usage ledger is an estimate, not a provider billing limit. An optional `PROOFPATCH_MODEL_MAX_ATTEMPTS` setting limits local request attempts; autopilot also has optional limits in Settings.
+In **Settings → Provider**, select Baseten or Meta Model API and add that provider's key. Alternatively, set `BASETEN_API_KEY` or `META_MODEL_API_KEY` in your private `.env`, restart the app, and select the corresponding provider in Settings. Baseten is selected by default; adding a Meta key does not switch providers automatically. Laravel does not load `.env` when configuration is cached, so use an uncached configuration or set the variables in the process environment. Never commit keys or put them in screenshots.
+
+Model requests may consume provider credits or incur charges; the local usage ledger is an estimate, not a provider billing limit. An optional `PROOFPATCH_MODEL_MAX_ATTEMPTS` setting limits local request attempts; autopilot also has optional limits in Settings.
 
 ### Terminal
 
@@ -78,6 +110,14 @@ php artisan kernel:status
 php artisan kernel:select-repo --list
 php artisan kernel:reviews
 ```
+
+To search committed code in local Git repositories without sending it to a model:
+
+```bash
+php artisan kernel:context 'OrderTotal' --content --repo=/path/to/first --repo=/path/to/second
+```
+
+Search uses each repository's current commit by default. It shows at most one matching line per file and 25 files per repository; source lines may contain sensitive data. Omit `--content` to search file paths only. The terminal menu also offers local code search. This is a search tool, not persistent memory or context automatically sent to Muse.
 
 To run a bounded automatic-review cycle, enable review for an authorized **public** repository and then run:
 

@@ -73,6 +73,20 @@ const onboarding = loadTsx('../../resources/js/Components/workbench/Disconnected
 
 const baseProps = {};
 
+test('mascot welcome is once per tab and safe when storage is unavailable', () => {
+  const values = new Map();
+  const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  assert.equal(onboarding.claimMascotWelcome(storage), true);
+  assert.equal(onboarding.claimMascotWelcome(storage), false);
+  assert.equal(onboarding.claimMascotWelcome(null), false);
+  assert.equal(onboarding.claimMascotWelcome({ getItem() { throw new Error('blocked'); }, setItem() {} }), false);
+  assert.equal(onboarding.claimMascotWelcome({ getItem() { return null; }, setItem() { throw new Error('blocked'); } }), false);
+  const css = readFileSync(new URL('../../resources/css/app.css', import.meta.url), 'utf8');
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*no-preference\)\s*\{\s*\.onboarding-mascot-welcome/s);
+  const html = renderToStaticMarkup(React.createElement(onboarding.DisconnectedOnboardingView, baseProps));
+  assert.match(html, /src="\/mascot\.png"[^>]*alt=""[^>]*aria-hidden="true"/);
+});
+
 test('an unconfigured installation explains the missing GitHub App ID', () => {
   const html = renderToStaticMarkup(React.createElement(onboarding.DisconnectedOnboardingView, baseProps));
   assert.match(html, /Sign in with GitHub/);

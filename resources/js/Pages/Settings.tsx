@@ -250,15 +250,15 @@ export default function Settings({
               <section
                 id="settings-provider"
                 aria-labelledby="muse-provider-config-heading"
-                className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-5 shadow-xs"
+                className="scroll-mt-16 bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-5 shadow-xs"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                   <div>
                     <h2 id="muse-provider-config-heading" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      Muse Model Provider &amp; Encrypted API Keys
+                      Model provider
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Choose which provider and model handles public Muse requests. Keys are encrypted locally with AES-256-GCM (0600 owner-only) and never returned to the browser.
+                      Choose where public Muse requests are sent. Keys stay in private local storage.
                     </p>
                   </div>
                   <span
@@ -397,7 +397,7 @@ export default function Settings({
 
                 <div className="rounded-lg bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-3 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
                   <p>
-                    <strong>Privacy &amp; Cost Safeguards:</strong> Saving or switching a provider never makes automatic validation requests. Meta Contributor Mode models are blocked so code is never shared for model training.
+                    Saving or switching a provider makes no model request. Contributor Mode is disabled; the provider's data policies still apply.
                   </p>
                   <p>{providerConfig.modalNote}</p>
                 </div>

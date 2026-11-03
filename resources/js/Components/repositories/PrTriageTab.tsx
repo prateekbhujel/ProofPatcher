@@ -25,10 +25,10 @@ export function PrTriageTab({
       <div
         className={`p-6 rounded-2xl border shadow-xs space-y-4 ${
           triage.summary.classification === 'POLICY_VIOLATION' || triage.summary.classification === 'CHANGES_REQUESTED'
-            ? 'bg-rose-50/70 border-rose-200 dark:bg-rose-950/40/70 dark:border-rose-800'
+            ? 'bg-rose-50/70 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800'
             : triage.summary.classification === 'CLEAN_PR'
-            ? 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/40/70 dark:border-emerald-800'
-            : 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/40/70 dark:border-amber-800'
+            ? 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800'
+            : 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800'
         }`}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -58,10 +58,10 @@ export function PrTriageTab({
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
                     triage.summary.classification === 'POLICY_VIOLATION' || triage.summary.classification === 'CHANGES_REQUESTED'
-                      ? 'bg-rose-200/80 text-rose-800 dark:text-rose-300'
+                      ? 'bg-rose-200/80 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
                       : triage.summary.classification === 'CLEAN_PR'
-                      ? 'bg-emerald-200/80 text-emerald-800 dark:text-emerald-300'
-                      : 'bg-amber-200/80 text-amber-800 dark:text-amber-300'
+                      ? 'bg-emerald-200/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      : 'bg-amber-200/80 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                   }`}
                 >
                   {triage.summary.badge || triage.summary.verdict}
@@ -219,7 +219,7 @@ export function PrTriageTab({
                 key={idx}
                 className={`p-4 rounded-xl border space-y-3 ${
                   comp.matchPercentage >= 75
-                    ? 'bg-amber-50/60 border-amber-200 dark:bg-amber-950/40/60 dark:border-amber-800'
+                    ? 'bg-amber-50/60 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800'
                     : 'bg-slate-50/80 border-slate-200 dark:bg-slate-900/80 dark:border-slate-800'
                 }`}
               >

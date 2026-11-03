@@ -239,9 +239,14 @@ test('private test case requires a separate provider consent before asking Muse'
 
 test('public Muse review is enabled only when approved, funded and configured', () => {
   const { exports: review } = loadTsxModule('../../resources/js/Components/repositories/PrReviewTab.tsx',
-    (id) => (id === '../ui/budgetCopy' ? budgetCopy : require(id)));
+    (id) => {
+      if (id === '@inertiajs/react') return inertiaMock;
+      if (id === '../ui/budgetCopy') return budgetCopy;
+      return require(id);
+    });
   const props = {
     review: null, reviewPreview: { filesCount: 1, estimatedMicros: 1000, digest: 'a'.repeat(64), body: {} },
+    changedFiles: [], baseContextPath: null,
     isPrivate: false, reviewApproved: true, reviewProcessing: false, budget: { canRequest: true, attempts: 0, maxAttempts: 10 },
     modelKeyAvailable: true, copiedReviewDigest: false, setReviewApproved() {}, copyText() {}, handleReviewSubmit() {}, setReviewFormData() {},
   };

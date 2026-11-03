@@ -1,4 +1,20 @@
-# ProofPatcher GitHub App Architecture & Least-Privilege Specification
+# GitHub connection and actions
+
+Current state: November 3, 2026.
+
+- Web sign-in uses the GitHub App authorization flow and returns to the originating page. The terminal uses device authorization. Both use the verified connection and repository grant.
+- Public automatic review is implemented as an opt-in local polling worker. Automatic comments are a separate opt-in. A running mention listener supports maintainer-requested public PR reviews.
+- GitHub App installation tokens support bot-attributed comments when its private key is configured. The bot publisher does not silently fall back to a user token.
+- The configured pinned test repository can receive a draft PR after its supported verification and publication guards. Explicitly authorized manual merge/close actions have their own confirmation and freshness checks. General autonomous merging/closing is not implemented.
+- Repository listing follows the grant. Private PR capture is limited to the configured test workflow; general private model review and private autopilot are unavailable. The dedicated private test case has its own explicit provider-consent path.
+- Manual model requests bind approval to a request digest. Automatic reviews use the repository opt-in, revision deduplication and budget controls. Neither model output nor a metadata snapshot is a test result.
+- There is no live webhook ingestion service. Local polling requires the machine and worker to remain running.
+
+The README contains current setup instructions. The permission matrix and webhook discussion below are the original design proposal; they do not describe the exact current installation or promise implemented behavior.
+
+<details>
+<summary>Historical design proposal</summary>
+
 
 This is a design proposal, not a description of features already deployed. The current prototype uses GitHub device sign-in; automatic reviews and webhook processing are not implemented. See the README for the current limits.
 
@@ -97,3 +113,5 @@ All incoming GitHub webhooks (`pull_request.opened`, `pull_request.synchronize`,
 3. **Single-Use Approval Tokens**:
    - Any model request or downstream action requires a cryptographically bound single-use token (`hash_hmac('sha256', repo:pr:headSha:digest, secret)`).
    - Replay attempts fail closed.
+
+</details>

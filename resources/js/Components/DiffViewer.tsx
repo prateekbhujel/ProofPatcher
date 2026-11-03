@@ -95,8 +95,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
   };
 
   const handleSave = (fileName: string, lineNum: number, side: string, text: string) => {
-    onSaveDraft(fileName, lineNum, side, text);
-    closeEditor();
+    onSaveDraft(fileName, lineNum, side, text, closeEditor);
   };
 
   return (
@@ -106,7 +105,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
       }`}
     >
       {/* File Header Bar — Exact GitHub PR Style */}
-      <div className="diff-file-header w-full p-2.5 sm:px-4 bg-[#f6f8fa] dark:bg-slate-900 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs select-none dark:border-slate-800">
+      <div className="diff-file-header w-full p-2.5 sm:px-4 bg-[var(--bg-sunken)] border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-3 text-xs select-none">
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"

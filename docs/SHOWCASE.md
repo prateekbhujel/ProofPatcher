@@ -1,29 +1,19 @@
-# Showcase assets (Center Stage)
+# Showcase capture guide
 
-ProofPatcher's launch imagery is produced with
-[Center Stage](https://reactbits.dev/tools/center-stage) from real
-captures of the running app. No mockups: every shot starts from the
-actual console.
+This is a capture plan, not a record of produced video or image exports.
 
-## Capture list
+Use the running app in light mode with a dedicated test repository. Capture only the page viewport or terminal; keep account secrets, unrelated tabs and private work out of the frame. Screenshots must show actual results and retain their real scope.
 
-1. **Console home** — connected, a repository selected, findings listed.
-   Source: `http://127.0.0.1:8000/` in a 1440×900 browser window.
-2. **Workbench** — an issue open with a verified candidate and receipt.
-   Source: `http://127.0.0.1:8000/issues`.
-3. **Connect screen** — signed out, the framed sign-in panel.
-   Source: sign out, then `http://127.0.0.1:8000/issues`.
-4. **Terminal** — `php artisan kernel` dashboard and `kernel:status`.
-   Source: screen recording of the real shell (for the GIF/video export).
+## Shots
 
-## Recipe (per shot)
+1. Public pull request: changed lines, a concise Muse finding and an editable local draft.
+2. Controlled checkout: visible Muse generation, rejected shortcut, accepted repair and saved evidence.
+3. GitHub result: an existing bot-attributed comment, clearly identified as a recorded example when replayed.
+4. Terminal: status or findings from the real command, kept brief.
+5. Architecture: one diagram linking Muse, Hari, supported checks and controlled actions.
 
-1. Capture at 2× scale, light and dark theme.
-2. In Center Stage: browser preset for web shots, terminal window for
-   the shell; tilt ≤ 6°, depth of field off (text must stay readable),
-   shadow soft, background = the app's own `--bg` tone, never a gradient.
-3. Export 4K PNG for stills, GIF for the terminal flow.
-4. Save as `docs/assets/showcase-<name>.png` and reference from README.
+The README uses a genuine light-mode viewport capture of the November 3 manual checkout run. It does not depict a newly generated Muse repair.
 
-Keep text legible: if a reviewer can't read the shot at README width,
-retake it flatter. Product first, polish second.
+Use a title card only when it helps explain the problem. Keep most of a three-minute demo on the working product. Time compression may shorten waits, but must not conceal failures or suggest distinct workflows are one connected execution. Label prerecorded results and preserve source footage.
+
+If framing screenshots with a design tool, retain the original and keep product text readable. No decorative tool or generated imagery is required for the demo.

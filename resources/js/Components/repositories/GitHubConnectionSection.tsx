@@ -41,7 +41,7 @@ export function GitHubConnectionSection({
         onClick={() => setGitHubSectionOpen(!gitHubSectionOpen)}
         aria-expanded={gitHubSectionOpen}
         aria-controls="github-connection-details"
-        className="w-full p-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between text-left cursor-pointer select-none hover:bg-slate-100/60 transition dark:bg-slate-900/70 dark:border-slate-800 dark:hover:bg-slate-700/60"
+        className="w-full p-4 bg-[var(--bg-raised)] border-b border-[var(--border)] flex items-center justify-between text-left cursor-pointer select-none hover:bg-[var(--bg-hover)] transition"
       >
         <div className="flex items-center gap-2.5">
           <FolderGit2 className="w-4 h-4 text-accent-700 dark:text-accent-300" />

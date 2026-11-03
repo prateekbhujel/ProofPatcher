@@ -1,3 +1,14 @@
+# Local MCP interface
+
+Current state: November 3, 2026.
+
+`php artisan mcp:start proofpatch` exposes three read-only tools over the existing Hari skills: budget status, review results and receipt integrity verification. `app/Mcp/Servers/ProofPatchServer.php` is the current inventory. No tool proposes patches, runs candidate code, publishes comments or changes GitHub. HTTP transport remains deferred.
+
+The server currently advertises version `0.2.0`; this is separate from the product's initial showcase version. The original one-tool spike below is preserved as history.
+
+<details>
+<summary>Historical November 1 spike</summary>
+
 # MCP spike evaluation (slice 7)
 
 Date: 2026-11-01. Time-boxed spike, verified live. No model spend.
@@ -47,3 +58,5 @@ Should ProofPatcher expose its state to coding agents via
 - Second read-only tool: latest auto-review result for a PR
   (`AutoReviewResult::findForRevision`), same allowlist discipline.
 - Client config snippet for the owner's agents once a consumer exists.
+
+</details>

@@ -70,7 +70,7 @@ export function UnifiedDiffTable({
 
             if (isHunk) {
               return (
-                <tr key={lIdx} className="diff-hunk bg-[#f0f4f8] text-[#57606a] border-y border-[#d0d7de] font-bold">
+                <tr key={lIdx} className="diff-hunk bg-[var(--bg-sunken)] text-[var(--fg-muted)] border-y border-[var(--border)] font-medium">
                   <td colSpan={5} className="px-4 py-1 text-xs select-none">
                     {line.content}
                   </td>
@@ -83,13 +83,13 @@ export function UnifiedDiffTable({
                 {/* Diff Row */}
                 <tr
                   className={`group border-b border-slate-100 dark:border-slate-700 ${
-                    isAdd ? 'diff-added bg-[#e6ffec]' : isDel ? 'diff-removed bg-[#ffebe9]' : 'diff-context bg-white dark:bg-[#141821]'
+                    isAdd ? 'diff-added bg-[var(--diff-add)]' : isDel ? 'diff-removed bg-[var(--diff-del)]' : 'diff-context bg-[var(--bg-raised)]'
                   }`}
                 >
                   {/* Old Line Number */}
                   <td
-                    className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[#d0d7de]/60 font-mono ${
-                      isDel ? 'bg-[#ffdce0] text-[#cf222e]' : `text-[#656d76] ${!isAdd ? 'dark:text-slate-400' : ''}`
+                    className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[var(--border)] font-mono ${
+                      isDel ? 'bg-[var(--diff-del)] text-[var(--danger-text)]' : `text-[var(--fg-muted)] ${!isAdd ? 'dark:text-slate-400' : ''}`
                     }`}
                   >
                     {line.oldLine ?? ''}
@@ -97,15 +97,15 @@ export function UnifiedDiffTable({
 
                   {/* New Line Number */}
                   <td
-                    className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[#d0d7de]/60 font-mono ${
-                      isAdd ? 'bg-[#dafbe1] text-[#1a7f37]' : `text-[#656d76] ${!isDel ? 'dark:text-slate-400' : ''}`
+                    className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[var(--border)] font-mono ${
+                      isAdd ? 'bg-[var(--diff-add)] text-[var(--ok-text)]' : `text-[var(--fg-muted)] ${!isDel ? 'dark:text-slate-400' : ''}`
                     }`}
                   >
                     {line.newLine ?? ''}
                   </td>
 
                   {/* Action Gutter: GitHub-Style Blue '+' Button */}
-                  <td className="w-7 px-1 py-0.5 text-center select-none border-r border-[#d0d7de]/60">
+                  <td className="w-7 px-1 py-0.5 text-center select-none border-r border-[var(--border)]">
                     {line.isCommentable && lineNum !== null ? (
                       <button
                         type="button"
@@ -139,14 +139,14 @@ export function UnifiedDiffTable({
                   {/* Sign Marker (+ or -) */}
                   <td
                     className={`diff-sign text-center select-none font-bold font-mono text-[13px] ${
-                      isAdd ? 'text-[#1a7f37]' : isDel ? 'text-[#cf222e]' : 'text-transparent'
+                      isAdd ? 'text-[var(--ok-text)]' : isDel ? 'text-[var(--danger-text)]' : 'text-transparent'
                     }`}
                   >
                     {isAdd ? '+' : isDel ? '-' : ' '}
                   </td>
 
                   {/* Code Content */}
-                  <td className={`diff-code px-2 py-0.5 whitespace-pre font-mono text-xs overflow-x-auto text-[#1f2328] ${!isAdd && !isDel ? 'dark:text-slate-200' : ''}`}>
+                  <td className={`diff-code px-2 py-0.5 whitespace-pre font-mono text-xs overflow-x-auto text-[var(--fg)] ${!isAdd && !isDel ? 'dark:text-slate-200' : ''}`}>
                     {line.content}
                   </td>
                 </tr>
@@ -167,7 +167,7 @@ export function UnifiedDiffTable({
                 {/* ================= GITHUB-STYLE INLINE COMMENT EDITOR ================= */}
                 {isEditorOpen && lineNum !== null && (
                   <tr>
-                    <td colSpan={5} className="p-3 bg-[#f6f8fa] border-y border-[#d0d7de]">
+                    <td colSpan={5} className="p-3 bg-[var(--bg-sunken)] border-y border-[var(--border)]">
                       <InlineCommentEditor
                         fileName={fileName}
                         lineNum={lineNum}
@@ -184,7 +184,7 @@ export function UnifiedDiffTable({
                 {/* Saved Local Draft Banner */}
                 {matchingDraft && (
                   <tr>
-                    <td colSpan={5} className="p-3 bg-accent-50/70 border-y border-accent-200 dark:bg-accent-950/40/70 dark:border-accent-800">
+                    <td colSpan={5} className="p-3 bg-[var(--bg-sunken)] border-y border-[var(--border)]">
                       <InlineDraft draft={matchingDraft} onEdit={() => openEditorForLine(lineKey, matchingDraft.comment)} onDelete={onDeleteDraft} />
                     </td>
                   </tr>

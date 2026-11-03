@@ -130,4 +130,111 @@ final class PullRequestReaderTest extends TestCase
         self::assertTrue($result['isMerged']);
         self::assertFalse($result['isPrivate']);
     }
+
+    public function testAuthenticatedPublicOnlyCaptureRechecksVisibilityAndRevision(): void
+    {
+        $token = 'ghu_test_token_123456789';
+        $repo = ['full_name' => 'example/project', 'private' => false, 'visibility' => 'public'];
+        $pull = ['number' => 12, 'title' => 'Fix checkout', 'state' => 'open', 'changed_files' => 0,
+            'head' => ['sha' => str_repeat('a', 40), 'ref' => 'fix'],
+            'base' => ['sha' => str_repeat('b', 40), 'ref' => 'main', 'repo' => $repo]];
+        $responses = [$repo, $pull, [], ['total_count' => 0, 'check_runs' => []], $pull, $repo];
+        $urls = [];
+        $http = new MockHttpClient(static function (string $method, string $url, array $options) use (&$responses, &$urls, $token) {
+            $urls[] = $url;
+            self::assertSame('GET', $method);
+            self::assertStringStartsWith('https://api.github.com/repos/example/project', $url);
+            self::assertSame(0, $options['max_redirects']);
+            self::assertContains('Authorization: Bearer '.$token, $options['headers']);
+            return new MockResponse(json_encode(array_shift($responses), JSON_THROW_ON_ERROR));
+        });
+        $result = (new PullRequestReader($http, $token, publicOnly: true))->read('example/project#12');
+        self::assertCount(6, $urls);
+        self::assertFalse($result['isPrivate']);
+        self::assertSame(str_repeat('b', 40), $result['baseSha']);
+        self::assertStringNotContainsString($token, json_encode($result, JSON_THROW_ON_ERROR));
+    }
+
+    public function testAuthenticatedPublicOnlyCaptureStopsBeforePullForPrivateOrUncertainRepo(): void
+    {
+        foreach ([
+            ['full_name' => 'example/project', 'private' => true, 'visibility' => 'private'],
+            ['full_name' => 'example/project', 'private' => false],
+            ['full_name' => 'example/other', 'private' => false, 'visibility' => 'public'],
+        ] as $repo) {
+            $calls = 0;
+            $http = new MockHttpClient(static function () use (&$calls, $repo) { ++$calls; return new MockResponse(json_encode($repo, JSON_THROW_ON_ERROR)); });
+            try { (new PullRequestReader($http, 'ghu_test_token_123456789', publicOnly: true))->read('example/project#12'); self::fail('Nonpublic repository accepted.'); }
+            catch (\RuntimeException $e) { self::assertSame(1, $calls); self::assertStringContainsString('public', $e->getMessage()); }
+        }
+    }
+
+    public function testAuthenticatedPublicOnlyCaptureRejectsVisibilityFlipAndEncodedToken(): void
+    {
+        $token = 'abc"defghijklmnop123';
+        $repo = ['full_name' => 'example/project', 'private' => false, 'visibility' => 'public'];
+        $pull = ['number' => 12, 'title' => 'Fix checkout', 'state' => 'open', 'changed_files' => 0,
+            'head' => ['sha' => str_repeat('a', 40), 'ref' => 'fix'],
+            'base' => ['sha' => str_repeat('b', 40), 'ref' => 'main', 'repo' => $repo]];
+        foreach (['visibility', 'encoded-token', 'denied', 'transport'] as $case) {
+            $responses = [$repo, $pull, [], ['total_count' => 0, 'check_runs' => []], $pull,
+                ['full_name' => 'example/project', 'private' => true, 'visibility' => 'private']];
+            $calls = 0;
+            $http = new MockHttpClient(static function () use (&$responses, &$calls, $case, $token, $repo) {
+                ++$calls;
+                if ($case === 'transport') throw new \RuntimeException('bad '.$token);
+                if ($case === 'denied') return new MockResponse('bad '.$token, ['http_code' => 403]);
+                if ($case === 'encoded-token') return new MockResponse(json_encode($repo + ['description' => $token], JSON_THROW_ON_ERROR));
+                return new MockResponse(json_encode(array_shift($responses), JSON_THROW_ON_ERROR));
+            });
+            try { (new PullRequestReader($http, $token, publicOnly: true))->read('example/project#12'); self::fail('Expected refusal.'); }
+            catch (\RuntimeException $e) {
+                self::assertSame($case === 'visibility' ? 6 : 1, $calls);
+                self::assertStringNotContainsString($token, $e->getMessage());
+            }
+        }
+    }
+
+    public function testCaptureReadsTwoPagesAndRechecksPullAndVisibility(): void
+    {
+        $repo = ['full_name' => 'example/project', 'private' => false, 'visibility' => 'public'];
+        $pull = ['number' => 12, 'title' => 'Many files', 'state' => 'open', 'changed_files' => 101,
+            'head' => ['sha' => str_repeat('a', 40), 'ref' => 'fix'],
+            'base' => ['sha' => str_repeat('b', 40), 'ref' => 'main', 'repo' => $repo]];
+        $files = [];
+        for ($i = 0; $i < 101; ++$i) $files[] = ['filename' => 'src/'.$i, 'status' => 'modified', 'additions' => 1, 'deletions' => 0];
+        $urls = [];
+        $responses = [$repo, $pull, array_slice($files, 0, 100), array_slice($files, 100), ['total_count' => 0, 'check_runs' => []], $pull, $repo];
+        $client = new MockHttpClient(static function (string $method, string $url) use (&$urls, &$responses) {
+            $urls[] = $url;
+            return new MockResponse(json_encode(array_shift($responses), JSON_THROW_ON_ERROR));
+        });
+        $result = (new PullRequestReader($client, null, publicOnly: true))->read('example/project#12');
+        self::assertCount(101, $result['files']);
+        self::assertFalse($result['filesTruncated']);
+        self::assertStringEndsWith('/files?per_page=100&page=2', $urls[3]);
+        self::assertSame('src/100', $result['files'][100]['name']);
+        self::assertCount(7, $urls);
+    }
+
+    public function testCaptureRejectsDuplicateFilesAndChangedCountAfterPagination(): void
+    {
+        $repo = ['full_name' => 'example/project', 'private' => false, 'visibility' => 'public'];
+        $pull = ['number' => 12, 'title' => 'Many files', 'state' => 'open', 'changed_files' => 101,
+            'head' => ['sha' => str_repeat('a', 40), 'ref' => 'fix'],
+            'base' => ['sha' => str_repeat('b', 40), 'ref' => 'main', 'repo' => $repo]];
+        $files = [];
+        for ($i = 0; $i < 101; ++$i) $files[] = ['filename' => 'src/'.$i, 'status' => 'modified', 'additions' => 1, 'deletions' => 0];
+        foreach (['duplicate', 'count'] as $case) {
+            $current = $pull;
+            if ($case === 'count') $current['changed_files'] = 102;
+            $lastPage = $case === 'duplicate' ? [$files[0]] : [$files[100]];
+            $responses = [$repo, $pull, array_slice($files, 0, 100), $lastPage, ['total_count' => 0, 'check_runs' => []], $current, $repo];
+            $client = new MockHttpClient(static function () use (&$responses) {
+                return new MockResponse(json_encode(array_shift($responses), JSON_THROW_ON_ERROR));
+            });
+            try { (new PullRequestReader($client, null, publicOnly: true))->read('example/project#12'); self::fail('Invalid capture accepted.'); }
+            catch (\RuntimeException $e) { self::assertNotSame('', $e->getMessage()); }
+        }
+    }
 }

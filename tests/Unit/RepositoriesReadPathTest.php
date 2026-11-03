@@ -45,4 +45,33 @@ final class RepositoriesReadPathTest extends TestCase
         self::assertFalse(TriageCandidates::isDifferentPull([], []));
         self::assertTrue(TriageCandidates::isDifferentPull(['repository' => 'acme/repo'], $current));
     }
+
+    public function testTriageKeepsLatestCapturePerRepositoryAndPull(): void
+    {
+        $old = ['repository' => 'acme/repo', 'number' => 8, 'headSha' => 'old'];
+        $new = ['repository' => 'ACME/REPO', 'number' => 8, 'headSha' => 'new'];
+        $other = ['repository' => 'acme/other', 'number' => 8, 'headSha' => 'other'];
+        $captures = [
+            ['id' => 'old', 'capturedAt' => '2026-11-01T09:00:00+00:00', 'pull' => $old],
+            ['id' => 'new', 'capturedAt' => '2026-11-01T11:00:00+00:00', 'pull' => $new],
+            ['id' => 'other', 'capturedAt' => '2026-11-01T10:00:00+00:00', 'pull' => $other],
+            ['id' => 'duplicate', 'capturedAt' => '2026-11-01T10:30:00+00:00', 'pull' => $new],
+        ];
+        self::assertSame([$new, $other], TriageCandidates::latestPerPull($captures));
+        self::assertCount(4, $captures, 'Selection must not mutate the saved history input.');
+    }
+
+    public function testTriageEqualTimesHaveStableTiebreakAndMalformedCapturesAreIgnored(): void
+    {
+        $a = ['repository' => 'acme/repo', 'number' => 8, 'headSha' => 'a'];
+        $b = ['repository' => 'acme/repo', 'number' => 8, 'headSha' => 'b'];
+        $captures = [
+            ['id' => 'b', 'capturedAt' => '2026-11-01T12:00:00+01:00', 'pull' => $b],
+            ['id' => 'a', 'capturedAt' => '2026-11-01T11:00:00+00:00', 'pull' => $a],
+            ['id' => 'z', 'capturedAt' => 'not a date', 'pull' => $a],
+            ['id' => 'z', 'capturedAt' => '2026-11-02T00:00:00+00:00', 'pull' => ['repository' => 'acme/repo']],
+        ];
+        self::assertSame([$b], TriageCandidates::latestPerPull($captures));
+        self::assertSame([$b], TriageCandidates::latestPerPull(array_reverse($captures)));
+    }
 }

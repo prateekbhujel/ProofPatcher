@@ -47,6 +47,8 @@ Route::post('/issues/draft', [IssueWorkbenchController::class, 'saveDraft']);
 Route::post('/issues/voice-transcribe', [IssueWorkbenchController::class, 'transcribeVoice']);
 Route::match(['get', 'post'], '/repositories', [DashboardController::class, 'repositories']);
 Route::post('/repositories/review', [DashboardController::class, 'reviewPullRequest']);
+Route::post('/repositories/review/base-context', [DashboardController::class, 'prepareReviewBaseContext']);
+Route::post('/repositories/review/file', [DashboardController::class, 'selectReviewFile']);
 Route::post('/repositories/review/clear', [DashboardController::class, 'clearReview']);
 Route::post('/repositories/review/draft', [DashboardController::class, 'saveDraftComment']);
 Route::post('/repositories/review/comment', [ManualInlineCommentController::class, 'store']);

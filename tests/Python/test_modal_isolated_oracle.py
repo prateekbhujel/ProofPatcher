@@ -64,6 +64,7 @@ def table_candidate(cases, wrong=()):
 # Import helper functions from modal_sandbox_runner directly
 sys.path.insert(0, str(RUNNER_SCRIPT.parent))
 import modal_sandbox_runner as msr
+import trusted_oracle_runner as tor
 
 
 class ModalIsolatedOracleBoundaryTest(unittest.TestCase):
@@ -295,6 +296,35 @@ class ModalIsolatedOracleBoundaryTest(unittest.TestCase):
         result = self._execute_supervisor(candidate, FIXTURE_HARNESS)
         self.assertEqual(1, result["exit_code"])
         self.assertFalse(result["has_sentinel"])
+
+    def test_input_aware_json_exit_is_diagnostic_only_and_blocked_by_pinned_gate(self):
+        # Unlike a constant answer, this output depends on the visible case.
+        # The function emits the wrapper's expected JSON and exits rather than
+        # returning, so the local diagnostic supervisor cannot distinguish it
+        # from a legitimate return. This is not a Modal isolation test.
+        candidate = (
+            b"<?php\ndeclare(strict_types=1);\n"
+            b"function orderTotal(array $items): int {\n"
+            b"    $total = 0;\n"
+            b"    foreach ($items as $item) { $total += $item['unit_price'] * $item['quantity']; }\n"
+            b"    echo json_encode(['order_total' => $total]);\n"
+            b"    exit(0);\n}\n"
+        )
+        result = self._execute_supervisor(candidate, FIXTURE_HARNESS)
+        self.assertEqual(0, result['exit_code'])
+        self.assertTrue(result['has_sentinel'])
+
+        # Production fixture execution rejects this exact unpinned candidate
+        # before creating a sandbox. A separate diagnostic success marker must
+        # never become a trusted-oracle attestation.
+        with self.assertRaisesRegex(ValueError, 'Untrusted candidates are blocked'):
+            msr.validate_pinned_spec(base64.b64encode(candidate).decode('ascii'),
+                base64.b64encode(FIXTURE_HARNESS).decode('ascii'),
+                'src/OrderTotal.php', 'tests/order_total.php', msr.DEFAULT_IMAGE)
+        harness_sha = hashlib.sha256(FIXTURE_HARNESS).hexdigest()
+        self.assertEqual((False, False), tor.attest_oracle_result(
+            result['exit_code'], False, False, result['stdout'], result['stderr'],
+            result['oracle_token'], harness_sha))
 
     def test_vector_sentinel_in_exception_message_aborts(self):
         candidate = (

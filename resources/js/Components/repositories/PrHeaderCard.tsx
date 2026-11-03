@@ -5,11 +5,12 @@ import { PullData, TriageData } from './types';
 
 interface PrHeaderCardProps {
   pull: PullData;
+  canManagePull: boolean;
   triage?: TriageData | null;
   onViewTriage: () => void;
 }
 
-export function PrHeaderCard({ pull, triage, onViewTriage }: PrHeaderCardProps) {
+export function PrHeaderCard({ pull, canManagePull, triage, onViewTriage }: PrHeaderCardProps) {
   const [pending, setPending] = useState<'merge' | 'close' | null>(null);
   const [confirming, setConfirming] = useState<'merge' | 'close' | null>(null);
 
@@ -105,7 +106,10 @@ export function PrHeaderCard({ pull, triage, onViewTriage }: PrHeaderCardProps) 
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
-          {isOpen && confirming === null && (
+          {isOpen && !canManagePull && (
+            <span className="text-xs text-slate-500 dark:text-slate-400">Read-only</span>
+          )}
+          {isOpen && canManagePull && confirming === null && (
             <>
               <button
                 type="button"
@@ -126,7 +130,7 @@ export function PrHeaderCard({ pull, triage, onViewTriage }: PrHeaderCardProps) 
               </button>
             </>
           )}
-          {isOpen && confirming !== null && (
+          {isOpen && canManagePull && confirming !== null && (
             <div role="group" aria-label="Confirm action" className="flex flex-wrap items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-800 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200">
               <span>
                 {confirming === 'merge' ? 'Squash and merge' : 'Close without merging'} commit <code className="font-mono">{pull.headSha.slice(0, 7)}</code>?

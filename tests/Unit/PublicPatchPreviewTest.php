@@ -49,7 +49,7 @@ final class PublicPatchPreviewTest extends TestCase
         $files = [
             ['filename' => 'src/a.php', 'additions' => 1, 'deletions' => 1, 'patch' => "@@ -1 +1 @@\n-old\n+new"],
             ['filename' => 'image.bin', 'additions' => 0, 'deletions' => 0],
-            ['filename' => 'large.txt', 'additions' => 1, 'deletions' => 0, 'patch' => '+'.str_repeat('x', 16384)],
+            ['filename' => 'large.txt', 'additions' => 1, 'deletions' => 0, 'patch' => '+'.str_repeat('x', 65536)],
             ['filename' => 'partial.txt', 'additions' => 2, 'deletions' => 0, 'patch' => "@@ -0,0 +1,2 @@\n+one"],
         ];
         $requests = [];
@@ -124,5 +124,153 @@ final class PublicPatchPreviewTest extends TestCase
         $requests = [];
         $this->expectException(\InvalidArgumentException::class);
         (new PublicPatchPreview($this->client([], $requests)))->fetch(['repository' => 'example/../evil']);
+    }
+
+    public function testPaginationFetchesAll101FilesAndTheApprovedDigestCoversEveryPage(): void
+    {
+        $files = [];
+        for ($i = 0; $i < 101; ++$i) {
+            $files[] = ['filename' => sprintf('src/file%03d.php', $i), 'additions' => 1, 'deletions' => 0,
+                'patch' => "@@ -0,0 +1 @@\n+".$i];
+        }
+        $requests = [];
+        $responses = [$this->repo(), $this->pull(101), array_slice($files, 0, 100), array_slice($files, 100), $this->pull(101), $this->repo()];
+        $preview = (new PublicPatchPreview($this->client($responses, $requests)))->fetch($this->captured());
+        self::assertCount(101, $preview['files']);
+        self::assertFalse($preview['filesTruncated']);
+        self::assertSame('https://api.github.com/repos/example/project/pulls/12/files?per_page=100&page=2', $requests[3][1]);
+        $budget = new \ProofPatch\Agent\RequestBudget(sys_get_temp_dir().'/unused-proofpatch-preview', 1000000, 5);
+        $agent = new \ProofPatch\Agent\PullRequestReview(new MockHttpClient(), $budget);
+        $pull = $this->captured() + ['title' => 'Large review'];
+        $first = $agent->preview($pull, $preview);
+        self::assertSame(101, $first['filesCount']);
+        $preview['files'][100]['patch'] = "@@ -0,0 +1 @@\n+changed";
+        self::assertNotSame($first['digest'], $agent->preview($pull, $preview)['digest']);
+    }
+
+    public function testPagedPreviewRejectsDuplicatesOrRevisionChanges(): void
+    {
+        $page = [];
+        for ($i = 0; $i < 100; ++$i) $page[] = ['filename' => 'src/'.$i, 'additions' => 1, 'deletions' => 0, 'patch' => '+a'];
+        foreach (['duplicate', 'head', 'base', 'visibility'] as $case) {
+            $next = [['filename' => $case === 'duplicate' ? 'src/0' : 'src/100', 'additions' => 1, 'deletions' => 0, 'patch' => '+b']];
+            $last = $this->pull(101);
+            if ($case === 'head' || $case === 'base') $last[$case]['sha'] = str_repeat('c', 40);
+            $lastRepo = $case === 'visibility' ? ['full_name' => 'example/project', 'private' => true, 'visibility' => 'private'] : $this->repo();
+            $requests = [];
+            try {
+                (new PublicPatchPreview($this->client([$this->repo(), $this->pull(101), $page, $next, $last, $lastRepo], $requests)))->fetch($this->captured());
+                self::fail('Invalid paged preview was accepted: '.$case);
+            } catch (\RuntimeException $e) {
+                self::assertNotSame('', $e->getMessage());
+            }
+        }
+    }
+
+    public function testMoreThan300OrAShortPageIsReportedIncomplete(): void
+    {
+        $page = static function (int $from): array {
+            $files = [];
+            for ($i = $from; $i < $from + 100; ++$i) $files[] = ['filename' => 'src/'.$i, 'additions' => 1, 'deletions' => 0, 'patch' => '+a'];
+            return $files;
+        };
+        $requests = [];
+        $preview = (new PublicPatchPreview($this->client([$this->repo(), $this->pull(301), $page(0), $page(100), $page(200), $this->pull(301), $this->repo()], $requests)))->fetch($this->captured());
+        self::assertTrue($preview['filesTruncated']);
+        self::assertCount(300, $preview['files']);
+        self::assertCount(7, $requests);
+        $agent = new \ProofPatch\Agent\PullRequestReview(new MockHttpClient(), new \ProofPatch\Agent\RequestBudget(sys_get_temp_dir().'/unused-proofpatch-preview', 1000000, 5));
+        try { $agent->preview($this->captured(), $preview); self::fail('Incomplete PR must not reach the model.'); }
+        catch (\InvalidArgumentException $e) { self::assertStringContainsString('diff is incomplete', $e->getMessage()); }
+
+        $requests = [];
+        $short = (new PublicPatchPreview($this->client([$this->repo(), $this->pull(101), array_slice($page(0), 0, 99), $this->pull(101), $this->repo()], $requests)))->fetch($this->captured());
+        self::assertTrue($short['filesTruncated']);
+        self::assertCount(5, $requests, 'A short page must not trigger further requests.');
+    }
+
+    public function testCompleteFortyKilobytePatchIsAvailableButOver64KiBIsNot(): void
+    {
+        $files = [
+            ['filename' => 'src/large.php', 'additions' => 1, 'deletions' => 0, 'patch' => '+'.str_repeat('x', 40000)],
+            ['filename' => 'src/too-large.php', 'additions' => 1, 'deletions' => 0, 'patch' => '+'.str_repeat('x', 65536)],
+        ];
+        $requests = [];
+        $preview = (new PublicPatchPreview($this->client([$this->repo(), $this->pull(2), $files, $this->pull(2), $this->repo()], $requests)))->fetch($this->captured());
+        self::assertSame(['available', 'oversize'], array_column($preview['files'], 'status'));
+        self::assertNull($preview['files'][1]['patch']);
+    }
+
+    public function testAggregatePatchLimitStillRefusesAnIncompleteReview(): void
+    {
+        $files = [];
+        for ($i = 0; $i < 3; ++$i) $files[] = ['filename' => 'src/'.$i.'.php', 'additions' => 1, 'deletions' => 0,
+            'patch' => '+'.str_repeat('x', 60000)];
+        $requests = [];
+        $preview = (new PublicPatchPreview($this->client([$this->repo(), $this->pull(3), $files, $this->pull(3), $this->repo()], $requests)))->fetch($this->captured());
+        self::assertSame(['available', 'available', 'oversize'], array_column($preview['files'], 'status'));
+        $agent = new \ProofPatch\Agent\PullRequestReview(new MockHttpClient(), new \ProofPatch\Agent\RequestBudget(sys_get_temp_dir().'/unused-proofpatch-preview', 1000000, 5));
+        $this->expectExceptionMessage('diff is incomplete');
+        $agent->preview($this->captured(), $preview);
+    }
+
+    public function testAuthenticatedPreviewUsesOnlyGithubAndStillRejectsPrivateOrChangedBase(): void
+    {
+        $token = 'ghu_test_token_123456789';
+        foreach (['private', 'changed'] as $scenario) {
+            $calls = 0;
+            $client = new MockHttpClient(function (string $method, string $url, array $options) use ($token, $scenario, &$calls) {
+                ++$calls;
+                self::assertSame('GET', $method);
+                self::assertStringStartsWith('https://api.github.com/repos/example/project', $url);
+                self::assertSame(0, $options['max_redirects']);
+                self::assertContains('Authorization: Bearer '.$token, $options['headers']);
+                $response = $this->repo();
+                if ($scenario === 'private') $response = ['full_name' => 'example/project', 'private' => true, 'visibility' => 'private'];
+                if ($calls === 2) { $response = $this->pull(); $response['base']['sha'] = str_repeat('c', 40); }
+                return new MockResponse(json_encode($response, JSON_THROW_ON_ERROR));
+            });
+            try {
+                (new PublicPatchPreview($client, $token))->fetch($this->captured());
+                self::fail('Expected private or changed repository to be rejected.');
+            } catch (\RuntimeException $e) {
+                self::assertStringNotContainsString($token, $e->getMessage());
+                self::assertSame($scenario === 'private' ? 1 : 2, $calls);
+            }
+        }
+    }
+
+    public function testAuthenticatedResponseAndTransportFailuresDoNotExposeTokenOrRetryAnonymously(): void
+    {
+        // A JSON-escaped token must not evade detection when decoded.
+        $token = 'abc"defghijklmnop123';
+        $calls = 0;
+        $client = new MockHttpClient(function () use ($token, &$calls) {
+            ++$calls;
+            return new MockResponse(json_encode($this->repo() + ['description' => $token], JSON_THROW_ON_ERROR));
+        });
+        try {
+            (new PublicPatchPreview($client, $token))->fetch($this->captured());
+            self::fail('Credential in decoded response was accepted.');
+        } catch (\RuntimeException $e) {
+            self::assertStringNotContainsString($token, $e->getMessage());
+            self::assertSame(1, $calls);
+        }
+
+        foreach (['denied', 'transport'] as $mode) {
+            $calls = 0;
+            $client = new MockHttpClient(static function () use ($token, $mode, &$calls) {
+                ++$calls;
+                if ($mode === 'transport') throw new \RuntimeException('failure with '.$token);
+                return new MockResponse('denied '.$token, ['http_code' => 403]);
+            });
+            try {
+                (new PublicPatchPreview($client, $token))->fetch($this->captured());
+                self::fail('Denied request was accepted.');
+            } catch (\RuntimeException $e) {
+                self::assertStringNotContainsString($token, $e->getMessage());
+                self::assertSame(1, $calls, 'Do not retry without authorization.');
+            }
+        }
     }
 }

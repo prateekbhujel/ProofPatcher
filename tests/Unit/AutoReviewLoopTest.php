@@ -214,6 +214,113 @@ final class AutoReviewLoopTest extends TestCase
         $this->assertTrue($record->is_public);
     }
 
+    public function testOnePollKeepsTwoAuthorizedRepositoriesSeparateAndSkipsReplays(): void
+    {
+        $repositories = [
+            'acme/first' => ['number' => 31, 'head' => str_repeat('1', 40), 'base' => str_repeat('2', 40), 'path' => 'src/First.php'],
+            'acme/second' => ['number' => 42, 'head' => str_repeat('3', 40), 'base' => str_repeat('4', 40), 'path' => 'src/Second.php'],
+        ];
+        foreach (array_keys($repositories) as $repo) RepositoryAutoReviewSetting::setRepoEnabled($repo, true);
+        RepositoryAutoReviewSetting::setRepoEnabled('acme/not-installed', true);
+
+        $githubPaths = [];
+        $githubHttp = new MockHttpClient(function (string $method, string $url) use ($repositories, &$githubPaths): MockResponse {
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            $githubPaths[] = $path;
+            if ($path === '/user') return new MockResponse(json_encode(['id' => 12345, 'login' => 'maintainer']));
+            if ($path === '/user/installations') return new MockResponse(json_encode(['installations' => [['id' => 101]]]));
+            if ($path === '/user/installations/101/repositories') {
+                $rows = [];
+                foreach (array_keys($repositories) as $index => $repo) {
+                    [, $name] = explode('/', $repo);
+                    $rows[] = ['id' => $index + 1, 'name' => $name, 'full_name' => $repo,
+                        'owner' => ['login' => 'acme'], 'private' => false, 'visibility' => 'public'];
+                }
+                return new MockResponse(json_encode(['repositories' => $rows]));
+            }
+            foreach ($repositories as $repo => $spec) {
+                if ($path !== '/repos/'.$repo.'/pulls') continue;
+                return new MockResponse(json_encode([[
+                    'number' => $spec['number'], 'title' => 'Fix '.$spec['path'], 'state' => 'open',
+                    'head' => ['ref' => 'fix', 'sha' => $spec['head']],
+                    'base' => ['ref' => 'main', 'sha' => $spec['base'], 'repo' => ['private' => false, 'visibility' => 'public']],
+                    'user' => ['login' => 'contributor'],
+                ]]));
+            }
+            throw new \RuntimeException('Unexpected mocked GitHub request: '.$path);
+        });
+
+        $previewHttp = new MockHttpClient(function (string $method, string $url) use ($repositories): MockResponse {
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            foreach ($repositories as $repo => $spec) {
+                $root = '/repos/'.$repo;
+                if ($path === $root) return new MockResponse(json_encode(['full_name' => $repo, 'private' => false, 'visibility' => 'public']));
+                if ($path === $root.'/pulls/'.$spec['number']) return new MockResponse(json_encode([
+                    'number' => $spec['number'], 'head' => ['sha' => $spec['head']],
+                    'base' => ['sha' => $spec['base']], 'changed_files' => 1,
+                ]));
+                if ($path === $root.'/pulls/'.$spec['number'].'/files') return new MockResponse(json_encode([[
+                    'filename' => $spec['path'], 'additions' => 1, 'deletions' => 1,
+                    'patch' => "@@ -1,1 +1,1 @@\n-old\n+new",
+                ]]));
+            }
+            throw new \RuntimeException('Unexpected mocked preview request: '.$path);
+        });
+
+        $requests = [];
+        $modelHttp = new MockHttpClient(function (string $method, string $url, array $options) use (&$requests): MockResponse {
+            $body = json_decode($options['body'], true, 32, JSON_THROW_ON_ERROR);
+            $context = json_decode($body['messages'][1]['content'], true, 32, JSON_THROW_ON_ERROR);
+            $requests[] = $context;
+            $content = json_encode([
+                'summary' => 'Review of '.$context['repository'], 'riskLevel' => 'low', 'recommendation' => 'discuss',
+                'fileFindings' => [[
+                    'path' => $context['files'][0]['path'], 'status' => 'note', 'lineHint' => 1,
+                    'comment' => 'Check the changed value.',
+                ]],
+            ], JSON_THROW_ON_ERROR);
+            return new MockResponse(json_encode([
+                'model' => $body['model'], 'choices' => [['finish_reason' => 'stop', 'message' => ['content' => $content]]],
+                'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 50],
+            ], JSON_THROW_ON_ERROR));
+        });
+        $service = new AutoReviewService(
+            github: new GitHubAppClient($githubHttp),
+            patchPreviewer: new PublicPatchPreview($previewHttp),
+            reviewAgent: new PullRequestReview($modelHttp, $this->budget),
+            budget: $this->budget,
+            basetenKey: 'valid-test-baseten-key-123456789'
+        );
+
+        $first = $service->poll('mock-token-xyz');
+        $this->assertSame('ok', $first['status']);
+        $this->assertSame(2, $first['reposChecked']);
+        $this->assertSame(2, $first['pullsInspected']);
+        $this->assertSame(2, $first['reviewsCompleted'], json_encode($first));
+        $this->assertSame(0, $first['reviewsFailed']);
+        $this->assertCount(2, $requests);
+        foreach ($repositories as $repo => $spec) {
+            $record = AutoReviewResult::findForRevision($repo, $spec['number'], $spec['head'], $spec['base']);
+            $this->assertNotNull($record);
+            $this->assertSame('completed', $record->status);
+            $this->assertSame('local_only', $record->published_status);
+            $this->assertSame($spec['path'], $record->file_findings[0]['path']);
+            $request = array_values(array_filter($requests, static fn (array $row): bool => $row['repository'] === $repo));
+            $this->assertCount(1, $request);
+            $this->assertSame($spec['head'], $request[0]['headSha']);
+            $this->assertSame($spec['base'], $request[0]['baseSha']);
+            $this->assertSame([$spec['path']], array_column($request[0]['files'], 'path'));
+        }
+        $this->assertContains('skipped_unauthorized', array_column($first['details'], 'action'));
+        $this->assertNotContains('/repos/acme/not-installed/pulls', $githubPaths);
+
+        $second = $service->poll('mock-token-xyz');
+        $this->assertSame(2, $second['reposChecked']);
+        $this->assertSame(0, $second['reviewsCompleted']);
+        $this->assertSame(2, $second['reviewsSkipped']);
+        $this->assertCount(2, $requests, 'An unchanged revision must not cause another model request.');
+    }
+
     public function testAutoCommentNeedsSeparateOwnerOptInAndPostsOnlyOnce(): void
     {
         RepositoryAutoReviewSetting::setRepoEnabled('acme/public-repo', true);

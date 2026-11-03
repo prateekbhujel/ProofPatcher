@@ -9,7 +9,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /** Reads pull-request context without checking out or executing repository code. */
 final readonly class PullRequestReader
 {
-    public function __construct(private HttpClientInterface $http, private ?string $token = null)
+    public function __construct(private HttpClientInterface $http, private ?string $token = null, private bool $publicOnly = false)
     {
         if ($token !== null && ($token === '' || strlen($token) > 4096 || !preg_match('/\A[\x21-\x7e]+\z/', $token))) {
             throw new \InvalidArgumentException('GitHub token format is invalid.');
@@ -42,7 +42,10 @@ final readonly class PullRequestReader
             throw new \InvalidArgumentException('Invalid repository name.');
         }
         $base = 'https://api.github.com/repos/'.rawurlencode($owner).'/'.rawurlencode($repo);
+        $repository = $owner.'/'.$repo;
+        if ($this->publicOnly) $this->assertPublicRepository($this->get($base), $repository);
         $pull = $this->get($base.'/pulls/'.$number);
+        if ($this->publicOnly) $this->assertPublicRepository($pull['base']['repo'] ?? null, $repository);
         $sha = $pull['head']['sha'] ?? null;
         $baseSha = $pull['base']['sha'] ?? null;
         if (($pull['number'] ?? null) !== (int) $number || !is_string($sha) || !preg_match('/\A[a-f0-9]{40}\z/', $sha)
@@ -52,11 +55,16 @@ final readonly class PullRequestReader
             || !is_int($pull['changed_files'] ?? null) || $pull['changed_files'] < 0) {
             throw new \RuntimeException('GitHub returned incomplete pull request data.');
         }
-        $files = $this->get($base.'/pulls/'.$number.'/files?per_page=100');
+        $files = PullRequestChangedFiles::fetch($this->get(...), $base.'/pulls/'.$number, $pull['changed_files']);
         $checks = $this->get($base.'/commits/'.$sha.'/check-runs?per_page=100');
         $current = $this->get($base.'/pulls/'.$number);
-        if (($current['head']['sha'] ?? null) !== $sha || ($current['base']['sha'] ?? null) !== $baseSha) {
+        if (($current['head']['sha'] ?? null) !== $sha || ($current['base']['sha'] ?? null) !== $baseSha
+            || ($current['changed_files'] ?? null) !== $pull['changed_files']) {
             throw new \RuntimeException('The pull request changed while its details were loading. Try again.');
+        }
+        if ($this->publicOnly) {
+            $this->assertPublicRepository($current['base']['repo'] ?? null, $repository);
+            $this->assertPublicRepository($this->get($base), $repository);
         }
         if (!array_is_list($files) || !is_array($checks['check_runs'] ?? null) || !is_int($checks['total_count'] ?? null)) {
             throw new \RuntimeException('GitHub returned incomplete file or check data.');
@@ -91,18 +99,30 @@ final readonly class PullRequestReader
             'checks' => $checkRows, 'checksTotal' => $checks['total_count'], 'checksTruncated' => $checks['total_count'] > count($checkRows)];
     }
 
+    private function assertPublicRepository(mixed $data, string $expected): void
+    {
+        if (!is_array($data) || ($data['private'] ?? null) !== false || ($data['visibility'] ?? null) !== 'public'
+            || !is_string($data['full_name'] ?? null) || strcasecmp($data['full_name'], $expected) !== 0) {
+            throw new \RuntimeException('The repository could not be verified as public.');
+        }
+    }
+
     private function get(string $url): array
     {
         $headers = ['Accept' => 'application/vnd.github+json', 'User-Agent' => 'ProofPatcher', 'X-GitHub-Api-Version' => '2022-11-28'];
         if ($this->token !== null) {
             $headers['Authorization'] = 'Bearer '.$this->token;
         }
-        $response = $this->http->request('GET', $url, ['headers' => $headers, 'max_redirects' => 0, 'timeout' => 15, 'max_duration' => 20]);
-        $status = $response->getStatusCode();
+        try {
+            $response = $this->http->request('GET', $url, ['headers' => $headers, 'max_redirects' => 0, 'timeout' => 15, 'max_duration' => 20]);
+            $status = $response->getStatusCode();
+            $raw = $response->getContent(false);
+        } catch (\Throwable) {
+            throw new \RuntimeException('GitHub request failed.');
+        }
         if ($status !== 200) {
             throw new \RuntimeException('GitHub request returned HTTP '.$status.'. Check the URL or repository access.');
         }
-        $raw = $response->getContent(false);
         if (strlen($raw) > 2097152 || ($this->token !== null && str_contains($raw, $this->token))) {
             throw new \RuntimeException('GitHub response exceeded its safe bounds.');
         }
@@ -111,7 +131,7 @@ final readonly class PullRequestReader
         } catch (\JsonException $error) {
             throw new \RuntimeException('GitHub returned invalid JSON.', 0, $error);
         }
-        if (!is_array($data)) {
+        if (!is_array($data) || ResponseTokenGuard::contains($data, $this->token)) {
             throw new \RuntimeException('GitHub returned invalid data.');
         }
         return $data;

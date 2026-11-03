@@ -339,7 +339,7 @@ export function FocusedLocalTaskView({
 
       {/* Step 2: In-Context Approval Card (Helicon style) */}
       {currentPreview && !currentProposalResult && (
-        <div className="rounded-xl border-2 border-amber-200/90 bg-amber-50/30 p-5 space-y-3.5 dark:bg-amber-950/40/30 dark:border-amber-800/90">
+        <div className="rounded-xl border-2 border-amber-200/90 bg-amber-50/30 p-5 space-y-3.5 dark:bg-amber-950/30 dark:border-amber-800/90">
           <div className="flex items-start gap-2.5">
             <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 dark:text-amber-400" />
             <div className="space-y-0.5">
@@ -472,13 +472,13 @@ export function FocusedLocalTaskView({
           </div>
 
           <div className="font-mono text-xs divide-y divide-slate-100 dark:divide-slate-800">
-            <div className="bg-rose-50/70 text-rose-950 px-4 py-2 flex items-start gap-3 overflow-x-auto dark:bg-rose-950/40/70">
+            <div className="bg-rose-50/70 text-rose-950 px-4 py-2 flex items-start gap-3 overflow-x-auto dark:bg-rose-950/40">
               <span className="text-rose-500 select-none shrink-0">-</span>
               <pre className="whitespace-pre-wrap break-words line-through decoration-rose-400/80">
                 {currentProposalResult.find}
               </pre>
             </div>
-            <div className="bg-emerald-50/70 text-emerald-950 px-4 py-2 flex items-start gap-3 overflow-x-auto dark:bg-emerald-950/40/70">
+            <div className="bg-emerald-50/70 text-emerald-950 px-4 py-2 flex items-start gap-3 overflow-x-auto dark:bg-emerald-950/40">
               <span className="text-emerald-600 select-none shrink-0 dark:text-emerald-400">+</span>
               <pre className="whitespace-pre-wrap break-words">
                 {currentProposalResult.replace}

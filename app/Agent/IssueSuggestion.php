@@ -6,6 +6,8 @@ namespace ProofPatch\Agent;
 
 use ProofPatch\Evidence\CanonicalJson;
 use ProofPatch\GitHub\PublicIssueContext;
+use ProofPatch\Abilities\HariBoot;
+use Hari\Registry;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /** Produces an advisory single-file replacement; never executes or applies it. */
@@ -21,13 +23,19 @@ final readonly class IssueSuggestion
         .'Write the explanation in plain, concise language, describing only the change and effects supported by the supplied context. '
         .'Do not suggest commands or claim the change was tested.';
 
-    public function __construct(private HttpClientInterface $http, private RequestBudget $budget) {}
+    private Registry $hari;
+
+    public function __construct(private HttpClientInterface $http, private RequestBudget $budget, ?Registry $hari = null)
+    {
+        $this->hari = $hari ?? HariBoot::boot();
+    }
 
     /** The caller must display the complete destination and body before requesting approval. */
     public function preview(array $context): array
     {
         PublicIssueContext::validateContext($context);
         $target = Credentials::activeTarget();
+        $workflow = $this->hari->resolve('engineering.workflow', 1, 'workbench')->invoke(['task' => 'repair']);
         // Explicitly select provider-bound fields; never send a test oracle,
         // session metadata, or unexpected context fields.
         $modelContext = array_intersect_key($context, array_flip([
@@ -36,7 +44,7 @@ final readonly class IssueSuggestion
         ]));
         $body = ['model' => $target['model'], 'max_tokens' => self::MAX_TOKENS, 'reasoning_effort' => 'low',
             'temperature' => 1, 'top_p' => 1, 'stream' => false, 'messages' => [
-                ['role' => 'system', 'content' => self::SYSTEM],
+                ['role' => 'system', 'content' => self::SYSTEM.' '.$workflow['guidance']],
                 ['role' => 'user', 'content' => CanonicalJson::encode($modelContext)],
             ]];
         $payload = ['destination' => $target['endpoint'], 'body' => $body];

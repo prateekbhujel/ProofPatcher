@@ -71,6 +71,23 @@ export function VerificationPipelineCard({
   const verifierThinkingSteps = [
     { label: 'Running checks', status: verifying ? ('active' as const) : ('waiting' as const) },
   ];
+  // The decision alone is not proof that every required check passed. Keep
+  // the displayed checks consistent with the underlying verification report.
+  const reportGates = verificationReport?.gates;
+  const requiredGateResults = [
+    reportGates?.baselineReproduced,
+    reportGates?.negativeControlCaught,
+    reportGates?.candidatePassed,
+    reportGates?.candidateStaticSafetyPassed,
+    reportGates?.allowlistIntegrityIntact,
+  ];
+  const displayedGates = pipelineGates?.map((gate, index) => ({
+    ...gate,
+    passed: gate.passed === true && requiredGateResults[index] === true,
+  })) ?? null;
+  const verifiedChecks = verificationReport?.decision === 'VERIFIED'
+    && displayedGates?.length === requiredGateResults.length
+    && displayedGates.every((gate) => gate.passed);
   const checkSummary = verificationReport
     ? `### ProofPatcher check summary\n- **Scope**: ${verificationReport.isSimulated !== false ? 'Local fixture run; isolated sandbox not verified' : 'Pinned fixture run; isolation not independently probed'}\n- **Target**: \`${context.path}\` (${context.repository}#${context.issueNumber})\n- **Result**: ${verificationReport.decision}\n- **Receipt SHA-256**: \`${verificationReport.receipt?.sha256 ?? 'unavailable'}\`\n- **Candidate SHA-256**: \`${verificationReport.candidateSha256}\``
     : '';
@@ -117,7 +134,7 @@ export function VerificationPipelineCard({
             <div className="space-y-3.5 pt-2 border-t border-slate-100 dark:border-slate-800">
               <VerificationPipeline
                 isRunning={verifying}
-                gates={pipelineGates}
+                gates={displayedGates}
                 decision={verificationReport.decision}
                 isSimulated={verificationReport.isSimulated}
               />
@@ -168,7 +185,7 @@ export function VerificationPipelineCard({
               </div>
 
               {/* GitHub Co-Maintainer Attribution & 1-Click Response Preview */}
-              {verificationReport.decision === 'VERIFIED' && (
+              {verifiedChecks && (
                 <div className="rounded-xl border border-accent-200 dark:border-accent-800/80 bg-accent-50/35 dark:bg-accent-950/20 p-3.5 space-y-2 text-xs mt-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
@@ -216,7 +233,7 @@ export function VerificationPipelineCard({
         </div>
       )}
 
-      {verificationReport?.decision === 'VERIFIED' &&
+      {verifiedChecks && verificationReport &&
         verificationReport.isSimulated !== false &&
         isDedicatedTestRepo && (
           <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/20 p-5 space-y-2">
@@ -232,7 +249,7 @@ export function VerificationPipelineCard({
         )}
 
       {/* Draft PR publishing */}
-      {verificationReport?.decision === 'VERIFIED' &&
+      {verifiedChecks && verificationReport &&
         verificationReport.isSimulated === false &&
         isDedicatedTestRepo && (() => {
           return (

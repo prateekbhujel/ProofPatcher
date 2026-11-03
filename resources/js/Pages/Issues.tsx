@@ -168,6 +168,7 @@ export default function Issues({
     if (localTasks.length > 0) return 'local-card';
     return 'new';
   });
+  const activeView = viewMode === 'workbench' && !context ? 'new' : viewMode;
 
   const { commandFeedback, activeOpenPull, executePrompt } = useKernelPrompt({
     githubConnection,
@@ -485,7 +486,7 @@ export default function Issues({
             {/* Sticky Top Context & Quick-Action Bar */}
             <div className="sticky top-0 z-20 h-12 px-6 border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-[#141821]/95 backdrop-blur-xs flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 truncate">
-                {viewMode === 'workbench' && context ? (
+                {activeView === 'workbench' && context ? (
                   <>
                     <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">{context.repository}</span>
                     <span className="text-slate-300 dark:text-slate-700">/</span>
@@ -504,7 +505,7 @@ export default function Issues({
                         : 'Private · Local Verification Only (No external model transmission)'}
                     </span>
                   </>
-                ) : viewMode === 'local-card' && selectedLocalCard ? (
+                ) : activeView === 'local-card' && selectedLocalCard ? (
                   <>
                     <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">{selectedLocalCard.repository}</span>
                     <span className="text-slate-300 dark:text-slate-700">/</span>
@@ -523,7 +524,7 @@ export default function Issues({
             </div>
 
             {/* Guided Step Bar */}
-            {viewMode === 'workbench' && context && (
+            {activeView === 'workbench' && context && (
               <GuidedStepBar
                 context={context}
                 suggestion={suggestion}
@@ -534,7 +535,9 @@ export default function Issues({
 
             {/* Pane Content */}
             <div className="mx-auto w-full max-w-5xl space-y-6 p-5 sm:p-7">
-              {viewMode === 'new' && (
+              {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{error}</p>}
+              {loadingIssueNum !== null && <p role="status" className="text-sm text-[var(--fg-muted)]">Loading issue #{loadingIssueNum}…</p>}
+              {activeView === 'new' && (
                 <div className="space-y-6 pt-1">
                   <div className="space-y-1">
                     <h1 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
@@ -555,7 +558,7 @@ export default function Issues({
                 </div>
               )}
 
-              {viewMode === 'local-card' && selectedLocalCard && (
+              {activeView === 'local-card' && selectedLocalCard && (
                 <FocusedLocalTaskView
                   task={selectedLocalCard}
                   preview={cardPreview}
@@ -567,7 +570,7 @@ export default function Issues({
                 />
               )}
 
-              {viewMode === 'workbench' && context && (
+              {activeView === 'workbench' && context && (
                 <div className="space-y-6">
                   {/* Issue Header & Repro Visuals */}
                   <IssueHeaderCard
@@ -625,7 +628,7 @@ export default function Issues({
           </div>
 
           {/* Bottom Composer Bar */}
-          {viewMode === 'workbench' && context && (
+          {activeView === 'workbench' && context && (
             <TaskComposerFooter
               draftValue={draftForm.data.comment}
               onDraftChange={(val) => draftForm.setData('comment', val)}

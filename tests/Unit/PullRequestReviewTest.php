@@ -139,6 +139,50 @@ final class PullRequestReviewTest extends TestCase
         }
     }
 
+    public function testSelectedFileReviewBindsHonestCoverageAndCannotApproveWholePr(): void
+    {
+        $pull = $this->validPull() + ['isPrivate' => false];
+        $patch = $this->validPatchPreview() + ['isPrivate' => false];
+        $patch['changedFiles'] = 2;
+        $patch['filesTruncated'] = true;
+        $content = json_encode(['summary' => 'One file.', 'riskLevel' => 'low', 'recommendation' => 'approve', 'fileFindings' => []], JSON_THROW_ON_ERROR);
+        $http = new MockHttpClient([new MockResponse(json_encode(['model' => PullRequestReview::MODEL,
+            'choices' => [['finish_reason' => 'stop', 'message' => ['content' => $content]]],
+            'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5]], JSON_THROW_ON_ERROR))]);
+        $agent = new PullRequestReview($http, $this->budget);
+        $selected = 'resources/css/checkout.css';
+        $preview = $agent->preview($pull, $patch, null, $selected);
+        self::assertSame(['kind' => 'selected_file', 'reviewedFiles' => 1, 'totalFiles' => 2, 'path' => $selected], $preview['coverage']);
+        self::assertStringContainsString('Do not claim a complete PR review', $preview['body']['messages'][0]['content']);
+        $changed = $patch;
+        $changed['changedFiles'] = 3;
+        self::assertNotSame($preview['digest'], $agent->preview($pull, $changed, null, $selected)['digest']);
+        $result = $agent->review($pull, $patch, $preview['digest'], 'valid-test-baseten-key-123456', false, null, $selected);
+        self::assertSame('discuss', $result['recommendation']);
+        self::assertSame($preview['coverage'], $result['coverage']);
+    }
+
+    public function testSelectedReviewRejectsPrivateMissingOversizedAndMismatchedDigest(): void
+    {
+        $pull = $this->validPull() + ['isPrivate' => false];
+        $patch = $this->validPatchPreview() + ['isPrivate' => false];
+        $patch['changedFiles'] = 2;
+        $patch['filesTruncated'] = true;
+        $agent = new PullRequestReview(new MockHttpClient(), $this->budget);
+        $selected = 'resources/css/checkout.css';
+        foreach (['private', 'missing', 'oversize', 'unknown'] as $case) {
+            $candidate = $patch;
+            if ($case === 'private') $candidate['isPrivate'] = true;
+            if (in_array($case, ['missing', 'oversize'], true)) $candidate['files'][0]['status'] = $case;
+            try { $agent->preview($pull, $candidate, null, $case === 'unknown' ? 'other' : $selected); self::fail('Invalid selection accepted.'); }
+            catch (\InvalidArgumentException $e) { self::assertNotSame('', $e->getMessage()); }
+        }
+        $approved = $agent->preview($pull, $patch, null, $selected)['digest'];
+        $patch['files'][0]['patch'] .= "\n+unapproved";
+        $this->expectExceptionMessage('Review and approve the exact request');
+        $agent->review($pull, $patch, $approved, 'valid-test-baseten-key-123456', false, null, $selected);
+    }
+
     public function testReviewRejectsMismatchedDigest(): void
     {
         $http = new MockHttpClient();

@@ -6,6 +6,7 @@ import { VisualComparisonViewer } from '../Components/VisualComparisonViewer';
 import { ChecksWorkspaceTab } from '../Components/checks/ChecksWorkspaceTab';
 import { ChecksEvidenceTab } from '../Components/checks/ChecksEvidenceTab';
 import { ChecksHistoryTab } from '../Components/checks/ChecksHistoryTab';
+import { initialCheckForm, isDisplayedMuseProposal, preserveCheckState } from '../Components/checks/patchForm';
 import type {
   GateRecord,
   ReportData,
@@ -49,26 +50,23 @@ export default function Checks({
   const [copiedReceipt, setCopiedReceipt] = useState(false);
   const [historyQuery, setHistoryQuery] = useState('');
   const [historyPage, setHistoryPage] = useState(1);
+  const [pendingAction, setPendingAction] = useState<'verify' | 'propose' | null>(null);
   const historyPageSize = 8;
 
-  const { data, setData, post, processing } = useForm({
-    action: 'verify',
-    fixture: fixture,
-    find: proposal?.patch?.find || 'pointer-events: auto;',
-    replace: proposal?.patch?.replace || 'pointer-events: none;',
-    source_run: runId,
-  });
+  const { data, setData, post, processing, transform } = useForm(initialCheckForm(runId, fixture, proposal, report?.proposal));
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
-    data.action = 'verify';
-    post('/checks');
+    setPendingAction('verify');
+    transform((current) => ({ ...current, action: 'verify', source_run: runId }));
+    post('/checks', { preserveState: preserveCheckState, onFinish: () => setPendingAction(null) });
   };
 
   const handlePropose = (e: React.FormEvent) => {
     e.preventDefault();
-    data.action = 'propose';
-    post('/checks');
+    setPendingAction('propose');
+    transform((current) => ({ ...current, action: 'propose', source_run: runId }));
+    post('/checks', { preserveState: preserveCheckState, onFinish: () => setPendingAction(null) });
   };
 
   const copyReceipt = () => {
@@ -236,7 +234,8 @@ export default function Checks({
             handleVerify={handleVerify}
             handlePropose={handlePropose}
             processing={processing}
-            proposal={proposal}
+            pendingAction={pendingAction}
+            isMuseProposal={isDisplayedMuseProposal(data, proposal, runId)}
             baselineReady={baselineReady}
             budgetStatus={budgetStatus}
           />

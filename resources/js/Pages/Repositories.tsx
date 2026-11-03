@@ -44,6 +44,7 @@ import type {
 
 export default function Repositories({
   pull = null,
+  canManagePull = false,
   snapshot = null,
   triage = null,
   error = null,
@@ -51,6 +52,8 @@ export default function Repositories({
   patchPreviewError = null,
   review = null,
   reviewPreview = null,
+  reviewBaseContextPath = null,
+  reviewSelectedFile = null,
   reviewError = null,
   drafts = [],
   commentApprovals = {},
@@ -60,7 +63,7 @@ export default function Repositories({
   githubConnection = null,
 }: RepositoriesProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'triage' | 'files' | 'review' | 'checks' | 'receipt' | 'new'>(
-    review || reviewError ? 'review' : patchPreview || patchPreviewError ? 'files' : pull ? 'overview' : 'new'
+    review || reviewError || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'review') ? 'review' : patchPreview || patchPreviewError ? 'files' : pull ? 'overview' : 'new'
   );
   const [fileQuery, setFileQuery] = useState('');
   const [checkQuery, setCheckQuery] = useState('');
@@ -109,12 +112,14 @@ export default function Repositories({
     if (reviewPreview?.approvalToken) {
       setReviewFormData('approval_token', reviewPreview.approvalToken);
       setReviewFormData('digest', reviewPreview.digest);
+      setReviewFormData('confirm', false);
+      setReviewApproved(false);
     }
   }, [reviewPreview?.approvalToken, reviewPreview?.digest]);
 
   const { post: postClearReview, processing: clearReviewProcessing } = useForm({});
 
-  const { data: draftData, setData: setDraftData, post: postDraft, processing: draftProcessing } = useForm({
+  const { transform: transformDraft, post: postDraft, processing: draftProcessing } = useForm({
     path: '',
     line: null as number | null,
     side: 'RIGHT',
@@ -122,7 +127,6 @@ export default function Repositories({
     headSha: pull?.headSha || '',
   });
 
-  const { post: postDeleteDraft, processing: deleteDraftProcessing } = useForm({ id: '' });
   const { post: postClearDrafts, processing: clearDraftsProcessing } = useForm({});
 
   const handleReviewSubmit = (e: React.FormEvent) => {
@@ -137,17 +141,28 @@ export default function Repositories({
     postClearReview('/repositories/review/clear');
   };
 
-  const handleSaveDraft = (path: string, line: number | null, side: string, comment: string) => {
-    if (!comment.trim() || !pull) return;
+  const handleSaveDraft = (path: string, line: number | null, side: string, comment: string, onSaved?: () => void) => {
+    if (!comment.trim() || !pull || draftProcessing) return;
 
-    router.post('/repositories/review/draft', {
+    transformDraft(() => ({
       path,
       line,
       side,
       comment: comment.trim(),
       headSha: pull.headSha,
-    }, {
+    }));
+    postDraft('/repositories/review/draft', {
       preserveScroll: true,
+      preserveState: true,
+      onSuccess: (page) => {
+        // A redirect can carry a save error with HTTP 200. Close only after
+        // the returned drafts confirm this exact comment was persisted.
+        const saved = page.props.drafts as CommentDraft[] | undefined;
+        if (Array.isArray(saved) && saved.some((draft) =>
+          draft.path === path && draft.line === line && draft.side === side &&
+          draft.comment === comment.trim() && draft.headSha === pull.headSha
+        )) onSaved?.();
+      },
     });
   };
 
@@ -157,7 +172,7 @@ export default function Repositories({
 
   const handleClearAllDrafts = (e: React.FormEvent) => {
     e.preventDefault();
-    router.post('/repositories/review/draft/clear', {}, { preserveScroll: true });
+    postClearDrafts('/repositories/review/draft/clear', { preserveScroll: true });
   };
 
   const { data, setData, post, processing } = useForm({
@@ -220,12 +235,12 @@ export default function Repositories({
 
       <div className="space-y-6">
         {/* Error notification */}
-        {error && (
+        {error && error !== reviewError && (
           <div role="alert" className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
             <span>{error}</span>
           </div>
         )}
-        {reviewError && (
+        {reviewError && activeTab !== 'review' && (
           <div role="alert" className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
             <span>{reviewError}</span>
           </div>
@@ -245,6 +260,7 @@ export default function Repositories({
             {/* PR Header Card & Co-Maintainer Context */}
             <PrHeaderCard
               pull={pull}
+              canManagePull={canManagePull}
               triage={triage}
               onViewTriage={() => setActiveTab('triage')}
             />
@@ -322,7 +338,7 @@ export default function Repositories({
                           disabled={clearReviewProcessing}
                           className="px-3 py-1.5 text-xs font-medium rounded-md text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 shadow-2xs transition disabled:opacity-50 dark:bg-[#141821] dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                         >
-                          Clear Review
+                          Start another review
                         </button>
                       </form>
                     )}
@@ -351,6 +367,9 @@ export default function Repositories({
                 <PrReviewTab
                   review={review}
                   reviewPreview={reviewPreview}
+                  changedFiles={patchPreview?.files.filter((file) => file.status === 'available').map((file) => file.name) || []}
+                  baseContextPath={reviewBaseContextPath}
+                  selectedFile={reviewSelectedFile}
                   isPrivate={Boolean(isPrivate)}
                   reviewApproved={reviewApproved}
                   setReviewApproved={setReviewApproved}

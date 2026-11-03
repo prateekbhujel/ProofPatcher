@@ -115,8 +115,15 @@ test('the console home shows pipeline, engine and hari panels', () => {
   assert.match(html, /proofpatch-verify/);
   assert.match(html, /verify\.gate/);
   assert.match(html, /frozen/);
+  assert.match(html, /<details class="text-xs"><summary[^>]*>1 ability · 1 skill/);
   assert.match(html, /acme\/repo#7/);
   assert.doesNotMatch(html, /app window|start menu|Mission control/);
+});
+
+test('the account controls stay accessible in the compact console rail', () => {
+  const html = renderToStaticMarkup(React.createElement(layout.AppLayout, { activeNav: 'issues' }, 'Body'));
+  assert.match(html, /aria-label="GitHub: loading…"/);
+  assert.match(html, /aria-label="Color theme"/);
 });
 
 test('the home next step sends a signed-out operator to sign in', () => {

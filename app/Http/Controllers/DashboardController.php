@@ -20,6 +20,7 @@ use ProofPatch\GitHub\GitHubDeviceFlow;
 use ProofPatch\GitHub\PullRequestReader;
 use ProofPatch\GitHub\PullRequestSnapshot;
 use ProofPatch\GitHub\PublicPatchPreview;
+use ProofPatch\GitHub\PublicBaseReviewContext;
 use ProofPatch\GitHub\DedicatedTestRepo;
 use ProofPatch\GitHub\PrivatePullSession;
 use ProofPatch\Patch\CssPatch;
@@ -28,6 +29,7 @@ use ProofPatch\Support\NotificationHelper;
 use ProofPatch\Support\SessionHelper;
 use ProofPatch\Verifier\CheckoutVerifier;
 use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class DashboardController
 {
@@ -41,6 +43,10 @@ final class DashboardController
         private ?GitHubDeviceFlow $deviceFlowClient = null,
         private ?\Hari\Registry $hari = null,
         private ?\ProofPatch\GitHub\GitHubWebFlow $webFlowClient = null,
+        private ?PublicPatchPreview $manualPatchPreviewer = null,
+        private ?PullRequestReview $manualReviewAgent = null,
+        private ?PublicBaseReviewContext $manualBaseContext = null,
+        private ?HttpClientInterface $manualGitHubHttp = null,
     ) {
         $this->project = function_exists('base_path') ? base_path() : dirname(__DIR__, 3);
         $this->runsDir = $this->project.'/artifacts/runs';
@@ -139,7 +145,11 @@ final class DashboardController
                     $request->merge(['repository' => $target['repository'], 'number' => $target['number']]);
                     return $this->captureInstalledPullRequest($request);
                 }
-                $pullRequest = (new PullRequestReader(HttpClient::create()))->read($url);
+                $pullRequest = (new PullRequestReader(
+                    $this->manualGitHubHttp ?? HttpClient::create(),
+                    $this->verifiedManualGitHubToken($request),
+                    publicOnly: true,
+                ))->read($url);
                 if (($pullRequest['isPrivate'] ?? false) === true) {
                     throw new \InvalidArgumentException('Private repositories are not supported. ProofPatch operates strictly on public repositories to prevent proprietary code leakage.');
                 }
@@ -229,8 +239,13 @@ final class DashboardController
                 if (is_array($cachedPreview) && \ProofPatch\Application\Review\PatchPreviewFreshness::matchesHead($cachedPreview['headSha'] ?? null, $pull['headSha'] ?? null)) {
                     $patchPreview = $cachedPreview;
                 } else {
-                    // Deliberately unauthenticated: private PR content must never be previewed here.
-                    $patchPreview = (new PublicPatchPreview(HttpClient::create()))->fetch($pull);
+                    // Authentication helps avoid anonymous rate limits, but the
+                    // previewer still checks public visibility before and after.
+                    $previewer = $this->manualPatchPreviewer ?? new PublicPatchPreview(
+                        $this->manualGitHubHttp ?? HttpClient::create(),
+                        $this->verifiedManualGitHubToken($request),
+                    );
+                    $patchPreview = $previewer->fetch($pull);
                     $this->putSession($request, 'patch_preview', $patchPreview);
                     if ($diskPreviewFile && ! $isPrivatePull) {
                         @file_put_contents($diskPreviewFile, json_encode($patchPreview, JSON_PRETTY_PRINT));
@@ -254,11 +269,30 @@ final class DashboardController
             $modelKeyAvailable = false;
         }
 
+        $baseContext = $this->getSession($request, 'review_base_context');
+        if (!is_array($pull) || !is_array($baseContext)
+            || ($baseContext['repository'] ?? null) !== ($pull['repository'] ?? null)
+            || ($baseContext['number'] ?? null) !== ($pull['number'] ?? null)
+            || ($baseContext['headSha'] ?? null) !== ($pull['headSha'] ?? null)
+            || ($baseContext['baseSha'] ?? null) !== ($pull['baseSha'] ?? null)) {
+            $baseContext = null;
+            $this->forgetSession($request, 'review_base_context');
+        }
+        $selectedReview = $this->getSession($request, 'review_selected_file');
+        if (!is_array($pull) || !is_array($selectedReview)
+            || ($selectedReview['repository'] ?? null) !== ($pull['repository'] ?? null)
+            || ($selectedReview['number'] ?? null) !== ($pull['number'] ?? null)
+            || ($selectedReview['headSha'] ?? null) !== ($pull['headSha'] ?? null)
+            || ($selectedReview['baseSha'] ?? null) !== ($pull['baseSha'] ?? null)
+            || !is_string($selectedReview['path'] ?? null)) {
+            $selectedReview = null;
+            $this->forgetSession($request, 'review_selected_file');
+        }
         $reviewPreview = null;
         if (\ProofPatch\Application\Review\ReviewPreviewEligibility::allows($patchPreview, $pull)) {
             try {
                 $reviewAgent = new PullRequestReview(HttpClient::create(), $this->budget());
-                $reviewPreview = $reviewAgent->preview($pull, $patchPreview);
+                $reviewPreview = $reviewAgent->preview($pull, $patchPreview, $baseContext, $selectedReview['path'] ?? null);
                 if ($budget !== null) {
                     $budget['canRequest'] = $budget['canRequest'] && $budget['remainingMicros'] >= $reviewPreview['estimatedMicros'];
                 }
@@ -282,7 +316,9 @@ final class DashboardController
         $reviewError = session('review_error') ?? $this->getSession($request, 'review_error');
         $this->forgetSession($request, 'review_error');
 
-        if ($review === null && is_array($pull) && isset($pull['repository'], $pull['number'], $pull['headSha'], $pull['baseSha'])) {
+        $manualTarget = $this->getSession($request, 'review_manual_target');
+        $currentTarget = self::manualReviewTarget($pull);
+        if ($review === null && $currentTarget !== null && $manualTarget !== $currentTarget) {
             try {
                 $outcome = ($this->hari ?? \Hari\Hari::registry())->resolve('review.result', 1, 'web')->invoke([
                     'repository' => (string) $pull['repository'],
@@ -312,10 +348,12 @@ final class DashboardController
                     }
                     $candPull = $candData['snapshot']['pullRequest'] ?? null;
                     if (\ProofPatch\Application\Repository\TriageCandidates::isDifferentPull($candPull, $pull)) {
-                        $candidatePulls[] = $candPull;
+                        $candidatePulls[] = ['id' => $candData['snapshot']['id'] ?? null,
+                            'capturedAt' => $candData['snapshot']['capturedAt'] ?? null, 'pull' => $candPull];
                     }
                 } catch (\Throwable) {}
             }
+            $candidatePulls = \ProofPatch\Application\Repository\TriageCandidates::latestPerPull($candidatePulls);
             $triage = $analyzer->triage($pull, $candidatePulls);
         }
 
@@ -370,6 +408,8 @@ final class DashboardController
             'patchPreview' => $patchPreview,
             'patchPreviewError' => $patchPreviewError,
             'reviewPreview' => $reviewPreview,
+            'reviewBaseContextPath' => $baseContext['path'] ?? null,
+            'reviewSelectedFile' => $selectedReview['path'] ?? null,
             'review' => $review,
             'reviewError' => $reviewError,
             'drafts' => array_values($this->getSession($request, 'review_drafts', [])),
@@ -378,6 +418,7 @@ final class DashboardController
             'budget' => $budget,
             'modelKeyAvailable' => $modelKeyAvailable,
             'githubConnection' => $githubConnection,
+            'canManagePull' => \ProofPatch\Application\Repository\PullActionState::hasRepositoryGrant($pull, $access),
             'autoReview' => $autoReview,
             'error' => $error ?: null,
         ]);
@@ -435,7 +476,7 @@ final class DashboardController
                 $report = $skill->withVerifier(new CheckoutVerifier($this->project))
                     ->invoke(['patch' => $patch->toArray(), 'provenance' => $provenance]);
 
-                return redirect('/checks?run='.rawurlencode($report['id']));
+                return redirect('/checks?run='.rawurlencode($report['id']).'&tab=evidence');
             } catch (\Throwable $exception) {
                 $currentRun = (string) $request->input('source_run', '');
                 return redirect('/checks'.($currentRun ? '?run='.rawurlencode($currentRun) : ''))->with('error', $exception->getMessage());
@@ -519,6 +560,55 @@ final class DashboardController
         ]);
     }
 
+    public function prepareReviewBaseContext(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $this->forgetSession($request, 'review_base_context', 'review_approval_token');
+        $path = $request->input('path');
+        if ($path === null || $path === '') return redirect('/repositories?preview=1&tab=review');
+        try {
+            $pull = $this->getSession($request, 'pullRequest');
+            if (!is_array($pull) || ($pull['isPrivate'] ?? true) !== false || !is_string($path)) {
+                throw new \RuntimeException('Select a public pull request and changed file.');
+            }
+            $previewer = $this->manualPatchPreviewer ?? new PublicPatchPreview(HttpClient::create(), $this->verifiedManualGitHubToken($request));
+            $preview = $previewer->fetch($pull);
+            $context = ($this->manualBaseContext ?? new PublicBaseReviewContext(HttpClient::create(), $this->verifiedManualGitHubToken($request)))->fetch($pull, $preview, $path);
+            $previewer->assertCurrent($pull);
+            $this->putSession($request, 'patch_preview', $preview);
+            $this->putSession($request, 'review_base_context', $context);
+            return redirect('/repositories?preview=1&tab=review');
+        } catch (\Throwable $exception) {
+            return redirect('/repositories?preview=1&tab=review')->with('review_error', $exception->getMessage());
+        }
+    }
+
+    public function selectReviewFile(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $this->forgetSession($request, 'review_selected_file', 'review_base_context', 'review_approval_token', 'pr_review');
+        $target = self::manualReviewTarget($this->getSession($request, 'pullRequest'));
+        if ($target !== null) $this->putSession($request, 'review_manual_target', $target);
+        $path = $request->input('path');
+        if ($path === null || $path === '') return redirect('/repositories?preview=1&tab=review');
+        try {
+            $pull = $this->getSession($request, 'pullRequest');
+            if (!is_array($pull) || ($pull['isPrivate'] ?? true) !== false || !is_string($path)) {
+                throw new \RuntimeException('Select a public pull request and changed file.');
+            }
+            $previewer = $this->manualPatchPreviewer ?? new PublicPatchPreview(HttpClient::create(), $this->verifiedManualGitHubToken($request));
+            $preview = $previewer->fetch($pull);
+            $agent = $this->manualReviewAgent ?? new PullRequestReview(HttpClient::create(), $this->budget());
+            $agent->preview($pull, $preview, null, $path);
+            $this->putSession($request, 'patch_preview', $preview);
+            $this->putSession($request, 'review_selected_file', [
+                'repository' => $pull['repository'], 'number' => $pull['number'], 'headSha' => $pull['headSha'],
+                'baseSha' => $pull['baseSha'], 'path' => $path,
+            ]);
+            return redirect('/repositories?preview=1&tab=review');
+        } catch (\Throwable $exception) {
+            return redirect('/repositories?preview=1&tab=review')->with('review_error', $exception->getMessage());
+        }
+    }
+
     public function reviewPullRequest(Request $request): \Illuminate\Http\RedirectResponse
     {
         $pull = $this->getSession($request, 'pullRequest');
@@ -550,25 +640,43 @@ final class DashboardController
             );
             $this->forgetSession($request, 'review_approval_token');
 
-            $cachedPreview = $this->getSession($request, 'patch_preview');
-            $resolution = \ProofPatch\Application\Review\PatchPreviewResolution::resolve($cachedPreview, null, $pull);
-            if ($resolution->decision === \ProofPatch\Application\Review\PatchPreviewResolution::USE_CACHED) {
-                $patchPreview = $resolution->preview;
-            } else {
-                if ($resolution->decision === \ProofPatch\Application\Review\PatchPreviewResolution::STALE_PRIVATE) {
-                    throw new \RuntimeException('Private pull request content cannot be sent to a model.');
-                }
-                $patchPreview = (new PublicPatchPreview(HttpClient::create()))->fetch($pull);
-                $this->putSession($request, 'patch_preview', $patchPreview);
-            }
+            // A cached preview proves what was approved, not that the repo is
+            // still public or the PR still points at the same base and head.
+            // Re-fetch using the verified GitHub session when available; never
+            // fall back to a stale snapshot or skip public visibility checks.
+            $previewer = $this->manualPatchPreviewer ?? new PublicPatchPreview(HttpClient::create(), $this->verifiedManualGitHubToken($request));
+            $patchPreview = $previewer->fetch($pull);
             if (($patchPreview['isPrivate'] ?? true) !== false) {
                 throw new \RuntimeException('Private pull request content cannot be sent to a model.');
             }
-            $reviewAgent = new PullRequestReview(HttpClient::create(), $this->budget());
+            $reviewAgent = $this->manualReviewAgent ?? new PullRequestReview(HttpClient::create(), $this->budget());
+            $selection = $this->getSession($request, 'review_selected_file');
+            $selectedFile = null;
+            if ($selection !== null) {
+                if (!is_array($selection) || ($selection['repository'] ?? null) !== $pull['repository']
+                    || ($selection['number'] ?? null) !== $pull['number'] || ($selection['headSha'] ?? null) !== $pull['headSha']
+                    || ($selection['baseSha'] ?? null) !== $pull['baseSha'] || !is_string($selection['path'] ?? null)) {
+                    throw new \RuntimeException('The selected file is no longer available.');
+                }
+                $selectedFile = $selection['path'];
+            }
+            $baseContext = $this->getSession($request, 'review_base_context');
+            if ($baseContext !== null) {
+                if (!is_array($baseContext) || !is_string($baseContext['path'] ?? null)) {
+                    throw new \RuntimeException('The optional base context is unavailable.');
+                }
+                $baseContext = ($this->manualBaseContext ?? new PublicBaseReviewContext(HttpClient::create(), $this->verifiedManualGitHubToken($request)))->fetch($pull, $patchPreview, $baseContext['path']);
+                $previewer->assertCurrent($pull);
+            }
+            $freshDigest = $reviewAgent->preview($pull, $patchPreview, $baseContext, $selectedFile)['digest'];
+            $this->putSession($request, 'patch_preview', $patchPreview);
+            if (!hash_equals($digest, $freshDigest)) {
+                throw new \RuntimeException('The pull request preview changed. Review and approve the updated request.');
+            }
             $key = Credentials::baseten();
             $privateConsent = (bool) $request->input('private_consent', false);
 
-            $result = $reviewAgent->review($pull, $patchPreview, $digest, $key, $privateConsent);
+            $result = $reviewAgent->review($pull, $patchPreview, $digest, $key, $privateConsent, $baseContext, $selectedFile);
             $result['source'] = 'manual';
             $this->putSession($request, 'pr_review', $result);
 
@@ -581,7 +689,19 @@ final class DashboardController
     public function clearReview(Request $request = null): \Illuminate\Http\RedirectResponse
     {
         $this->forgetSession($request, 'pr_review');
-        return redirect('/repositories?preview=1');
+        $target = self::manualReviewTarget($this->getSession($request, 'pullRequest'));
+        if ($target !== null) $this->putSession($request, 'review_manual_target', $target);
+        return redirect('/repositories?preview=1&tab=review');
+    }
+
+    /** Identify the revision whose saved automatic review the user has set aside. */
+    private static function manualReviewTarget(mixed $pull): ?array
+    {
+        if (!is_array($pull) || !is_string($pull['repository'] ?? null)
+            || !is_int($pull['number'] ?? null) || !is_string($pull['headSha'] ?? null)
+            || !is_string($pull['baseSha'] ?? null)) return null;
+        return ['repository' => $pull['repository'], 'number' => $pull['number'],
+            'headSha' => $pull['headSha'], 'baseSha' => $pull['baseSha']];
     }
 
     public function mergePull(Request $request): \Illuminate\Http\RedirectResponse
@@ -1265,6 +1385,24 @@ final class DashboardController
     private function budget(): RequestBudget
     {
         return RequestBudget::forRuntime();
+    }
+
+    /** The request middleware verifies the user/token and enforces its session policy. */
+    private function verifiedManualGitHubToken(Request $request): ?string
+    {
+        if (!$request->hasSession()) return null;
+        $auth = $request->session()->get('github_auth');
+        if (!is_array($auth) || !is_string($auth['token'] ?? null) || trim($auth['token']) === '') return null;
+        $token = trim($auth['token']);
+        $access = $request->attributes->get('proofpatch_github_access');
+        if (!PrivatePullSession::usesServerSession() || !is_array($access)
+            || !is_int($access['userId'] ?? null) || $access['userId'] < 1
+            || ($auth['user']['id'] ?? null) !== $access['userId']
+            || !is_string($auth['verified_token_sha256'] ?? null)
+            || !hash_equals(hash('sha256', $token), $auth['verified_token_sha256'])) {
+            throw new \RuntimeException('Reconnect GitHub before requesting a public review.');
+        }
+        return $token;
     }
 
     private function scopedAutoReviewProps(Request $request): array

@@ -74,7 +74,7 @@ export function PrDashboardView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="p-1 rounded bg-accent-50 text-accent-700 dark:bg-accent-950/40 dark:text-accent-300">
+              <span className="p-1 rounded bg-[var(--bg-active)] text-[var(--fg-muted)]">
                 <GitPullRequest className="w-4 h-4" />
               </span>
               <h1 className="text-lg font-bold text-slate-900 tracking-tight dark:text-slate-100">Pull Request Reviews</h1>
@@ -122,7 +122,7 @@ export function PrDashboardView({
               onClick={() => { setStatusFilter('all'); setPrPage(0); }}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
                 statusFilter === 'all'
-                  ? 'bg-accent-700 text-white font-semibold shadow-xs'
+                  ? 'bg-[var(--bg-inverse)] text-[var(--fg-inverse)] font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
@@ -133,7 +133,7 @@ export function PrDashboardView({
               onClick={() => { setStatusFilter('open'); setPrPage(0); }}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
                 statusFilter === 'open'
-                  ? 'bg-accent-700 text-white font-semibold shadow-xs'
+                  ? 'bg-[var(--bg-inverse)] text-[var(--fg-inverse)] font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
@@ -144,7 +144,7 @@ export function PrDashboardView({
               onClick={() => { setStatusFilter('merged'); setPrPage(0); }}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
                 statusFilter === 'merged'
-                  ? 'bg-accent-700 text-white font-semibold shadow-xs'
+                  ? 'bg-[var(--bg-inverse)] text-[var(--fg-inverse)] font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
@@ -155,7 +155,7 @@ export function PrDashboardView({
               onClick={() => { setStatusFilter('closed'); setPrPage(0); }}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
                 statusFilter === 'closed'
-                  ? 'bg-accent-700 text-white font-semibold shadow-xs'
+                  ? 'bg-[var(--bg-inverse)] text-[var(--fg-inverse)] font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >

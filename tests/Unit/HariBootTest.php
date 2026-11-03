@@ -20,6 +20,8 @@ final class HariBootTest extends TestCase
     {
         $registry = $this->booted();
         $pairs = [
+            ['engineering.workflow', 'proofpatch-review'],
+            ['engineering.workflow', 'workbench'],
             ['budget.status', 'mcp'],
             ['review.result', 'mcp'],
             ['evidence.verify', 'mcp'],
@@ -45,6 +47,7 @@ final class HariBootTest extends TestCase
     {
         $registry = $this->booted();
         $denied = [
+            ['engineering.workflow', 'mcp'],
             // mcp reads budgets, reviews, and evidence only — never verifies.
             ['verify.candidate', 'mcp'],
             ['verify.patch', 'mcp'],

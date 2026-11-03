@@ -23,6 +23,7 @@ const { PrHeaderCard } = component('../../resources/js/Components/repositories/P
 const { TaskComposerFooter } = component('../../resources/js/Components/workbench/TaskComposerFooter.tsx',
   (id) => id === '../VoiceDictationButton' ? { VoiceDictationButton: () => null } : require(id));
 const { AutoReviewPanel } = component('../../resources/js/Components/settings/AutoReviewPanel.tsx');
+const { ChecksEvidenceTab } = component('../../resources/js/Components/checks/ChecksEvidenceTab.tsx');
 const Kernel = component('../../resources/js/Pages/Kernel.tsx', (id) => {
   if (id === '@inertiajs/react') return { Head: () => null, Link: ({ children }) => React.createElement('span', null, children) };
   if (id === '../Components/AppLayout') return { AppLayout: ({ children }) => React.createElement('main', null, children) };
@@ -30,6 +31,15 @@ const Kernel = component('../../resources/js/Pages/Kernel.tsx', (id) => {
   return require(id);
 }).default;
 const render = (type, props) => renderToStaticMarkup(React.createElement(type, props));
+
+test('checkout evidence attributes the proposal only when provenance records a model', () => {
+  const props = { report: { decision: 'VERIFIED', gates: {} }, runId: 'run', copiedReceipt: false, copyReceipt() {}, gatesList: [] };
+  assert.doesNotMatch(render(ChecksEvidenceTab, props), /Recorded proposal:/);
+  const modelReport = { ...props.report, proposalEvidence: { origin: 'model', model: 'muse-test' } };
+  assert.match(render(ChecksEvidenceTab, { ...props, report: modelReport }), /Recorded proposal:.*muse-test/);
+  const manualReport = { ...props.report, proposalEvidence: { origin: 'manual', model: 'muse-test' } };
+  assert.doesNotMatch(render(ChecksEvidenceTab, { ...props, report: manualReport }), /Recorded proposal:/);
+});
 
 const context = { title: 'An issue', body: 'A description', issueNumber: 1, issueUrl: 'https://github.com/owner/repo/issues/1',
   path: 'src/example.php', source: '<?php', sourceSha256: 'a'.repeat(64) };
@@ -141,15 +151,21 @@ test('pull request header renders Merge and Close controls for open PRs and disa
     files: [{ name: 'src/OrderTotal.php', additions: 2, deletions: 1 }],
   };
 
-  const openHtml = render(PrHeaderCard, { pull: basePull, triage: null, onViewTriage() {} });
+  const openHtml = render(PrHeaderCard, { pull: basePull, canManagePull: true, triage: null, onViewTriage() {} });
   assert.match(openHtml, />Merge<\/span>/);
   assert.match(openHtml, />Close<\/span>/);
 
-  const draftHtml = render(PrHeaderCard, { pull: { ...basePull, isDraft: true }, triage: null, onViewTriage() {} });
+  const draftHtml = render(PrHeaderCard, { pull: { ...basePull, isDraft: true }, canManagePull: true, triage: null, onViewTriage() {} });
   assert.match(draftHtml, /disabled=""[^>]*>.*Draft · cannot merge/);
   assert.match(draftHtml, />Close<\/span>/);
 
-  const mergedHtml = render(PrHeaderCard, { pull: { ...basePull, state: 'merged' }, triage: null, onViewTriage() {} });
+  const externalHtml = render(PrHeaderCard, { pull: basePull, canManagePull: false, triage: null, onViewTriage() {} });
+  assert.match(externalHtml, /Read-only/);
+  assert.doesNotMatch(externalHtml, />Merge<\/span>/);
+  assert.doesNotMatch(externalHtml, />Close<\/span>/);
+  assert.match(externalHtml, /View on GitHub/);
+
+  const mergedHtml = render(PrHeaderCard, { pull: { ...basePull, state: 'merged' }, canManagePull: true, triage: null, onViewTriage() {} });
   assert.doesNotMatch(mergedHtml, />Merge<\/span>/);
   assert.doesNotMatch(mergedHtml, />Close<\/span>/);
 });
@@ -179,7 +195,11 @@ const { VerificationPipelineCard } = component('../../resources/js/Components/wo
 const { loadTsModule } = await import('./helpers/loadTsModule.mjs');
 const budgetCopy = loadTsModule(new URL('../../resources/js/Components/ui/budgetCopy.ts', import.meta.url));
 const { PrReviewTab } = component('../../resources/js/Components/repositories/PrReviewTab.tsx',
-  (id) => (id === '../ui/budgetCopy' ? budgetCopy : require(id)));
+  (id) => {
+    if (id === '@inertiajs/react') return { router: { post() {} } };
+    if (id === '../ui/budgetCopy') return budgetCopy;
+    return require(id);
+  });
 
 test('automatic reviews list recent findings with local-only provenance', () => {
   const repositories = [{ fullName: 'owner/public', isPrivate: false }];
@@ -234,6 +254,21 @@ test('review provenance distinguishes automatic and manual Muse reviews', () => 
   assert.match(manual, /Manual review/);
 });
 
+test('selected-file reviews disclose omitted files and never show a whole-PR risk', () => {
+  const coverage = { kind: 'selected_file', reviewedFiles: 1, totalFiles: 102, path: 'src/a.php' };
+  const base = { changedFiles: ['src/a.php'], baseContextPath: null, selectedFile: 'src/a.php', isPrivate: false,
+    reviewApproved: false, reviewProcessing: false, budget: null, modelKeyAvailable: true,
+    copiedReviewDigest: false, setReviewApproved() {}, copyText() {}, handleReviewSubmit() {}, setReviewFormData() {}, reviewError: null };
+  const request = render(PrReviewTab, { ...base, review: null, reviewPreview: { filesCount: 1, estimatedMicros: 1000, digest: 'a'.repeat(64), coverage } });
+  assert.match(request, /Only src\/a\.php will be reviewed/);
+  assert.match(request, /101 other changed files will not be reviewed/);
+  const result = render(PrReviewTab, { ...base, reviewPreview: null, review: { model: 'muse', reviewedAt: '2026-10-31T10:00:00Z',
+    summary: 'One file.', riskLevel: 'low', usage: { prompt_tokens: 10, completion_tokens: 5 }, coverage } });
+  assert.match(result, /101 other changed files were not reviewed/);
+  assert.match(result, /No whole-PR verdict/);
+  assert.doesNotMatch(result, /Estimated low risk/);
+});
+
 test('verification states unavailable checks and blocked draft PRs explicitly', () => {
   const base = { context: { repository: 'owner/repo', issueNumber: 9, path: 'src/Other.php', sourceSha256: 'b'.repeat(64) },
     verifying: false, pipelineGates: null, copiedReceipt: false, copyReceipt() {}, copiedBotComment: false,
@@ -251,18 +286,33 @@ test('verification states unavailable checks and blocked draft PRs explicitly', 
     receipt: { sha256: 'd'.repeat(64), externallyAnchored: false }, candidateSha256: 'c'.repeat(64),
     gates: { baselineReproduced: true, negativeControlCaught: true, candidatePassed: true,
       candidateStaticSafetyPassed: true, allowlistIntegrityIntact: true } };
+  const passingGates = ['Baseline', 'Negative', 'Candidate', 'Safety', 'Integrity']
+    .map((label) => ({ label, shortLabel: label, passed: true, detail: 'Passed' }));
   const simulated = render(VerificationPipelineCard, { ...base, suggestion, verificationReport: verified,
-    pipelineGates: [], isOwnedFixture: true, isDedicatedTestRepo: true });
+    pipelineGates: passingGates, isOwnedFixture: true, isDedicatedTestRepo: true });
   assert.match(simulated, /Draft PR unavailable for this run/);
   assert.match(simulated, /isolated sandbox/);
   assert.doesNotMatch(simulated, /Create draft PR/);
 
   const genuine = render(VerificationPipelineCard, { ...base, suggestion,
-    verificationReport: { ...verified, isSimulated: false }, pipelineGates: [],
+    verificationReport: { ...verified, isSimulated: false }, pipelineGates: passingGates,
     isOwnedFixture: true, isDedicatedTestRepo: true,
     githubConnection: { repoPulls: [], user: { login: 'maintainer' } }, publisherDisconnected: false });
   assert.doesNotMatch(genuine, /Draft PR unavailable for this run/);
+  assert.match(genuine, /5\/5 Gates Verified/);
   assert.match(genuine, /Create draft PR/);
+
+  for (const [pipelineGates, report] of [
+    [[], { ...verified, isSimulated: false }],
+    [[...passingGates.slice(0, 4), { ...passingGates[4], passed: false }], { ...verified, isSimulated: false }],
+    [passingGates, { ...verified, isSimulated: false, gates: { ...verified.gates, candidatePassed: false } }],
+  ]) {
+    const inconsistent = render(VerificationPipelineCard, { ...base, suggestion,
+      verificationReport: report, pipelineGates, isOwnedFixture: true, isDedicatedTestRepo: true,
+      githubConnection: { repoPulls: [], user: { login: 'maintainer' } }, publisherDisconnected: false });
+    assert.match(inconsistent, /Results need review/);
+    assert.doesNotMatch(inconsistent, /5\/5 Gates Verified|Create draft PR|Check summary/);
+  }
 });
 
 test('issue header shows report completeness with missing checklist', () => {

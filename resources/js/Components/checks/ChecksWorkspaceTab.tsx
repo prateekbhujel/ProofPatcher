@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Play, Sparkles } from 'lucide-react';
+import { ChevronDown, LoaderCircle, Play, Sparkles } from 'lucide-react';
 import { BudgetStatus } from './types';
 import { budgetDollars, reviewUsageLine } from '../ui/budgetCopy';
 
@@ -15,7 +15,8 @@ interface ChecksWorkspaceTabProps {
   handleVerify: (e: React.FormEvent) => void;
   handlePropose: (e: React.FormEvent) => void;
   processing: boolean;
-  proposal?: any;
+  pendingAction: 'verify' | 'propose' | null;
+  isMuseProposal: boolean;
   baselineReady: boolean;
   budgetStatus?: BudgetStatus | null;
 }
@@ -26,7 +27,8 @@ export function ChecksWorkspaceTab({
   handleVerify,
   handlePropose,
   processing,
-  proposal,
+  pendingAction,
+  isMuseProposal,
   baselineReady,
   budgetStatus,
 }: ChecksWorkspaceTabProps) {
@@ -38,7 +40,7 @@ export function ChecksWorkspaceTab({
             Candidate CSS Patch
           </span>
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:border-slate-800 dark:text-slate-400">
-            {proposal ? 'MUSE SUGGESTION' : 'MANUAL PATCH'}
+            {isMuseProposal ? 'MUSE SUGGESTION' : 'MANUAL PATCH'}
           </span>
         </div>
 
@@ -133,8 +135,8 @@ export function ChecksWorkspaceTab({
               disabled={processing}
               className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md text-white bg-accent-700 hover:bg-accent-800 shadow-xs transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2"
             >
-              <Play className="w-3.5 h-3.5" />
-              <span>{processing ? 'Evaluating...' : 'Run Verification'}</span>
+              {processing && pendingAction === 'verify' ? <LoaderCircle className="w-3.5 h-3.5 motion-safe:animate-spin" aria-hidden="true" /> : <Play className="w-3.5 h-3.5" aria-hidden="true" />}
+              <span>{processing && pendingAction === 'verify' ? 'Running checks…' : 'Run Verification'}</span>
             </button>
 
             <button
@@ -144,9 +146,10 @@ export function ChecksWorkspaceTab({
               className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-md border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 dark:bg-[#141821] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               <Sparkles className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
-              <span>Generate with Muse</span>
+              <span>{processing && pendingAction === 'propose' ? 'Asking Muse…' : 'Generate with Muse'}</span>
             </button>
           </div>
+          {processing && <p role="status" aria-live="polite" className="text-xs text-slate-600 dark:text-slate-300">{pendingAction === 'propose' ? 'Waiting for Muse’s suggestion.' : 'Running the checkout checks. Results will appear when they finish.'}</p>}
         </form>
       </div>
 

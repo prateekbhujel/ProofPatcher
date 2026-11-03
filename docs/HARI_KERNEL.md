@@ -1,3 +1,31 @@
+# Hari — coordination core
+
+Current state: November 3, 2026.
+
+ProofPatcher is the application built on Hari. Hari provides explicit ability manifests, versioned skills, capability checks and a registry that freezes after boot. The OS/kernel language describes the product structure; Hari does not replace a host operating system or supply process isolation.
+
+The current boot registers ten abilities and six skills:
+
+| Skill | Role |
+| --- | --- |
+| `budget.status` | Read local usage counters |
+| `evidence.verify` | Check saved receipt integrity |
+| `review.result` | Read saved automatic-review outcomes |
+| `verify.candidate` | Invoke the supported candidate checks |
+| `verify.patch` | Invoke the controlled checkout checks |
+| `engineering.workflow` | Supply review or repair guidance to existing model requests |
+
+`proofpatch-review` and `workbench` borrow `engineering.workflow`. It has no I/O or execution capabilities. The guidance covers intended behavior, root cause, relevant failure/retry cases and evidence; it does not claim to have executed tests. Another application can register and borrow the same skill without ProofPatcher's GitHub permissions.
+
+Model requests retain their existing approval, provider and budget boundaries. Verification remains limited to supported workflows. General generated-code verification is disabled pending test-oracle isolation. The registry controls resolution; it is not a security sandbox.
+
+Source of current contracts: `app/Hari/`, `app/Abilities/HariBoot.php` and the corresponding unit and architecture tests.
+
+<details>
+<summary>Historical November 1 assessment and implementation notes</summary>
+
+The following records successive stages of the migration. Counts, earlier verdicts and reported checks describe those stages, not the current feature inventory or a new full-product verification.
+
 # Hari kernel — verdict, design, and threat model
 
 Date: 2026-11-01. Status: FULL RUN COMPLETE. Five skills live
@@ -157,3 +185,5 @@ show it — the console home's `hari` panel and `kernel:status`'s Hari
 line (`9 abilities · 5 skills · frozen`). Introspection never invokes
 a skill; execution still goes through `resolve()` and its borrow,
 major, and capability checks.
+
+</details>

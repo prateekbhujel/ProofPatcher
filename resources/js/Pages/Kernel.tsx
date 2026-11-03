@@ -76,9 +76,13 @@ export default function Kernel(props: KernelProps) {
         </div>
 
         <div className="grid gap-3 lg:grid-cols-2">
-          <Panel title={`hari — ${hari ? `${hari.abilities.length} abilities · ${hari.skills.length} skills · ${hari.frozen ? 'frozen' : 'mutable'}` : 'unavailable'}`}>
+          <Panel title="hari">
             {hari ? (
-              <div className="space-y-2 text-xs">
+              <details className="text-xs">
+                <summary className="cursor-pointer text-[var(--fg-muted)] hover:text-[var(--fg)]">
+                  {hari.abilities.length} {hari.abilities.length === 1 ? 'ability' : 'abilities'} · {hari.skills.length} {hari.skills.length === 1 ? 'skill' : 'skills'} <span className="sr-only">· {hari.frozen ? 'frozen' : 'mutable'}</span>
+                </summary>
+              <div className="mt-3 space-y-2">
                 <ul className="space-y-0.5">
                   {hari.abilities.map((a) => (
                     <li key={a.name} className="flex flex-wrap gap-x-2">
@@ -99,6 +103,7 @@ export default function Kernel(props: KernelProps) {
                   ))}
                 </ul>
               </div>
+              </details>
             ) : (
               <p className="text-xs text-[var(--fg-muted)]">registry unavailable</p>
             )}

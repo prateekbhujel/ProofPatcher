@@ -24,6 +24,7 @@ final class KernelShellCommandTest extends TestCase
         $method = new \ReflectionMethod($command, 'menuOptions');
         $options = $method->invoke($command);
         $this->assertContains('mentions', array_column($options, 'key'));
+        $this->assertContains('context', array_column($options, 'key'));
         $this->assertContains('quit', array_column($options, 'key'));
     }
 

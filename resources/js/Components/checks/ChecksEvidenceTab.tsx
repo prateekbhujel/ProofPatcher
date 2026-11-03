@@ -35,8 +35,11 @@ export function ChecksEvidenceTab({
       <div className="bg-white rounded-lg border border-slate-200 shadow-xs p-5 space-y-4 dark:bg-[#141821] dark:border-slate-800">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">4 Isolated Worktree Gates</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Evaluated independently in ephemeral worktrees.</p>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">4 verification checks</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Results from the included checkout example.</p>
+            {report.proposalEvidence?.origin === 'model' && typeof report.proposalEvidence.model === 'string' && (
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">Recorded proposal: {report.proposalEvidence.model}</p>
+            )}
           </div>
           <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">{report.decision}</span>
         </div>
@@ -49,9 +52,9 @@ export function ChecksEvidenceTab({
                 key={g.key}
                 className={`p-3.5 rounded-lg border space-y-2 ${
                   state === true
-                    ? 'bg-emerald-50/40 border-emerald-200 dark:bg-emerald-950/40/40 dark:border-emerald-800'
+                    ? 'bg-emerald-50/40 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800'
                     : state === false
-                    ? 'bg-rose-50/40 border-rose-200 dark:bg-rose-950/40/40 dark:border-rose-800'
+                    ? 'bg-rose-50/40 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800'
                     : 'bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-800'
                 }`}
               >

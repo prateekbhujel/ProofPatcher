@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
+import { GitBranch, LogOut } from 'lucide-react';
 import { BrandMark } from '../ui/BrandMark';
 import { ThemeToggle } from '../ThemeToggle';
 import { CONSOLE_NAV, ConsoleNavKey, isNavActive } from './primitives';
@@ -34,6 +35,7 @@ export function ConsoleLayout({ activeNav = 'kernel', title, children }: Console
 
   const connected = status?.connected ?? false;
   const disconnect = () => {
+    if (typeof window !== 'undefined' && !window.confirm('Disconnect GitHub? Your saved session and cached repositories will be cleared.')) return;
     const path = typeof window !== 'undefined' ? window.location.pathname : '/';
     router.post('/github/device/disconnect', { redirect_to: path });
   };
@@ -72,20 +74,17 @@ export function ConsoleLayout({ activeNav = 'kernel', title, children }: Console
           ))}
         </nav>
 
-        <div className="border-t border-[var(--border)] px-3 py-2 text-[11px]">
-          <p className="flex items-center gap-1.5">
-            <span className={`h-1.5 w-1.5 rounded-full ${status === null ? 'bg-slate-400' : connected ? 'bg-emerald-500' : 'bg-slate-400'}`} aria-hidden="true" />
-            <span className="truncate">{status === null ? 'loading…' : connected ? `@${status.userLogin ?? 'connected'}` : 'not connected'}</span>
-          </p>
-          {status?.selectedRepo && <p className="mt-0.5 truncate text-[var(--fg-muted)]">{status.selectedRepo}</p>}
-          <div className="mt-2 flex flex-col items-start gap-2">
-            <ThemeToggle />
-            {connected && (
-              <button type="button" onClick={disconnect} className="rounded px-1 py-1 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
-                Disconnect GitHub
-              </button>
-            )}
-          </div>
+        <div className="flex items-center gap-1.5 border-t border-[var(--border)] px-2 py-2 text-[11px]">
+          <Link href="/settings#settings-github" aria-label={status === null ? 'GitHub: loading…' : connected ? `GitHub: @${status.userLogin ?? 'connected'}${status.selectedRepo ? `, ${status.selectedRepo}` : ''}` : 'GitHub: not connected'} title={status === null ? 'GitHub: loading…' : connected ? `@${status.userLogin ?? 'connected'}${status.selectedRepo ? ` · ${status.selectedRepo}` : ''}` : 'GitHub: not connected'} className="relative rounded p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            <GitBranch className="h-4 w-4" aria-hidden="true" />
+            <span className={`absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`} aria-hidden="true" />
+          </Link>
+          <ThemeToggle />
+          {connected && (
+            <button type="button" onClick={disconnect} aria-label="Disconnect GitHub" title="Disconnect GitHub" className="ml-auto rounded p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </aside>
 

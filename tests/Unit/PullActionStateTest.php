@@ -9,6 +9,18 @@ use ProofPatch\Application\Repository\PullActionState;
 
 final class PullActionStateTest extends TestCase
 {
+    public function testRepositoryGrantRequiresVerifiedIdentityAndExactGrantedRepository(): void
+    {
+        $pull = ['repository' => 'Owner/Repo'];
+        $access = ['userId' => 7, 'repositories' => ['owner/repo' => true]];
+        self::assertTrue(PullActionState::hasRepositoryGrant($pull, $access));
+        self::assertFalse(PullActionState::hasRepositoryGrant($pull, ['userId' => 0, 'repositories' => ['owner/repo' => true]]));
+        self::assertFalse(PullActionState::hasRepositoryGrant($pull, ['userId' => 7, 'repositories' => ['owner/other' => true]]));
+        self::assertFalse(PullActionState::hasRepositoryGrant($pull, ['userId' => 7, 'repositories' => ['owner/repo' => false]]));
+        self::assertFalse(PullActionState::hasRepositoryGrant($pull, null));
+        self::assertFalse(PullActionState::hasRepositoryGrant(null, $access));
+    }
+
     public function testGuardRequiresStrictConfirmationAndShape(): void
     {
         $auth = ['token' => 't'];

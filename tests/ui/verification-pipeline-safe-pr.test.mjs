@@ -23,8 +23,10 @@ const verificationReport = { id: 'run-1', decision: 'VERIFIED', isSimulated: fal
   receipt: { sha256: 'd'.repeat(64), externallyAnchored: false }, candidateSha256: 'c'.repeat(64),
   gates: { baselineReproduced: true, negativeControlCaught: true, candidatePassed: true,
     candidateStaticSafetyPassed: true, allowlistIntegrityIntact: true } };
+const pipelineGates = ['Baseline Reproduction', 'Negative Control', 'Candidate Test', 'AST Token Rules', 'Allowlist Hash']
+  .map((label) => ({ label, shortLabel: label, passed: true, detail: 'Passed' }));
 const props = { context, suggestion, verificationReport, isOwnedFixture: true, isDedicatedTestRepo: true,
-  verifying: false, pipelineGates: [], copiedReceipt: false, copyReceipt() {}, copiedBotComment: false,
+  verifying: false, pipelineGates, copiedReceipt: false, copyReceipt() {}, copiedBotComment: false,
   setCopiedBotComment() {}, onVerifyCandidate() {}, publisherDisconnected: false, publishingPr: false,
   onPublishDraftPr() {}, githubConnection: { user: { login: 'owner' }, repoPulls: [
     { number: 10, state: 'open', title: 'Fix #10', head: 'unrelated', headSha: 'e'.repeat(40), base: 'main' },

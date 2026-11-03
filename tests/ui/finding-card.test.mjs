@@ -54,3 +54,9 @@ test('finding card shows the suggested fix as literal code', () => {
   assert.match(html, /\$a &gt; \$b/);
   assert.doesNotMatch(html, /\$a > \$b/);
 });
+
+test('finding discussion keeps every sentence of the review advice', () => {
+  const html = render({ finding: { ...base.finding, comment: 'Raw input reaches HTML. A script could execute. Escape it before concatenation. Keep UTF-8 explicit.' } });
+  assert.match(html, /<p class="font-semibold">Raw input reaches HTML\.<\/p>/);
+  assert.match(html, /A script could execute\. Escape it before concatenation\. Keep UTF-8 explicit\./);
+});

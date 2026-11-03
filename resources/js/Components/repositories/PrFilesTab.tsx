@@ -22,7 +22,7 @@ interface PrFilesTabProps {
   findings?: ReviewFinding[];
   drafts?: CommentDraft[];
   draftProcessing?: boolean;
-  onSaveDraft: (path: string, line: number | null, side: string, comment: string) => void;
+  onSaveDraft: (path: string, line: number | null, side: string, comment: string, onSaved?: () => void) => void;
   onDeleteDraft?: (draftId: string) => void;
 }
 
@@ -61,10 +61,10 @@ export function PrFilesTab({
         </div>
       </div>
 
-      <div className="flex items-center justify-between p-3 rounded-lg bg-accent-50/70 dark:bg-accent-950/40 border border-accent-200 dark:border-accent-800 text-xs text-accent-900 dark:text-accent-200">
+      <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-sunken)] border border-[var(--border)] text-xs text-[var(--fg-muted)]">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-accent-700 dark:text-accent-400 shrink-0" />
-          <span><strong>Inline Comments:</strong> Click the <strong>+</strong> button on any diff line to add maintainer review comments. Drafts stay local until published.</span>
+          <span>Use <strong>+</strong> on a diff line to draft a comment. Drafts stay local until published.</span>
         </div>
       </div>
 

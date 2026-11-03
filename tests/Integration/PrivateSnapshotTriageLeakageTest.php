@@ -133,6 +133,43 @@ final class PrivateSnapshotTriageLeakageTest extends TestCase
         $this->assertNotContains('Ambiguous Metadata PR', $triageCandidateTitles);
     }
 
+    public function testTriageShowsOnlyLatestPublicCapturePerPullAndPreservesHistory(): void
+    {
+        $store = new PullRequestSnapshot($this->tempSnapshotsDir);
+        $base = ['repository' => 'acme/repo', 'number' => 12, 'title' => 'Target', 'state' => 'open',
+            'headSha' => str_repeat('a', 40), 'baseSha' => str_repeat('b', 40),
+            'isPrivate' => false, 'visibility' => 'public',
+            'files' => [['name' => 'src/Example.php', 'additions' => 1, 'deletions' => 0]]];
+        $target = $store->capture($base);
+        $captureAt = function (array $pull, string $time) use ($store): void {
+            $capture = $store->capture($pull);
+            $path = $this->tempSnapshotsDir.'/'.$capture['id'].'.json';
+            $document = json_decode((string) file_get_contents($path), true, 64, JSON_THROW_ON_ERROR);
+            $document['snapshot']['capturedAt'] = $time;
+            $document['sha256'] = hash('sha256', \ProofPatch\Evidence\CanonicalJson::encode($document['snapshot']));
+            file_put_contents($path, json_encode($document, JSON_THROW_ON_ERROR));
+        };
+        $candidate = array_replace($base, ['number' => 8, 'title' => 'Old revision', 'headSha' => str_repeat('c', 40)]);
+        $captureAt($candidate, '2026-11-01T10:00:00+00:00');
+        $candidate = array_replace($candidate, ['title' => 'Current revision', 'headSha' => str_repeat('d', 40)]);
+        $captureAt($candidate, '2026-11-01T11:00:00+00:00');
+        $captureAt($candidate, '2026-11-01T12:00:00+00:00');
+        $captureAt(array_replace($candidate, ['isPrivate' => true, 'visibility' => 'private', 'title' => 'Secret newest revision']), '2026-11-01T13:00:00+00:00');
+        $captureAt(array_replace($candidate, ['repository' => 'other/repo', 'title' => 'Other repository']), '2026-11-01T14:00:00+00:00');
+
+        $session = app('session')->driver('array');
+        $request = Request::create('/repositories?snapshot='.$target['id'], 'GET');
+        $request->setLaravelSession($session);
+        $response = (new DashboardController())->repositories($request);
+        $props = $response->toResponse($request)->getOriginalContent()->getData()['page']['props'];
+        $comparisons = $props['triage']['comparisons'];
+        self::assertCount(1, $comparisons);
+        self::assertSame(8, $comparisons[0]['candidate']['number']);
+        self::assertSame('Current revision', $comparisons[0]['candidate']['title']);
+        self::assertSame(str_repeat('d', 40), $comparisons[0]['candidate']['headSha']);
+        self::assertCount(6, glob($this->tempSnapshotsDir.'/*.json'), 'Triage must preserve every saved capture.');
+    }
+
     public function testDirectLoadOfPrivateOrUnknownSnapshotFailsClosedWithoutSessionAuthorization(): void
     {
         $store = new PullRequestSnapshot($this->tempSnapshotsDir);

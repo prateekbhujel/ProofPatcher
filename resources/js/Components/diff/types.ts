@@ -63,7 +63,7 @@ export interface DiffViewerProps {
   findings?: ReviewFinding[];
   drafts?: CommentDraft[];
   initiallyExpanded?: boolean;
-  onSaveDraft: (path: string, line: number | null, side: string, comment: string) => void;
+  onSaveDraft: (path: string, line: number | null, side: string, comment: string, onSaved?: () => void) => void;
   onDeleteDraft?: (draftId: string) => void;
   isSavingDraft?: boolean;
 }

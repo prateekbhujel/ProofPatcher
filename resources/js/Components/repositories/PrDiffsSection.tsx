@@ -19,7 +19,7 @@ interface PrDiffsSectionProps {
   drafts?: CommentDraft[];
   draftProcessing?: boolean;
   snapshotId?: string;
-  onSaveDraft: (path: string, line: number | null, side: string, comment: string) => void;
+  onSaveDraft: (path: string, line: number | null, side: string, comment: string, onSaved?: () => void) => void;
   onDeleteDraft?: (draftId: string) => void;
 }
 

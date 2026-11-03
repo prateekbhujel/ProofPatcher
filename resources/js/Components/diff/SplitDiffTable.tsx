@@ -42,7 +42,7 @@ export function SplitDiffTable({
           {splitRows.map((row, rIdx) => {
             if (row.type === 'header') {
               return (
-                <tr key={rIdx} className="diff-hunk bg-[#f0f4f8] text-[#57606a] border-y border-[#d0d7de] font-bold">
+                <tr key={rIdx} className="diff-hunk bg-[var(--bg-sunken)] text-[var(--fg-muted)] border-y border-[var(--border)] font-medium">
                   <td colSpan={6} className="px-4 py-1 text-xs select-none">
                     {row.headerText}
                   </td>
@@ -65,8 +65,8 @@ export function SplitDiffTable({
                 <tr className="border-b border-slate-100 group dark:border-slate-800">
                   {/* Left Line Number (Base) */}
                   <td
-                    className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[#d0d7de]/60 ${
-                      leftDel ? 'diff-removed bg-[#ffdce0] text-[#cf222e]' : 'bg-white text-[#656d76] dark:bg-[#141821] dark:text-slate-400'
+                    className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[var(--border)] ${
+                      leftDel ? 'diff-removed bg-[var(--diff-del)] text-[var(--danger-text)]' : 'bg-[var(--bg-raised)] text-[var(--fg-muted)]'
                     }`}
                   >
                     {row.left?.lineNum ?? ''}
@@ -75,7 +75,7 @@ export function SplitDiffTable({
                   {/* Left Sign Marker (-) */}
                   <td
                     className={`diff-sign text-center select-none font-bold ${
-                      leftDel ? 'diff-removed bg-[#ffdce0] text-[#cf222e]' : 'bg-white text-transparent dark:bg-[#141821]'
+                      leftDel ? 'diff-removed bg-[var(--diff-del)] text-[var(--danger-text)]' : 'bg-[var(--bg-raised)] text-transparent'
                     }`}
                   >
                     {leftDel ? '-' : ' '}
@@ -83,8 +83,8 @@ export function SplitDiffTable({
 
                   {/* Left Code Content */}
                   <td
-                    className={`diff-code px-2 py-0.5 whitespace-pre overflow-x-auto border-r border-[#d0d7de] text-[#1f2328] ${
-                      leftDel ? 'diff-removed bg-[#ffebe9]' : 'bg-white dark:bg-[#141821] dark:text-slate-200'
+                    className={`diff-code px-2 py-0.5 whitespace-pre overflow-x-auto border-r border-[var(--border)] text-[var(--fg)] ${
+                      leftDel ? 'diff-removed bg-[var(--diff-del)]' : 'bg-[var(--bg-raised)] dark:text-slate-200'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -101,8 +101,8 @@ export function SplitDiffTable({
 
                   {/* Right Line Number (Head) */}
                   <td
-                    className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[#d0d7de]/60 ${
-                      rightAdd ? 'diff-added bg-[#dafbe1] text-[#1a7f37]' : 'bg-white text-[#656d76] dark:bg-[#141821] dark:text-slate-400'
+                    className={`diff-number px-2 py-0.5 text-right select-none text-[11px] border-r border-[var(--border)] ${
+                      rightAdd ? 'diff-added bg-[var(--diff-add)] text-[var(--ok-text)]' : 'bg-[var(--bg-raised)] text-[var(--fg-muted)]'
                     }`}
                   >
                     {row.right?.lineNum ?? ''}
@@ -111,7 +111,7 @@ export function SplitDiffTable({
                   {/* Right Sign Marker (+) */}
                   <td
                     className={`diff-sign text-center select-none font-bold ${
-                      rightAdd ? 'diff-added bg-[#dafbe1] text-[#1a7f37]' : 'bg-white text-transparent dark:bg-[#141821]'
+                      rightAdd ? 'diff-added bg-[var(--diff-add)] text-[var(--ok-text)]' : 'bg-[var(--bg-raised)] text-transparent'
                     }`}
                   >
                     {rightAdd ? '+' : ' '}
@@ -119,8 +119,8 @@ export function SplitDiffTable({
 
                   {/* Right Code Content */}
                   <td
-                    className={`diff-code px-2 py-0.5 whitespace-pre overflow-x-auto text-[#1f2328] relative ${
-                      rightAdd ? 'diff-added bg-[#e6ffec]' : 'bg-white dark:bg-[#141821] dark:text-slate-200'
+                    className={`diff-code px-2 py-0.5 whitespace-pre overflow-x-auto text-[var(--fg)] relative ${
+                      rightAdd ? 'diff-added bg-[var(--diff-add)]' : 'bg-[var(--bg-raised)] dark:text-slate-200'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -144,7 +144,7 @@ export function SplitDiffTable({
 
                 {isLeftEditorOpen && row.left && row.left.lineNum !== null && (
                   <tr>
-                    <td colSpan={6} className="p-3 bg-[#f6f8fa] border-y border-[#d0d7de]">
+                    <td colSpan={6} className="p-3 bg-[var(--bg-sunken)] border-y border-[var(--border)]">
                       <InlineCommentEditor fileName={fileName} lineNum={row.left.lineNum} side="LEFT"
                         initialText={leftDraft?.comment || ''} isSavingDraft={isSavingDraft}
                         onSave={(lineNum, side, text) => onSaveDraft(fileName, lineNum, side, text)} onClose={closeEditor} />
@@ -153,7 +153,7 @@ export function SplitDiffTable({
                 )}
                 {isRightEditorOpen && row.right && row.right.lineNum !== null && (
                   <tr>
-                    <td colSpan={6} className="p-3 bg-[#f6f8fa] border-y border-[#d0d7de]">
+                    <td colSpan={6} className="p-3 bg-[var(--bg-sunken)] border-y border-[var(--border)]">
                       <InlineCommentEditor
                         fileName={fileName}
                         lineNum={row.right.lineNum}
@@ -168,7 +168,7 @@ export function SplitDiffTable({
                 )}
                 {[leftDraft, rightDraft].filter((draft): draft is CommentDraft => Boolean(draft)).map((draft) => (
                   <tr key={draft.id}>
-                    <td colSpan={6} className="p-3 bg-accent-50/70 border-y border-accent-200 dark:bg-accent-950/40/70 dark:border-accent-800">
+                    <td colSpan={6} className="p-3 bg-[var(--bg-sunken)] border-y border-[var(--border)]">
                       <InlineDraft draft={draft} onEdit={() => openEditorForLine(draft.side === 'LEFT' ? leftLineKey : rightLineKey, draft.comment)} onDelete={onDeleteDraft} />
                     </td>
                   </tr>

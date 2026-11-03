@@ -44,7 +44,7 @@ export default function Docs() {
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Documentation</h1>
           </div>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Maintainer guide for autonomous issue triage, falsifiable 5-gate verification, and cryptographic receipts.
+            A guide to reviews, supported fixture checks, and evidence receipts.
           </p>
         </div>
 
@@ -111,7 +111,7 @@ export default function Docs() {
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">How a change is reviewed</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Every proposed change must reproduce the problem first and pass all verification gates before it can be published.
+                In the dedicated test case, a candidate is checked before a draft pull request can be created. Reviews are advisory.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
@@ -121,7 +121,7 @@ export default function Docs() {
                     <span>Ticket Intake</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Select a connected repository issue or pull request. The untouched target file is cryptographically hashed with SHA-256 to ensure zero race conditions.
+                    Select a connected repository issue or pull request. Supported workflows record a file hash and check freshness before relevant actions.
                   </p>
                 </div>
 
@@ -131,7 +131,7 @@ export default function Docs() {
                     <span>Single-Use Maintainer Approval</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Inspect the model payload before any network transmission. External inference requires explicit maintainer consent; no unauthorized queries are issued.
+                    Manual model requests require approval. Optional public automatic reviews follow the settings for each repository.
                   </p>
                 </div>
 
@@ -141,7 +141,7 @@ export default function Docs() {
                     <span>In-Memory Diff Preview</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    The model returns a minimal replacement pair. ProofPatcher generates an in-memory diff preview with syntax highlighting without modifying files on disk.
+                    The model returns a minimal replacement pair. ProofPatcher generates an in-memory diff preview without modifying files on disk.
                   </p>
                 </div>
 
@@ -151,7 +151,7 @@ export default function Docs() {
                     <span>5-Gate Execution &amp; Receipt</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    ProofPatcher executes baseline failure reproduction, negative control validation, and candidate verification to produce a cryptographically verifiable manifest.
+                    The dedicated fixture checks a baseline, negative control and candidate, then records an evidence receipt.
                   </p>
                 </div>
               </div>
@@ -183,18 +183,18 @@ export default function Docs() {
               <div>
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">The 5-Gate Proof Structure</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Passing tests alone is not proof. Every proposed patch must satisfy all five gates before receiving a VERIFIED decision.
+                  The dedicated issue fixture uses five checks; the checkout example uses four. Passing checks is not proof of general correctness.
                 </p>
               </div>
 
               <div className="space-y-3 pt-1">
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-slate-900 dark:text-slate-100">Gate 1: Static AST Safety Guard</span>
+                    <span className="font-semibold text-xs text-slate-900 dark:text-slate-100">Gate 1: Static PHP token checks</span>
                     <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Pre-Execution</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Statically parses PHP tokens using <code className="font-mono text-accent-700 dark:text-accent-400">token_get_all(..., TOKEN_PARSE)</code>. Disallows dangerous constructs (<code className="font-mono">exec</code>, <code className="font-mono">system</code>, <code className="font-mono">eval</code>, backticks, variable functions, sockets) before any candidate code can run.
+                    Checks PHP tokens with <code className="font-mono text-accent-700 dark:text-accent-400">token_get_all(..., TOKEN_PARSE)</code> and rejects selected unsafe constructs. These checks are not a security sandbox.
                   </p>
                 </div>
 
@@ -204,7 +204,7 @@ export default function Docs() {
                     <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">Exit Code 1</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Executes the test suite against the unpatched base fixture. Proves the reported bug is real and produces an expected failure rather than an already-passing test suite.
+                    Runs the fixture checks against the unpatched base and looks for the expected failure.
                   </p>
                 </div>
 
@@ -214,7 +214,7 @@ export default function Docs() {
                     <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-400">Exit Code 1</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Substitutes a known dummy stub (e.g. <code className="font-mono">return 0;</code>) into the test harness to verify that the test suite actually catches invalid or trivial patches.
+                    Tests a known incorrect candidate to check that the fixture rejects it.
                   </p>
                 </div>
 
@@ -224,7 +224,7 @@ export default function Docs() {
                     <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400">Exit Code 0</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Runs the patched candidate in an isolated scratch worktree. Confirms that all unit and regression tests pass cleanly without errors.
+                    Runs the supported pinned candidate against the fixture checks. The result applies only to the tested cases.
                   </p>
                 </div>
 
@@ -249,13 +249,13 @@ export default function Docs() {
               <div>
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Evidence Receipts (proofpatch-receipt-v1)</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Every completed run generates an immutable manifest with individual SHA-256 hashes of test output, execution logs, and diffs.
+                    A receipt records hashes for an evidence bundle. A matching digest checks integrity, not correctness or independent origin.
                 </p>
               </div>
 
               <div className="bg-slate-900 text-slate-100 rounded-lg p-4 font-mono text-xs space-y-2 overflow-x-auto border border-slate-800">
                 <div className="flex items-center justify-between text-slate-400 text-[11px] border-b border-slate-800 pb-2">
-                  <span>receipt.json schema</span>
+                  <span>Illustrative receipt</span>
                   <span className="text-emerald-400">Canonical JSON</span>
                 </div>
                 <pre className="text-emerald-400 leading-relaxed">{`{
@@ -278,11 +278,11 @@ export default function Docs() {
               <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
                   <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">Verify Receipt via CLI</span>
-                  <p className="text-[11px] text-slate-500 font-mono dark:text-slate-400">php artisan proofpatch:check-receipt &lt;runId&gt;</p>
+                  <p className="text-[11px] text-slate-500 font-mono dark:text-slate-400">php artisan review:receipt &lt;runId&gt;</p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => copyCommand('php artisan proofpatch:check-receipt 20261030T131306Z-65eee2f5')}
+                  onClick={() => copyCommand('php artisan review:receipt ')}
                   className="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 inline-flex items-center gap-1.5"
                 >
                   {copiedCmd ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -303,7 +303,7 @@ export default function Docs() {
                   <span>Worktrees Are NOT Security Sandboxes</span>
                 </div>
                 <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-                  Git worktrees isolate checked-out branches, but do not isolate host syscalls or network operations. ProofPatcher never executes untrusted code directly on the host.
+                  Git worktrees separate checkouts; they do not isolate host syscalls or network access. Do not run untrusted code on the host merely because it is in a worktree.
                 </p>
               </div>
 
@@ -311,14 +311,14 @@ export default function Docs() {
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1.5">
                   <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 block">Host Allowlist Boundary</span>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Local execution is restricted strictly to audited, checked-in test fixtures with static AST token filtering. Any dynamic invocation or foreign file write immediately halts execution.
+                    Local fixture execution uses allowlists and token checks. These checks do not establish a sandbox for arbitrary code.
                   </p>
                 </div>
 
                 <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1.5">
-                  <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 block">Modal gVisor MicroVM Sandbox</span>
+                  <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 block">Configured Modal runner</span>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Arbitrary repository pull requests run inside ephemeral microVM sandboxes with <code className="font-mono text-accent-700 dark:text-accent-400">block_network=True</code>, preventing untrusted code from exfiltrating credentials or reaching local network services.
+                    Modal is used for the configured pinned test case. General generated-code verification remains disabled until the test oracle is isolated.
                   </p>
                 </div>
               </div>

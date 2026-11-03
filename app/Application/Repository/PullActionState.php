@@ -13,6 +13,17 @@ final class PullActionState
 {
     public const GUARD_ERROR = 'Connect GitHub, load the pull request and confirm the action.';
 
+    /** Grant membership only; GitHub still decides whether the user may write. */
+    public static function hasRepositoryGrant(mixed $pull, mixed $access): bool
+    {
+        $repository = is_array($pull) ? ($pull['repository'] ?? null) : null;
+        $userId = is_array($access) ? ($access['userId'] ?? null) : null;
+        $repositories = is_array($access) ? ($access['repositories'] ?? null) : null;
+        return is_string($repository) && $repository !== ''
+            && is_int($userId) && $userId > 0 && is_array($repositories)
+            && ($repositories[strtolower($repository)] ?? false) === true;
+    }
+
     public static function guardError(mixed $confirmed, mixed $auth, mixed $pull, mixed $access): ?string
     {
         if ($confirmed !== true || !is_array($auth) || !is_string($auth['token'] ?? null)

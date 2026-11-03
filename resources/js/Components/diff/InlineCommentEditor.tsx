@@ -29,30 +29,31 @@ export function InlineCommentEditor({
 
   const handleInsertTemplate = () => {
     const template = `### Review Note (${fileName}:${lineNum})\n\n- **Verification concern**:\n- **Edge case / Boundary**:\n- **Suggested change**:\n`;
-    setEditorText(template);
+    setEditorText((current) => current.trim() ? `${current}\n\n${template}` : template);
   };
 
   const handleSave = () => {
-    if (!editorText.trim()) return;
+    if (!editorText.trim() || isSavingDraft) return;
     onSave(lineNum, side, editorText.trim());
   };
 
   return (
-    <div className="rounded-lg bg-white border border-[#d0d7de] shadow-xs font-sans overflow-hidden dark:bg-[#141821]">
+    <div className="rounded-lg bg-[var(--bg-raised)] border border-[var(--border)] shadow-xs font-sans overflow-hidden">
       {/* Top Header: Avatar + Title */}
-      <div className="px-3.5 py-2 bg-[#f6f8fa] border-b border-[#d0d7de] flex items-center justify-between">
+      <div className="px-3.5 py-2 bg-[var(--bg-sunken)] border-b border-[var(--border)] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-full bg-slate-700 text-white text-[10px] font-bold flex items-center justify-center">
             P
           </div>
-          <span className="text-xs font-bold text-[#1f2328]">
+          <span className="text-xs font-semibold text-[var(--fg)]">
             Add a comment on line {lineNum} ({side === 'RIGHT' ? 'HEAD' : 'BASE'})
           </span>
         </div>
         <button
           type="button"
+          aria-label="Close comment editor"
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-700"
+          className="text-[var(--fg-muted)] hover:text-[var(--fg)]"
         >
           <X className="w-4 h-4" />
         </button>
@@ -66,8 +67,8 @@ export function InlineCommentEditor({
             onClick={() => setEditorTab('write')}
             className={`px-3 py-1.5 text-xs font-medium border-b-2 transition ${
               editorTab === 'write'
-                ? 'border-[#0969da] text-[#1f2328] font-semibold'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                ? 'border-accent-500 text-[var(--fg)] font-semibold'
+                : 'border-transparent text-[var(--fg-muted)] hover:text-[var(--fg)]'
             }`}
           >
             Write
@@ -77,8 +78,8 @@ export function InlineCommentEditor({
             onClick={() => setEditorTab('preview')}
             className={`px-3 py-1.5 text-xs font-medium border-b-2 transition ${
               editorTab === 'preview'
-                ? 'border-[#0969da] text-[#1f2328] font-semibold'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                ? 'border-accent-500 text-[var(--fg)] font-semibold'
+                : 'border-transparent text-[var(--fg-muted)] hover:text-[var(--fg)]'
             }`}
           >
             Preview
@@ -141,17 +142,18 @@ export function InlineCommentEditor({
             value={editorText}
             onChange={(e) => setEditorText(e.target.value)}
             placeholder="Leave a comment... Markdown supported"
-            className="w-full text-xs font-sans rounded-md border border-slate-300 p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0969da] leading-relaxed dark:border-slate-700 dark:text-slate-100"
+            aria-label={`Comment on line ${lineNum}`}
+            className="w-full text-xs font-sans rounded-md border border-[var(--border-strong)] bg-[var(--bg-sunken)] p-2.5 text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-accent-500 leading-relaxed"
           />
         ) : (
-          <div className="min-h-[96px] p-2.5 rounded-md bg-slate-50 border border-slate-200 text-xs text-slate-800 whitespace-pre-wrap font-sans dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200">
+          <div className="min-h-[96px] p-2.5 rounded-md bg-[var(--bg-sunken)] border border-[var(--border)] text-xs text-[var(--fg)] whitespace-pre-wrap font-sans">
             {editorText.trim() ? editorText : <span className="text-slate-400 italic">Nothing to preview</span>}
           </div>
         )}
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="px-3 py-2.5 bg-[#f6f8fa] border-t border-[#d0d7de] flex flex-wrap items-center justify-between gap-2">
+      <div className="px-3 py-2.5 bg-[var(--bg-sunken)] border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
         {/* Review Template Action */}
         <button
           type="button"
@@ -178,7 +180,7 @@ export function InlineCommentEditor({
             onClick={handleSave}
             className="px-3.5 py-1.5 text-xs font-semibold rounded-md text-white bg-[#1f883d] hover:bg-[#1a7f37] disabled:opacity-40 transition shadow-2xs"
           >
-            {isSavingDraft ? 'Saving...' : 'Add Review Comment'}
+            {isSavingDraft ? 'Saving...' : 'Save draft'}
           </button>
         </div>
       </div>

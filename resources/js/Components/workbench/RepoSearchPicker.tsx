@@ -215,8 +215,8 @@ export function RepoSearchPicker({ id, value, onChange, disabled = false, ariaLa
                     onMouseEnter={() => setHighlight(index)}
                     className={`flex cursor-pointer items-center gap-2 px-3.5 py-2 font-mono text-xs ${
                       index === highlight
-                        ? 'bg-accent-50 dark:bg-accent-950/50 text-slate-900 dark:text-slate-100'
-                        : 'text-slate-700 dark:text-slate-300'
+                        ? 'bg-[var(--accent-soft)] text-[var(--fg)]'
+                        : 'text-[var(--fg-muted)]'
                     }`}
                   >
                     <span className="min-w-0 flex-1 truncate">{repo.fullName}</span>

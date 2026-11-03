@@ -26,8 +26,11 @@ final class TerminalDashboard
         $width = max(4, $width);
         $height = max(4, $height);
         $lines = [];
-        $lines[] = "\e[1;35m".self::fit('ProofPatcher', $width)."\e[0m";
-        if ($height >= 9) $lines[] = "\e[2m".self::fit('Your repository workspace', $width)."\e[0m";
+        // A small companion stays in the unused header space. It does not
+        // animate or delay input, and is omitted on small terminals.
+        $mascot = $width >= 72 && $height >= 12;
+        $lines[] = self::header('ProofPatcher', $mascot ? ' .-^-.' : null, $width, "\e[1;35m");
+        if ($height >= 9) $lines[] = self::header('Your repository workspace', $mascot ? ' |o.o|' : null, $width, "\e[2m");
         if ($height >= 10) {
             foreach (array_slice($status, 0, min(3, $height - 8)) as $line) {
                 $lines[] = self::fit(self::safeText($line), $width);
@@ -65,6 +68,15 @@ final class TerminalDashboard
     private static function safeText(string $text): string
     {
         return (string) preg_replace('/[\x00-\x1f\x7f-\x9f]/u', ' ', $text);
+    }
+
+    private static function header(string $text, ?string $mascot, int $width, string $style): string
+    {
+        $label = self::fit($text, $width);
+        if ($mascot === null) return $style.$label."\e[0m";
+
+        $gap = max(2, $width - 1 - mb_strwidth($label, 'UTF-8') - strlen($mascot));
+        return $style.$label."\e[0m".str_repeat(' ', $gap)."\e[35m".$mascot."\e[0m";
     }
 
     private static function fit(string $text, int $width): string

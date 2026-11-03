@@ -180,6 +180,7 @@ export interface ReviewResult {
   };
   source?: 'automatic' | 'manual';
   publishedStatus?: string | null;
+  coverage?: { kind: 'selected_file'; reviewedFiles: number; totalFiles: number; path: string } | null;
 }
 
 export interface ReviewPreviewData {
@@ -191,6 +192,7 @@ export interface ReviewPreviewData {
   body?: Record<string, any>;
   approvalToken?: string;
   isPrivate?: boolean;
+  coverage?: { kind: 'selected_file'; reviewedFiles: number; totalFiles: number; path: string } | null;
 }
 
 
@@ -206,6 +208,7 @@ export interface BudgetData {
 
 export interface RepositoriesProps {
   pull?: PullData | null;
+  canManagePull?: boolean;
   snapshot?: SnapshotData | null;
   triage?: TriageData | null;
   error?: string | null;
@@ -220,6 +223,8 @@ export interface RepositoriesProps {
   patchPreviewError?: string | null;
   review?: ReviewResult | null;
   reviewPreview?: ReviewPreviewData | null;
+  reviewBaseContextPath?: string | null;
+  reviewSelectedFile?: string | null;
   reviewError?: string | null;
   drafts?: CommentDraft[];
   commentApprovals?: Record<string, string>;

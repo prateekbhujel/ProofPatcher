@@ -250,7 +250,7 @@ final class ProviderConfigStore
             'activeEndpoint' => $active['endpoint'],
             'activeKeyAvailable' => $providersStatus[$active['provider']]['configured'] ?? false,
             'providers' => $providersStatus,
-            'modalNote' => 'Modal is used strictly for isolated gVisor microVM code execution sandboxing (ModalIsolatedRunner), not for hosted Muse model inference.',
+            'modalNote' => 'Modal runs the supported pinned test case. General generated-code verification is unavailable until the test oracle is isolated.',
         ];
     }
 

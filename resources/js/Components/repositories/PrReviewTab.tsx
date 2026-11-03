@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { router } from '@inertiajs/react';
 import {
   Sparkles,
   Lock,
@@ -13,6 +14,9 @@ import { reviewUsageLine } from '../ui/budgetCopy';
 interface PrReviewTabProps {
   review?: ReviewResult | null;
   reviewPreview?: ReviewPreviewData | null;
+  changedFiles: string[];
+  baseContextPath: string | null;
+  selectedFile?: string | null;
   isPrivate: boolean;
   reviewApproved: boolean;
   setReviewApproved: (approved: boolean) => void;
@@ -29,6 +33,9 @@ interface PrReviewTabProps {
 export function PrReviewTab({
   review,
   reviewPreview,
+  changedFiles,
+  baseContextPath,
+  selectedFile = null,
   isPrivate,
   reviewApproved,
   setReviewApproved,
@@ -41,6 +48,10 @@ export function PrReviewTab({
   setReviewFormData,
   reviewError,
 }: PrReviewTabProps) {
+  const [selectedContext, setSelectedContext] = useState(baseContextPath || '');
+  const [fileScope, setFileScope] = useState(selectedFile || '');
+  useEffect(() => setSelectedContext(baseContextPath || ''), [baseContextPath, selectedFile]);
+  useEffect(() => setFileScope(selectedFile || ''), [selectedFile]);
   return (
     <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#141821]">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -70,7 +81,7 @@ export function PrReviewTab({
                 {review.source === 'automatic' ? '· Automatic review' : '· Manual review'}
               </span>
             </div>
-            <span
+            {!review.coverage && <span
               className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
                 review.riskLevel === 'low'
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
@@ -80,8 +91,9 @@ export function PrReviewTab({
               }`}
             >
               Estimated {review.riskLevel} risk
-            </span>
+            </span>}
           </div>
+          {review.coverage && <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Selected file only: {review.coverage.path}. {review.coverage.totalFiles - review.coverage.reviewedFiles} other changed files were not reviewed. No whole-PR verdict.</p>}
 
           <div className="border-t border-slate-100 pt-2.5 dark:border-slate-800">
             <h3 className="mb-0.5 text-xs font-semibold text-slate-900 dark:text-slate-100">Summary</h3>
@@ -98,13 +110,42 @@ export function PrReviewTab({
         </div>
       )}
 
+      {!review && !isPrivate && changedFiles.length > 0 && (
+        <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+          <label htmlFor="review-file-scope" className="block text-xs font-medium text-slate-800 dark:text-slate-200">Review scope</label>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Choose one complete file if the full diff is unavailable. Other files will not be reviewed.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <select id="review-file-scope" value={fileScope} onChange={(e) => setFileScope(e.target.value)} className="min-w-0 flex-1 rounded border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+              <option value="">Full pull request</option>
+              {changedFiles.map((path) => <option key={path} value={path}>{path}</option>)}
+            </select>
+            <button type="button" onClick={() => router.post('/repositories/review/file', { path: fileScope })} className="rounded border border-slate-300 px-3 py-2 text-xs dark:border-slate-700 dark:text-slate-200">Set scope</button>
+          </div>
+        </div>
+      )}
+
       {/* Pre-review: Technical Request Disclosure & Maintainer Consent */}
       {!review && reviewPreview && (
         <div className="space-y-4">
+          {!isPrivate && changedFiles.length > 0 && (
+            <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+              <label htmlFor="base-review-context" className="block text-xs font-medium text-slate-800 dark:text-slate-200">Optional base-file context</label>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Add a few pre-change lines from one public changed file. This is not the full file.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <select id="base-review-context" value={selectedContext} onChange={(e) => setSelectedContext(e.target.value)} className="min-w-0 flex-1 rounded border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                  <option value="">Diff only</option>
+                  {changedFiles.filter((path) => !selectedFile || selectedFile === path).map((path) => <option key={path} value={path}>{path}</option>)}
+                </select>
+                <button type="button" onClick={() => router.post('/repositories/review/base-context', { path: selectedContext })} className="rounded border border-slate-300 px-3 py-2 text-xs dark:border-slate-700 dark:text-slate-200">Update preview</button>
+              </div>
+              {baseContextPath && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Included: {baseContextPath}</p>}
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
             <span>{reviewPreview.filesCount} diff {reviewPreview.filesCount === 1 ? 'file' : 'files'} included in review scope</span>
             <span className="font-mono text-[11px]">~${(reviewPreview.estimatedMicros / 1000000).toFixed(4)} estimated reservation</span>
           </div>
+          {reviewPreview.coverage && <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Only {reviewPreview.coverage.path} will be reviewed. {reviewPreview.coverage.totalFiles - reviewPreview.coverage.reviewedFiles} other changed files will not be reviewed.</p>}
 
           {/* Accessible Full Request Inspection Disclosure */}
           <details className="border border-slate-200 rounded-lg p-3 bg-white space-y-3 dark:bg-[#141821] dark:border-slate-800">
@@ -172,7 +213,9 @@ export function PrReviewTab({
               <span className="leading-relaxed">
                 {isPrivate
                   ? 'Private pull requests stay local and are not sent to a model.'
-                  : 'I approve sending this public diff to Muse for review.'}
+                  : baseContextPath
+                    ? 'I approve sending this public diff and selected base-file context to Muse for review.'
+                    : 'I approve sending this public diff to Muse for review.'}
               </span>
             </label>
 

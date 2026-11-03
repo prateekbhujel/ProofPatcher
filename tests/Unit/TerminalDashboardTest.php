@@ -85,6 +85,21 @@ final class TerminalDashboardTest extends TestCase
         $this->assertStringContainsString('Quit', $small);
     }
 
+    public function testMascotFitsWideDashboardAndIsHiddenInSmallViewports(): void
+    {
+        $wide = TerminalDashboard::paint($this->options(), 0, '', false, ['GitHub: connected'], 80, 24);
+        $plain = preg_replace('/\e\[[0-9;?]*[a-zA-Z]/', '', $wide) ?? $wide;
+        $this->assertStringContainsString('.-^-.', $plain);
+        $this->assertStringContainsString('|o.o|', $plain);
+        $this->assertStringContainsString('GitHub: connected', $plain);
+        foreach (explode("\r\n", $plain) as $line) $this->assertLessThan(80, mb_strwidth($line, 'UTF-8'));
+
+        $narrow = TerminalDashboard::paint($this->options(), 0, '', false, [], 40, 24);
+        $short = TerminalDashboard::paint($this->options(), 0, '', false, [], 80, 8);
+        $this->assertStringNotContainsString('|o.o|', $narrow);
+        $this->assertStringNotContainsString('|o.o|', $short);
+    }
+
     public function testReadErrorRestoresTerminal(): void
     {
         $term = $this->terminal([new \stdClass()]);

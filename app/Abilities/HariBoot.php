@@ -30,7 +30,10 @@ final class HariBoot
             'proofpatch-evidence', 1, ['evidence.verify'], [], ['evidence.read'],
         ));
         $registry->registerAbility(new AbilityManifest(
-            'proofpatch-review', 1, ['review.result'], [], ['review.read'],
+            'engineering-workflow', 1, ['engineering.workflow'], [], [],
+        ));
+        $registry->registerAbility(new AbilityManifest(
+            'proofpatch-review', 1, ['review.result'], ['engineering.workflow' => 1], ['review.read'],
         ));
         $registry->registerAbility(new AbilityManifest(
             'proofpatch-verify', 1, ['verify.candidate', 'verify.patch'], [], ['verify.execute'],
@@ -46,7 +49,7 @@ final class HariBoot
             ['budget.read', 'evidence.read', 'review.read', 'verify.execute'],
         ));
         $registry->registerAbility(new AbilityManifest(
-            'workbench', 1, [], ['budget.status' => 1, 'verify.candidate' => 1], ['budget.read', 'verify.execute'],
+            'workbench', 1, [], ['budget.status' => 1, 'verify.candidate' => 1, 'engineering.workflow' => 1], ['budget.read', 'verify.execute'],
         ));
         $registry->registerAbility(new AbilityManifest(
             'telemetry', 1, [], ['review.result' => 1], ['review.read'],
@@ -58,6 +61,7 @@ final class HariBoot
         ));
         $registry->provideSkill('proofpatch-budget', new BudgetStatusSkill($budget));
         $registry->provideSkill('proofpatch-evidence', new EvidenceVerifySkill());
+        $registry->provideSkill('engineering-workflow', new EngineeringWorkflowSkill());
         $registry->provideSkill('proofpatch-review', new ReviewResultSkill());
         $registry->provideSkill('proofpatch-verify', new VerifyCandidateSkill());
         $registry->provideSkill('proofpatch-verify', new VerifyPatchSkill());

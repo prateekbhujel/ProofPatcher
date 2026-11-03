@@ -12,7 +12,10 @@ export interface ReportData {
   gates: GateRecord;
   proposal?: {
     file: string;
+    find?: string;
+    replace?: string;
   };
+  proposalEvidence?: { origin?: string; model?: string; sourceRunId?: string } | null;
   visual?: {
     outsideChangedPixels: number;
   };

@@ -6,6 +6,8 @@ namespace ProofPatch\Agent;
 
 use ProofPatch\Evidence\CanonicalJson;
 use ProofPatch\GitHub\PublicCardPreview;
+use ProofPatch\Abilities\HariBoot;
+use Hari\Registry;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /** Public task-card proposals. No filesystem execution, GitHub writes, or verification. */
@@ -21,12 +23,17 @@ final readonly class PublicCardProposal
         .'Write the explanation in plain, concise language, describing only the change and effects supported by the supplied context. '
         .'Do not suggest commands or claim the change was tested.';
 
+    private Registry $hari;
+
     public function __construct(
         private HttpClientInterface $provider,
         private PublicCardPreview $publicFile,
         private RequestBudget $budget,
         private SingleUseReviewApproval $approvals,
-    ) {}
+        ?Registry $hari = null,
+    ) {
+        $this->hari = $hari ?? HariBoot::boot();
+    }
 
     /** Full destination and request body for the user to review. This performs no provider call. */
     public function preview(array $cardPreview, array $card): array
@@ -36,6 +43,7 @@ final readonly class PublicCardProposal
         self::assertPublicSafeContent($context['source'], $context['title'], $context['description']);
 
         $target = Credentials::activeTarget();
+        $workflow = $this->hari->resolve('engineering.workflow', 1, 'workbench')->invoke(['task' => 'repair']);
         $body = [
             'model' => $target['model'],
             'max_tokens' => self::MAX_TOKENS,
@@ -44,7 +52,7 @@ final readonly class PublicCardProposal
             'top_p' => 1,
             'stream' => false,
             'messages' => [
-                ['role' => 'system', 'content' => self::SYSTEM],
+                ['role' => 'system', 'content' => self::SYSTEM.' '.$workflow['guidance']],
                 ['role' => 'user', 'content' => CanonicalJson::encode($context)],
             ],
         ];
