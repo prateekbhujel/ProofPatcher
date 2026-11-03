@@ -62,6 +62,7 @@ function pageHarness() {
     '../Components/workbench/WorkbenchScreenshot': { WorkbenchScreenshot: blank },
     '../Components/workbench/ProposalDiffCard': { ProposalDiffCard: blank },
     '../Components/workbench/VerificationPipelineCard': { VerificationPipelineCard: blank },
+    '../Components/workbench/FixtureObservationCard': { FixtureObservationCard: blank },
     '../Components/workbench/TaskComposerFooter': { TaskComposerFooter: blank },
     '../Components/console/shared': { COMPOSER_DRAFT_KEY: 'test-composer-draft' },
     '../hooks/useKernelPrompt': { useKernelPrompt: () => ({ commandFeedback: null, activeOpenPull: null, executePrompt() {} }) },
