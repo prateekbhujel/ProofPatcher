@@ -1,19 +1,11 @@
-# Showcase capture guide
+# Demonstrating ProofPatcher
 
-This is a capture plan, not a record of produced video or image exports.
+Use the local app and a repository that you are authorized to show. The demo can cover:
 
-Use the running app in light mode with a dedicated test repository. Capture only the page viewport or terminal; keep account secrets, unrelated tabs and private work out of the frame. Screenshots must show actual results and retain their real scope.
+1. A public pull request, its changes and a concise Muse finding.
+2. The controlled checkout example, including a rejected shortcut and a passing repair.
+3. A bot-attributed comment that exists on GitHub, identified as an existing result if it is not created during the demonstration.
+4. A short terminal status or review result.
+5. How Muse, Hari, supported checks and maintainer decisions fit together.
 
-## Shots
-
-1. Public pull request: changed lines, a concise Muse finding and an editable local draft.
-2. Controlled checkout: visible Muse generation, rejected shortcut, accepted repair and saved evidence.
-3. GitHub result: an existing bot-attributed comment, clearly identified as a recorded example when replayed.
-4. Terminal: status or findings from the real command, kept brief.
-5. Architecture: one diagram linking Muse, Hari, supported checks and controlled actions.
-
-The README uses a genuine light-mode viewport capture of the November 3 manual checkout run. It does not depict a newly generated Muse repair.
-
-Use a title card only when it helps explain the problem. Keep most of a three-minute demo on the working product. Time compression may shorten waits, but must not conceal failures or suggest distinct workflows are one connected execution. Label prerecorded results and preserve source footage.
-
-If framing screenshots with a design tool, retain the original and keep product text readable. No decorative tool or generated imagery is required for the demo.
+The checkout example is a controlled fixture. A PR review and a checkout verification are separate workflows unless the demonstration actually connects them. Use real application results and make their scope clear. Keep credentials, unrelated tabs and private repository contents out of captures.

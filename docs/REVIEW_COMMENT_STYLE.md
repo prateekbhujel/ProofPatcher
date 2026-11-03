@@ -1,56 +1,21 @@
-# Review comment style (house spec)
+# Review comment style
 
-Sources: [Conventional Comments](https://conventionalcomments.org)
-(label vocabulary) and CodeRabbit practice (severity chip, why-it-matters,
-committable suggestion). Two renderers implement this spec: PHP
-`ReviewCommentFormatter` (posted GitHub comments) and `FindingCard.tsx`
-(in-app cards). Both must stay in sync; both have tests.
+ProofPatcher presents concise, actionable findings. Comments should explain the concern and its effect, then suggest a next step when the evidence supports one. A maintainer decides what to do with the finding.
 
-## Label map (from finding status)
+## Labels
 
-| status     | label     | meaning                                  |
-| ---------- | --------- | ---------------------------------------- |
-| `concern`  | `issue`   | Should be fixed; see blocking rule.      |
-| `note`     | `nitpick` | Polish; never blocking.                  |
-| `approval` | `praise`  | Genuine positive; never blocking.        |
+| Finding status | Label | Use |
+| --- | --- | --- |
+| `concern` | `issue` | A possible problem to investigate or fix |
+| `note` | `nitpick` | A non-blocking improvement |
+| `approval` | `praise` | A positive observation |
 
-## Blocking rule
+A concern is marked blocking only when the review verdict is `request_changes`. A finding with an unknown verdict does not claim a blocking state.
 
-`issue` + review verdict `request_changes` → blocking (no decoration).
-Anything else → `non-blocking` decoration. Unknown verdict → no blocking
-claim at all (neither decoration).
+## GitHub and the workbench
 
-## Posted format (GitHub)
+An inline comment includes the label, a short subject and any useful explanation. If a valid replacement is available, a GitHub suggestion block may be included. Comments are sanitized before posting; the publisher may omit an invalid suggestion.
 
-```
-ProofPatcher here — spotted something worth a look:
+The workbench shows the finding, its label and available suggestion. A line reference identifies where the model found an issue in the captured patch; it is not itself a test result.
 
-**issue:** Subject sentence here.
-
-Discussion: why it matters, context, next steps.
-
-```suggestion
-exact replacement code
-```
-```
-
-- Subject = first sentence of the comment (split on `. `/`? `/`! `,
-  max 160 chars). Discussion = the rest, may be empty.
-- The suggestion fence is `suggestion` (GitHub renders a commit button
-  when it applies cleanly, a code block otherwise).
-- Sanitization unchanged: 1000-char cap, no mentions/links/angle
-  brackets/control bytes; a failing suggestion drops, the comment posts.
-
-## Voice
-
-Human first, robot second: short, confident, plain words, a little edge —
-never corporate filler ("we hope this finds you well"), never hype, never
-over-polished. Say what happens next and who decides. Issue, close, and
-summary comments end by making clear a human maintainer has the final
-call; the bot does the legwork, not the deciding.
-
-## In-app cards
-
-Same label + blocking badge as chips, subject bold, discussion body,
-`Suggested fix` block, anchor proof collapsed. The card never claims a
-blocking state when the verdict is unknown.
+Formatting lives in `app/GitHub/ReviewCommentFormatter.php` and `resources/js/Components/diff/FindingCard.tsx`. Posting is separately authorized and uses the configured GitHub App bot.

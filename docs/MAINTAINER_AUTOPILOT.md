@@ -1,11 +1,6 @@
 # Maintainer autopilot
 
-This is an **extension of the existing autopilot**, not a new feature or a
-second system: same worker, same reviews, same budget. It adds issue triage
-and proposed controls for future maintainer actions.
-It is a set of independent, per-repository opt-ins. Everything is off by
-default and restricted to public repositories. Automatic ready, merge and close
-are suspended while their safeguards are independently verified.
+Autopilot reviews pull requests and triages issues in enabled public repositories while the local worker is running. Each action has its own per-repository setting. Automatic review and bot comments are separate opt-ins. Automatic ready, merge and close are unavailable.
 
 ## Switches
 
@@ -40,9 +35,7 @@ issue-text revision (title and body):
    evidence, and the missing questions are listed.
 4. **Fix eligible** — the issue is complete, the repository is the
    configured dedicated demo repository, and the issue is the dedicated
-   demo issue. The existing propose → verify workflow can then prepare a
-   draft PR; publication still requires its server-held approval, which
-   autopilot cannot mint or bypass.
+   demo issue. This records eligibility only; it does not request a fix, run checks or open a pull request. The separate manual workflow has its own verification and publication approval.
 5. **No fix scope** — complete, but fixing is off or outside the demo
    scope. Recorded only; a maintainer can run the flow manually.
 
@@ -63,9 +56,7 @@ locally and marked as not posted. Autopilot never posts as the user.
 
 ## Automatic actions
 
-Automatic ready, merge and close are suspended. The prototype needs complete
-check/status and thread handling, revision-race protection and live testing
-before it can safely perform those actions. Existing saved opt-ins do not
+Automatic ready, merge and close are suspended. The current implementation checks pull-request readiness but does not enable these actions. Revision-race protection and live testing are required. Existing saved opt-ins do not
 bypass this suspension. Manual actions retain their confirmation.
 
 ## Terminal (TUI) parity

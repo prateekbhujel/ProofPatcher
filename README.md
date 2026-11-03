@@ -16,7 +16,7 @@ Built for the **Meta Global AI Developer Hackathon 2026**, Indie Developer track
 
 ![Four passing checks and the saved integrity receipt in the light-mode checkout workspace](docs/assets/checkout-evidence-light.jpg)
 
-*Actual local run, November 3. This screenshot shows a manual preset passing the controlled checkout checks. A live Muse-to-checkout run was also rehearsed on November 2; provider requests require your own configured key.*
+*A manual preset passing the controlled checkout checks. Muse requests require your own configured provider key.*
 
 ## What it does today
 
@@ -145,7 +145,7 @@ After the listener reports that it is ready, a maintainer can post `@proofpatche
 - The visual verifier uses bundled checkout fixtures, not arbitrary selected pull requests. The dedicated issue-to-draft-PR workflow is restricted to its configured test repository and pinned inputs. Set `PROOFPATCH_TEST_REPO` and `PROOFPATCH_TEST_BASE_COMMIT` privately to enable the intended test case.
 - Modal can run the configured pinned fixture checks when explicitly enabled. A successful result applies to the tested candidate and cases; it is not proof that arbitrary generated code is safe or correct. General untrusted-candidate verification remains disabled until its test-oracle boundary is established.
 - A Git worktree is not a security sandbox. Do not run untrusted repository code on the host merely because it is in a worktree.
-- Local task cards and images are not autonomous jobs. The app does not understand attached screenshots in the task-card workflow. It does not automatically solve arbitrary issues: automatic fixing is limited to the dedicated demo issue, and draft publication keeps its server-held approval. Auto-merge is off by default and, when enabled, applies only through the recorded gate described above; unknown check or thread state blocks it.
+- Local task cards and images are not autonomous jobs. The app does not understand attached screenshots in the task-card workflow or automatically solve issues. The dedicated demo issue can be marked eligible for a separate manual fix flow; draft publication requires server-held approval. Automatic merge, ready and close are unavailable.
 - A snapshot digest or receipt supports integrity checking; it does not independently prove the origin, correctness, or safety of a change.
 
 ## Tests
