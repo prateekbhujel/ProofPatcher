@@ -20,9 +20,15 @@ Built with Meta Muse for the **Meta Global AI Developer Hackathon 2026**.
 
 ## Get started
 
-You'll need PHP 8.4+, Composer, Node.js 20+, npm and SQLite. The visual demo also needs Chrome or Chromium. To start a fresh local installation:
+You'll need Git, PHP 8.4+ with `gd`, `json` and SQLite support, Composer, Node.js 20+ and npm. The visual demo also needs Chrome or Chromium.
+
+ProofPatcher uses Laravel, Inertia and React. Composer installs Laravel and the PHP packages; npm installs the frontend packages. You don't need to install Laravel separately. PIE is only needed if you want the interactive terminal below.
+
+For a fresh installation:
 
 ```bash
+git clone https://github.com/prateekbhujel/ProofPatcher.git
+cd ProofPatcher
 composer install
 npm ci
 cp .env.example .env

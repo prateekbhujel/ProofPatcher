@@ -4,10 +4,10 @@
 
 ### Requirements
 
-- PHP 8.4 or newer, with `gd`, `json`, SQLite, and the extensions required by Laravel and Composer.
-- Composer, Node.js 20 or newer, and npm.
+- Git and PHP 8.4 or newer, with `gd`, `json`, SQLite, and the extensions required by Laravel and Composer.
+- Composer, Node.js 20 or newer, and npm. Composer installs Laravel and the PHP packages; npm installs Inertia's React frontend and the other frontend packages.
 - Chrome or Chromium for the visual verification examples.
-- The [php-terminal extension](https://github.com/prateekbhujel/php-terminal) and an interactive terminal for `php artisan kernel`. A plain menu is available when ANSI color is disabled. The web app does not require the extension.
+- [PIE](https://github.com/php/pie), the [php-terminal extension](https://github.com/prateekbhujel/php-terminal) and an interactive terminal for `php artisan kernel`. A plain menu is available when ANSI color is disabled. The web app does not require PIE or the extension.
 
 For a **new installation**, from the repository directory:
 
