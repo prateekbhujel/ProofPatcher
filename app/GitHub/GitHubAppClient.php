@@ -541,7 +541,7 @@ final readonly class GitHubAppClient
      * Read-only merge readiness for one pinned PR revision. Unknown check or
      * thread state is reported as unknown/null, never as passing.
      *
-     * @return array{state: ?string, isMerged: bool, isDraft: bool, currentHead: ?string, checksState: string, unresolvedThreads: ?int}
+     * @return array{state: ?string, isMerged: ?bool, isDraft: ?bool, currentHead: ?string, currentBase: ?string, checksState: string, unresolvedThreads: ?int}
      */
     public function getMergeReadiness(string $token, string $repository, int $number, string $headSha): array
     {
@@ -551,29 +551,7 @@ final readonly class GitHubAppClient
         }
         $pull = $this->get("/repos/{$repository}/pulls/{$number}", $token);
 
-        $checksState = 'unknown';
-        try {
-            $runs = $this->get("/repos/{$repository}/commits/{$headSha}/check-runs?per_page=100", $token);
-            $list = is_array($runs['check_runs'] ?? null) ? $runs['check_runs'] : [];
-            if (($runs['total_count'] ?? 0) > 0 && $list !== []) {
-                $checksState = 'success';
-                foreach ($list as $run) {
-                    if (!is_array($run)) {
-                        $checksState = 'unknown';
-                        break;
-                    }
-                    if (($run['status'] ?? null) !== 'completed') {
-                        $checksState = 'pending';
-                        continue;
-                    }
-                    if ($checksState === 'success' && !in_array($run['conclusion'] ?? null, ['success', 'skipped', 'neutral'], true)) {
-                        $checksState = 'failure';
-                    }
-                }
-            }
-        } catch (\Throwable) {
-            $checksState = 'unknown';
-        }
+        $checksState = $this->completeCheckState($token, $repository, $headSha);
 
         $unresolved = null;
         try {
@@ -583,10 +561,14 @@ final readonly class GitHubAppClient
                 'variables' => ['owner' => $owner, 'name' => $name, 'number' => $number],
             ]);
             $threads = $data['data']['repository']['pullRequest']['reviewThreads'] ?? null;
-            if (is_array($threads) && (($threads['pageInfo']['hasNextPage'] ?? true) === false) && is_array($threads['nodes'] ?? null)) {
+            if (empty($data['errors']) && is_array($threads) && (($threads['pageInfo']['hasNextPage'] ?? true) === false) && is_array($threads['nodes'] ?? null) && array_is_list($threads['nodes'])) {
                 $unresolved = 0;
                 foreach ($threads['nodes'] as $node) {
-                    if (is_array($node) && ($node['isResolved'] ?? true) === false) {
+                    if (!is_array($node) || !is_bool($node['isResolved'] ?? null)) {
+                        $unresolved = null;
+                        break;
+                    }
+                    if ($node['isResolved'] === false) {
                         $unresolved++;
                     }
                 }
@@ -597,12 +579,66 @@ final readonly class GitHubAppClient
 
         return [
             'state' => is_string($pull['state'] ?? null) ? $pull['state'] : null,
-            'isMerged' => ($pull['merged'] ?? false) === true || ($pull['merged_at'] ?? null) !== null,
-            'isDraft' => ($pull['draft'] ?? false) === true,
+            'isMerged' => is_bool($pull['merged'] ?? null) ? $pull['merged'] : null,
+            'isDraft' => is_bool($pull['draft'] ?? null) ? $pull['draft'] : null,
             'currentHead' => is_string($pull['head']['sha'] ?? null) ? $pull['head']['sha'] : null,
+            'currentBase' => is_string($pull['base']['sha'] ?? null) ? $pull['base']['sha'] : null,
             'checksState' => $checksState,
             'unresolvedThreads' => $unresolved,
         ];
+    }
+
+    /** Check runs and legacy commit statuses must both be complete and healthy. */
+    private function completeCheckState(string $token, string $repository, string $headSha): string
+    {
+        try {
+            $count = 0;
+            $total = null;
+            $state = 'success';
+            $seenIds = [];
+            for ($page = 1; $page <= 5; $page++) {
+                $runs = $this->get("/repos/{$repository}/commits/{$headSha}/check-runs?per_page=100&page={$page}", $token);
+                if (!is_int($runs['total_count'] ?? null) || $runs['total_count'] < 0
+                    || !is_array($runs['check_runs'] ?? null) || !array_is_list($runs['check_runs'])) return 'unknown';
+                if ($total !== null && $runs['total_count'] !== $total) return 'unknown';
+                $total = $runs['total_count'];
+                $list = $runs['check_runs'];
+                if (count($list) > 100 || ($list === [] && $count < $total)) return 'unknown';
+                foreach ($list as $run) {
+                    if (!is_array($run) || !is_int($run['id'] ?? null) || $run['id'] < 1
+                        || isset($seenIds[$run['id']]) || !is_string($run['status'] ?? null)) return 'unknown';
+                    $seenIds[$run['id']] = true;
+                    if ($run['status'] === 'completed') {
+                        if (!is_string($run['conclusion'] ?? null)) return 'unknown';
+                        if (!in_array($run['conclusion'], ['success', 'skipped', 'neutral'], true)) $state = 'failure';
+                    } elseif (in_array($run['status'], ['queued', 'in_progress', 'waiting', 'requested', 'pending'], true)) {
+                        if ($state !== 'failure') $state = 'pending';
+                    } else {
+                        return 'unknown';
+                    }
+                    $count++;
+                }
+                if ($count === $total) break;
+                if ($count > $total || count($list) < 100) return 'unknown';
+            }
+            if ($count !== $total) return 'unknown';
+
+            // GitHub's combined state covers legacy commit statuses, which are
+            // separate from check runs. Empty status contexts are allowed only
+            // when at least one check run exists.
+            $statuses = $this->get("/repos/{$repository}/commits/{$headSha}/status?per_page=100", $token);
+            if (!is_int($statuses['total_count'] ?? null) || $statuses['total_count'] < 0
+                || !is_string($statuses['state'] ?? null)
+                || !in_array($statuses['state'], ['success', 'pending', 'failure', 'error'], true)) return 'unknown';
+            if ($statuses['total_count'] === 0) {
+                return $count > 0 && $statuses['state'] === 'pending' ? $state : 'unknown';
+            }
+            if (in_array($statuses['state'], ['failure', 'error'], true)) return 'failure';
+            if ($statuses['state'] === 'pending' && $state !== 'failure') return 'pending';
+            return $state;
+        } catch (\Throwable) {
+            return 'unknown';
+        }
     }
 
     /** @param array<string, mixed> $json */

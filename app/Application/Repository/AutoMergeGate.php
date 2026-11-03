@@ -16,7 +16,7 @@ final class AutoMergeGate
      *     autoMergeEnabled?: bool, autoReadyEnabled?: bool, reviewStatus?: ?string,
      *     recommendation?: ?string, checksState?: ?string, unresolvedThreads?: ?int,
      *     isDraft?: bool, state?: ?string, isMerged?: bool,
-     *     reviewedHead?: ?string, currentHead?: ?string
+     *     reviewedHead?: ?string, currentHead?: ?string, reviewedBase?: ?string, currentBase?: ?string
      * } $in
      * @return array{allowed: bool, needsReady: bool, reasons: list<string>}
      */
@@ -27,8 +27,10 @@ final class AutoMergeGate
         if (($in['autoMergeEnabled'] ?? false) !== true) {
             $reasons[] = 'auto-merge is off for this repository';
         }
-        if (($in['isMerged'] ?? false) === true) {
+        if (($in['isMerged'] ?? null) === true) {
             $reasons[] = 'pull request is already merged';
+        } elseif (($in['isMerged'] ?? null) !== false) {
+            $reasons[] = 'pull request merge state is unknown';
         }
         if (($in['state'] ?? null) !== 'open') {
             $reasons[] = 'pull request is not open';
@@ -56,6 +58,18 @@ final class AutoMergeGate
             || !preg_match('/\A[a-f0-9]{40}\z/', $reviewed) || !preg_match('/\A[a-f0-9]{40}\z/', $current)
             || !hash_equals($reviewed, $current)) {
             $reasons[] = 'branch changed after review; re-review the new revision';
+        }
+
+        $reviewedBase = $in['reviewedBase'] ?? null;
+        $currentBase = $in['currentBase'] ?? null;
+        if (!is_string($reviewedBase) || !is_string($currentBase)
+            || !preg_match('/\A[a-f0-9]{40}\z/', $reviewedBase) || !preg_match('/\A[a-f0-9]{40}\z/', $currentBase)
+            || !hash_equals($reviewedBase, $currentBase)) {
+            $reasons[] = 'base changed after review; re-review the new revision';
+        }
+
+        if (!is_bool($in['isDraft'] ?? null)) {
+            $reasons[] = 'pull request draft state is unknown';
         }
 
         $isDraft = ($in['isDraft'] ?? false) === true;

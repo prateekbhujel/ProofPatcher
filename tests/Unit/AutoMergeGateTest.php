@@ -26,6 +26,8 @@ final class AutoMergeGateTest extends TestCase
             'isMerged' => false,
             'reviewedHead' => self::HEAD,
             'currentHead' => self::HEAD,
+            'reviewedBase' => str_repeat('b', 40),
+            'currentBase' => str_repeat('b', 40),
         ], $overrides);
     }
 
@@ -58,6 +60,10 @@ final class AutoMergeGateTest extends TestCase
         yield 'already merged' => [['isMerged' => true, 'state' => 'closed'], 'already merged'];
         yield 'not open' => [['state' => 'closed'], 'not open'];
         yield 'branch moved' => [['currentHead' => 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'], 'branch changed'];
+        yield 'base moved' => [['currentBase' => str_repeat('c', 40)], 'base changed'];
+        yield 'unknown base' => [['currentBase' => null], 'base changed'];
+        yield 'unknown draft' => [['isDraft' => null], 'draft state is unknown'];
+        yield 'unknown merge' => [['isMerged' => null], 'merge state is unknown'];
         yield 'draft without auto-ready' => [['isDraft' => true, 'autoReadyEnabled' => false], 'still a draft'];
     }
 
