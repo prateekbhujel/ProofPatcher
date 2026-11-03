@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import shutil
 import signal
 import tempfile
@@ -111,7 +112,15 @@ async def run_fixture(harness: bytes, source: bytes, create_sandbox, *, deadline
                 exit_code = wait_task.result()
                 if exit_code == 0 and (calls == 0 or output != b"All order total cases passed.\n" or error_output):
                     raise FixtureError("Harness completion was invalid")
-                status = "fixture_passed" if exit_code == 0 else "fixture_failed"
+                if exit_code == 0:
+                    status = "fixture_passed"
+                elif exit_code == 1 and not output and re.fullmatch(
+                    rb"(?:(?:empty order|multiple items|zero quantity): expected -?[0-9]+, got -?[0-9]+\n)+",
+                    bytes(error_output),
+                ):
+                    status = "fixture_failed"
+                else:
+                    raise FixtureError("Harness failed without a valid mismatch")
         except Exception:
             status = "aborted"
         finally:
