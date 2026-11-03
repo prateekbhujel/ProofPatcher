@@ -1,6 +1,10 @@
 # Bounded Test-Oracle Boundary Plan
 
-Status: Design and test-only experiment. The existing production fail-closed guard remains in force. No arbitrary candidate execution has been enabled or validated by this work.
+Status: An experimental, fixture-only Modal transport and coordinator have been exercised independently of the application. The existing production fail-closed guard remains in force. No arbitrary candidate execution or publication has been enabled by this work.
+
+On November 3, 2026, a limited live Modal experiment used ten short-lived sandboxes: a network and environment probe, followed by three calls each for the baseline, a hand-written repair, and a constant-zero negative control. The baseline and negative control failed the pinned checks; the repair passed. The tested outbound connection failed, probed host files were absent, and no secret-like environment variable names were seen. Sandbox termination was awaited, and the probe apps subsequently showed as stopped. This is evidence for those specific observations, not a complete isolation audit. Provider cost was not available at test time.
+
+The optional script `python scripts/check_modal_oracle_fixture.py --execute` launches billable provider sandboxes and requires configured Modal credentials. The script and transport are experimental and are not connected to the app or the GitHub publication gate. The live experiment used equivalent calls; the subsequently saved script itself has not yet been run live.
 
 ## Aim
 
