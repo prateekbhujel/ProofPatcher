@@ -22,7 +22,7 @@ Built with Meta Muse for the **Meta Global AI Developer Hackathon 2026**.
 
 You'll need Git, PHP 8.4+ with `gd`, `json` and SQLite support, Composer, Node.js 20+ and npm. The visual demo also needs Chrome or Chromium.
 
-ProofPatcher uses Laravel, Inertia and React. Composer installs Laravel and the PHP packages; npm installs the frontend packages. You don't need to install Laravel separately. PIE is only needed if you want the interactive terminal below.
+ProofPatcher uses Laravel, Inertia, React and TypeScript. Composer installs Laravel and the PHP packages; npm installs the frontend packages, including TypeScript. You don't need to install Laravel or TypeScript separately. PIE is only needed if you want the interactive terminal below.
 
 For a fresh installation:
 
@@ -39,7 +39,9 @@ npm run build
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Open [localhost:8000](http://127.0.0.1:8000), connect your GitHub App and configure a Baseten or Meta Model API key in Settings. For setup details, existing installations, the terminal and test commands, see the [local guide](docs/LOCAL_GUIDE.md).
+Open [localhost:8000](http://127.0.0.1:8000), connect your GitHub App and choose a model provider in Settings. Baseten serves Meta's Muse Spark Open; Meta Model API offers Muse directly. Configure the key for the provider you choose. For setup details, existing installations, the terminal and test commands, see the [local guide](docs/LOCAL_GUIDE.md).
+
+For the isolated issue-repair fixture, you'll also need Python and a configured Modal account. The [fixture guide](docs/FIXTURE_ORACLE.md#trying-it-locally) explains that optional setup. The checkout visual demo uses PHP and a browser instead.
 
 ### Prefer the terminal?
 

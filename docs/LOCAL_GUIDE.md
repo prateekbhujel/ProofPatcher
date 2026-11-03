@@ -5,8 +5,9 @@
 ### Requirements
 
 - Git and PHP 8.4 or newer, with `gd`, `json`, SQLite, and the extensions required by Laravel and Composer.
-- Composer, Node.js 20 or newer, and npm. Composer installs Laravel and the PHP packages; npm installs Inertia's React frontend and the other frontend packages.
+- Composer, Node.js 20 or newer, and npm. Composer installs Laravel and the PHP packages; npm installs Inertia, React, TypeScript and the other frontend packages.
 - Chrome or Chromium for the visual verification examples.
+- Python and a configured Modal account for the optional isolated issue-repair fixture. See [fixture setup](FIXTURE_ORACLE.md#trying-it-locally). Other web and review flows do not need Modal.
 - [PIE](https://github.com/php/pie), the [php-terminal extension](https://github.com/prateekbhujel/php-terminal) and an interactive terminal for `php artisan kernel`. A plain menu is available when ANSI color is disabled. The web app does not require PIE or the extension.
 
 For a **new installation**, from the repository directory:

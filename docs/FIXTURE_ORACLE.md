@@ -23,9 +23,9 @@ shares a process with the test harness that judges it.
    If an open draft already contains identical bytes, the app links to that
    draft instead of opening a duplicate. Concurrent attempts are claimed
    against the task record, so a double submit cannot create two drafts.
-   In live checks on the dedicated repository, the flow confirmed this
-   behavior by linking to the existing draft PR #14 rather than opening a
-   duplicate.
+   In live checks, the workbench displayed a link to an existing draft.
+   Duplicate detection is covered by an integration test with a simulated
+   GitHub client; a fresh live draft publication has not yet been demonstrated.
 
 ## Boundaries
 
@@ -44,6 +44,23 @@ shares a process with the test harness that judges it.
 
 ## Trying it locally
 
-The checks need a configured sandbox provider; without one, the app explains
-that checks did not complete and nothing is published. No provider call is
-needed to browse issues, review proposals, or read past observations.
+These checks use Python and Modal sandboxes. You'll need a Modal account,
+the Python SDK, and authentication on the machine running ProofPatcher. For a
+new local environment, you can follow [Modal's setup guide](https://modal.com/docs/guide/getting-started):
+
+```bash
+python3 -m venv ~/.local/share/proofpatch/venv
+~/.local/share/proofpatch/venv/bin/python -m pip install modal
+~/.local/share/proofpatch/venv/bin/python -m modal setup
+```
+
+The app uses that Python path by default. If your Modal environment is
+elsewhere, set `MODAL_PYTHON_PATH` to the absolute path of its Python
+executable in your private `.env` and restart the app. Configure
+`PROOFPATCH_TEST_REPO` and `PROOFPATCH_TEST_BASE_COMMIT` for the dedicated
+test case as described in `.env.example`. Keep credentials out of the
+repository. Modal usage may consume credits or incur charges.
+
+Without a configured Modal connection, checks cannot complete and the app
+does not publish a draft. Modal is not needed to browse issues, request a
+Muse review, or run the separate browser-based checkout demo.
