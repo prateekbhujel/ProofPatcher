@@ -18,6 +18,7 @@ import {
   Suggestion,
   Draft,
   VerificationReport,
+  FixtureObservation,
   WorkbenchTaskData,
   BudgetData,
   GitHubIssueItem,
@@ -29,6 +30,7 @@ import { IssueHeaderCard } from '../Components/workbench/IssueHeaderCard';
 import { WorkbenchScreenshot } from '../Components/workbench/WorkbenchScreenshot';
 import { ProposalDiffCard } from '../Components/workbench/ProposalDiffCard';
 import { VerificationPipelineCard } from '../Components/workbench/VerificationPipelineCard';
+import { FixtureObservationCard } from '../Components/workbench/FixtureObservationCard';
 import { TaskComposerFooter } from '../Components/workbench/TaskComposerFooter';
 import { COMPOSER_DRAFT_KEY } from '../Components/console/shared';
 import { useKernelPrompt } from '../hooks/useKernelPrompt';
@@ -42,6 +44,8 @@ interface Props {
   suggestion: Suggestion | null;
   draft: Draft | null;
   verificationReport: VerificationReport | null;
+  fixtureObservation?: FixtureObservation | null;
+  fixtureObservationAvailable?: boolean;
   isOwnedFixture: boolean;
   isDedicatedTestRepo: boolean;
   publishedPr: {
@@ -77,6 +81,8 @@ export default function Issues({
   suggestion,
   draft,
   verificationReport,
+  fixtureObservation = null,
+  fixtureObservationAvailable = false,
   isOwnedFixture,
   isDedicatedTestRepo,
   publishedPr,
@@ -336,6 +342,17 @@ export default function Issues({
     );
   }
 
+  function observeFixture() {
+    setVerifying(true);
+    router.post('/issues/observe-fixture', {}, { onFinish: () => setVerifying(false) });
+  }
+
+  function publishObservedDraft() {
+    if (!context || !window.confirm(`Create a draft pull request for ${context.repository}#${context.issueNumber}? The checks cover only the included fixture.`)) return;
+    setPublishingPr(true);
+    router.post('/issues/publish-observed', { approved: true }, { onFinish: () => setPublishingPr(false) });
+  }
+
   function copyReceipt(sha: string) {
     void copyText(sha).then((ok) => {
       if (!ok) return;
@@ -439,6 +456,16 @@ export default function Issues({
     : null;
 
   const passedGateCount = pipelineGates ? pipelineGates.filter((g) => g.passed).length : 0;
+  // Previous shared-oracle reports do not establish isolated fixture observations.
+  const suppressLegacyReport = fixtureObservationAvailable && isDedicatedTestRepo;
+  const showFixtureObservations = suppressLegacyReport && !!suggestion?.candidate;
+  const fixtureChecksPassed = !!(showFixtureObservations && fixtureObservation?.scope === 'finite_local_fixture'
+    && fixtureObservation.status === 'passed' && fixtureObservation.candidateSha256 === suggestion?.candidate?.sha256
+    && fixtureObservation.baseline === 'fixture_failed' && fixtureObservation.negative === 'fixture_failed'
+    && fixtureObservation.candidate === 'fixture_passed');
+  const displayedSuggestion = showFixtureObservations && suggestion?.candidate
+    ? { ...suggestion, candidate: { ...suggestion.candidate, verified: false } }
+    : suggestion;
 
   if (!isConnected) {
     return (
@@ -528,7 +555,8 @@ export default function Issues({
               <GuidedStepBar
                 context={context}
                 suggestion={suggestion}
-                verificationReport={verificationReport}
+                verificationReport={suppressLegacyReport ? null : verificationReport}
+                fixtureChecksPassed={fixtureChecksPassed}
                 hasPublishedPr={Boolean(publishedPr)}
               />
             )}
@@ -587,7 +615,7 @@ export default function Issues({
                   <ProposalDiffCard
                     context={context}
                     preview={preview}
-                    suggestion={suggestion}
+                    suggestion={displayedSuggestion}
                     sending={sending}
                     modelContextAllowed={modelContextAllowed}
                     privateModelConsentRequired={privateModelConsentRequired}
@@ -595,15 +623,23 @@ export default function Issues({
                     isDedicatedTestRepo={isDedicatedTestRepo}
                     isOwnedFixture={isOwnedFixture}
                     budget={budget}
-                    verificationReport={verificationReport}
-                    passedGateCount={passedGateCount}
+                    verificationReport={showFixtureObservations ? null : verificationReport}
+                    passedGateCount={showFixtureObservations ? 0 : passedGateCount}
                     copiedCandidateSha={copiedCandidateSha}
                     copyCandidateHash={copyCandidateHash}
                     onRequestSuggestion={requestSuggestion}
                   />
 
                   {/* 5-Gate Verifier & Receipt Manifest */}
-                  <VerificationPipelineCard
+                  {showFixtureObservations && suggestion?.candidate ? <FixtureObservationCard
+                    suggestion={suggestion}
+                    observation={fixtureObservation}
+                    observing={verifying}
+                    publishing={publishingPr}
+                    publishedUrl={publishedPr?.prUrl}
+                    onObserve={observeFixture}
+                    onPublish={publishObservedDraft}
+                  /> : <VerificationPipelineCard
                     context={context}
                     suggestion={suggestion}
                     isOwnedFixture={isOwnedFixture}
@@ -621,7 +657,7 @@ export default function Issues({
                     publisherDisconnected={publisherDisconnected}
                     publishingPr={publishingPr}
                     onPublishDraftPr={publishDraftPr}
-                  />
+                  />}
                 </div>
               )}
             </div>

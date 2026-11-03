@@ -195,6 +195,19 @@ export interface VerificationReport {
   backendSandboxGap: BackendSandboxGap;
 }
 
+/** Observations of one candidate against the included fixture, not a VERIFIED report. */
+export interface FixtureObservation {
+  status: 'passed' | 'failed' | 'aborted';
+  scope: 'finite_local_fixture';
+  candidateSha256: string;
+  harnessSha256: string;
+  baseline: string;
+  negative: string;
+  candidate: string;
+  calls: { baseline: number; negative: number; candidate: number };
+  canPublish: boolean;
+}
+
 export interface WorkbenchTaskData {
   id: number;
   key: string;

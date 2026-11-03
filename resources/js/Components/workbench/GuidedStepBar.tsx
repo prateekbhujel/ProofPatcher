@@ -7,13 +7,14 @@ interface GuidedStepBarProps {
   suggestion: Suggestion | null;
   verificationReport: VerificationReport | null;
   hasPublishedPr: boolean;
+  fixtureChecksPassed?: boolean;
 }
 
-export function GuidedStepBar({ context, suggestion, verificationReport, hasPublishedPr }: GuidedStepBarProps) {
+export function GuidedStepBar({ context, suggestion, verificationReport, hasPublishedPr, fixtureChecksPassed = false }: GuidedStepBarProps) {
   const checks = verificationReport?.gates;
   const checksPassed = verificationReport?.decision === 'VERIFIED' && checks != null
     && Object.values(checks).length === 5 && Object.values(checks).every((passed) => passed === true);
-  const complete = [Boolean(context), Boolean(suggestion), checksPassed, hasPublishedPr];
+  const complete = [Boolean(context), Boolean(suggestion), checksPassed || fixtureChecksPassed, hasPublishedPr];
   const firstIncomplete = complete.findIndex((done) => !done);
   const current = firstIncomplete < 0 ? -1 : firstIncomplete;
   const labels = ['Issue', 'Change', 'Checks', 'PR & Merge'];
