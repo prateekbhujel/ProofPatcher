@@ -1,3 +1,5 @@
+<img src="docs/assets/patcher-wave.gif" alt="Patcher, the ProofPatcher mascot" align="right" width="140">
+
 # ProofPatcher
 
 **Muse proposes. ProofPatcher checks. Maintainers decide.**
@@ -152,11 +154,12 @@ After the listener reports that it is ready, a maintainer can post `@proofpatche
 ### Tested vs. untested
 
 - **Tested in live checks**:
-  - The dedicated test repository workflow was tested on `prateekbhujel/proofpatch-workflow-test` Issue #1. Isolated fixture checks passed (`OBSERVED_PASS`), and the draft publication step detected and linked to the **existing draft PR #14** without redundant GitHub writes (reusing the open draft with identical bytes; PR #14 was not newly created in this run).
-  - Public PR review, multi-issue triage, and inline comments were demonstrated on `prateekbhujel/proofpatch-review-demo` across PRs #1, #5, #6, #7, #8 and Issues #2, #3, #4.
+  - In a dedicated test repository, isolated fixture checks passed (`OBSERVED_PASS`) and the workbench displayed a link to an existing draft PR. Duplicate-draft handling is covered by an integration test with a simulated GitHub client.
+  - Public PR review, multi-issue triage, and inline comments were demonstrated using a separate test repository.
   - Browser-based visual verification of controlled checkout fixtures with damaging shortcut rejection.
   - Full local test suite passing (1,056 PHPUnit tests, 65 Python unit tests, 78 UI unit tests).
 - **Untested / unverified**:
+  - A fresh end-to-end run from a new Muse proposal through live draft creation, including the publication endpoint, has not been demonstrated.
   - Arbitrary-code verification and general repository automation are not complete or claimed. The isolated runner supports only the pinned, stateless `src/OrderTotal.php` fixture.
   - Automatic merge has unit tests against simulated branch protection rules, but has not been demonstrated with a live automatic merge against protected branches.
   - Automatic ready and close remain disabled.
