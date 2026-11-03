@@ -39,6 +39,8 @@ Route::post('/issues/load-dedicated', [IssueWorkbenchController::class, 'loadDed
 Route::post('/issues/select-repository', [IssueWorkbenchController::class, 'selectRepository']);
 Route::post('/issues/load-issue', [IssueWorkbenchController::class, 'loadIssue']);
 Route::post('/issues/propose', [IssueWorkbenchController::class, 'propose']);
+Route::post('/issues/observe-fixture', [IssueWorkbenchController::class, 'observeFixture']);
+Route::post('/issues/publish-observed', [IssueWorkbenchController::class, 'publishObserved']);
 Route::post('/issues/verify', [IssueWorkbenchController::class, 'verifyCandidate']);
 Route::post('/issues/publish-pr', [IssueWorkbenchController::class, 'publishDraftPr']);
 Route::post('/issues/reconcile-pr', [IssueWorkbenchController::class, 'reconcilePr']);

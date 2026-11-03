@@ -1,23 +1,44 @@
-# Fixture oracle isolation
+# Isolated fixture checks
 
-ProofPatcher's application verifier supports pinned fixture candidates. It does not currently authorize arbitrary generated code for verified publication. A worktree alone is not a security sandbox, and putting candidate code and its tests in the same sandbox exposes the test oracle to that candidate.
+On the dedicated test repository, a Muse repair proposal can be checked
+before anyone opens a draft pull request. The checks run the proposal against
+the included order-total fixture in isolated sandboxes, so the candidate never
+shares a process with the test harness that judges it.
 
-An experimental runner explores a narrower approach for the pinned, stateless order-total fixture. The trusted harness holds the expected results, while each candidate call runs in a separate Modal sandbox. Only that call's input is sent to the candidate. The sandbox is configured with network access blocked, no mounted secrets or volumes, and limits on runtime and output. The coordinator runs the pinned harness, compares the observed responses, and attempts to terminate every sandbox.
+## How it works
 
-The runner is independent of the application verification and publication flow. It does not produce a publication authorization. The fixture results cover only the tested cases: candidate-controlled output can imitate a plausible answer, and the transport cannot prove the function returned normally. A fresh sandbox per call also changes the behavior of stateful functions.
+1. **Propose.** From the dedicated issue, Muse proposes a change to
+   `src/OrderTotal.php`. The proposal stays a suggestion until a maintainer
+   acts on it.
+2. **Run checks.** *Run checks* executes three isolated runs against the
+   pinned fixture: the original code, a negative control, and the proposed
+   change. Each run happens in its own network-blocked sandbox with no
+   mounted secrets, and the coordinator compares the observed results.
+3. **Review the observation.** The card reports each run in plain language —
+   issue reproduced, control rejected, change matched — and states the scope:
+   the included fixture cases only. This is an observation, not a verified
+   run, and the interface never presents it as one.
+4. **Create the draft.** After a passing observation, *Create draft PR* asks
+   for confirmation, then publishes a draft against the dedicated repository.
+   If an open draft already contains identical bytes, the app links to that
+   draft instead of opening a duplicate. Concurrent attempts are claimed
+   against the task record, so a double submit cannot create two drafts.
 
-## Optional smoke test
+## Boundaries
 
-```bash
-python scripts/check_modal_oracle_fixture.py --execute
-```
+- Only the configured dedicated repository, its first issue, and
+  `src/OrderTotal.php` are eligible. Anything else fails closed.
+- A passing observation means the proposal matched the finite fixture cases.
+  It does not prove the patch is generally correct or safe, and it never
+  replaces the repository's own tests or maintainer review.
+- Publication requires a single-use approval bound to the signed-in owner,
+  the exact candidate bytes, and the recorded proposal. A stale, changed, or
+  simulated result cannot publish.
+- Older verification reports from the shared-oracle path are shown separately
+  and do not enable this flow.
 
-This command requires a configured Modal SDK and credentials. It launches billable sandboxes. Run it only when you intend to use provider resources; the application does not require it to start.
+## Trying it locally
 
-## Requirements for application integration
-
-- Bind any result to the repository, issue, base revision, candidate bytes, pinned harness, runner and provider execution.
-- Check the baseline, candidate and negative controls independently, and distinguish assertion failures from runtime or transport failures.
-- Fail closed on stale revisions, missing evidence, abnormal output, timeouts, unsuccessful cleanup and ambiguous publication results.
-- Keep private source, test inputs and credentials out of public evidence and model requests unless explicitly authorized.
-- Treat finite observations and receipt integrity as evidence for their stated scope, not proof of general correctness or safety.
+The checks need a configured sandbox provider; without one, the app explains
+that checks did not complete and nothing is published. No provider call is
+needed to browse issues, review proposals, or read past observations.

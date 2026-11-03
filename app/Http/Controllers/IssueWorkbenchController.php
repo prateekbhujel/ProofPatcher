@@ -29,6 +29,8 @@ final class IssueWorkbenchController
         'issue_verification_report',
         'issue_published_pr',
         'issue_publication_token',
+        'issue_fixture_observation',
+        'issue_observed_draft_token',
         'issue_approval_token',
         'issue_approval_user_id',
         'issue_is_dedicated_test_repo',
@@ -41,6 +43,7 @@ final class IssueWorkbenchController
         private ?\ProofPatch\Verifier\IsolatedRunnerInterface $customRunner = null,
         private ?\ProofPatch\Agent\SingleUseReviewApproval $customApprovals = null,
         private ?\Hari\Registry $hari = null,
+        private ?\ProofPatch\Verifier\FixtureObservationRunner $fixtureRunner = null,
     ) {}
 
     private function getHttpClient(): \Symfony\Contracts\HttpClient\HttpClientInterface
@@ -157,9 +160,12 @@ final class IssueWorkbenchController
 
         $publishedPr = $request->session()->get('issue_published_pr');
         $verificationReport = $request->session()->get('issue_verification_report');
+        $fixtureObservation = $request->session()->get('issue_fixture_observation');
         if (is_array($publishedPr)) {
             $reportId = is_array($verificationReport) ? ($verificationReport['id'] ?? null) : null;
-            if ($reportId === null || ($publishedPr['verificationRunId'] ?? null) !== $reportId) {
+            $observedId = is_array($fixtureObservation) ? ($fixtureObservation['runId'] ?? null) : null;
+            if (($reportId === null || ($publishedPr['verificationRunId'] ?? null) !== $reportId)
+                && ($observedId === null || ($publishedPr['verificationRunId'] ?? null) !== $observedId)) {
                 $publishedPr = null;
                 $request->session()->forget('issue_published_pr');
             }
@@ -276,6 +282,9 @@ final class IssueWorkbenchController
             'suggestion' => $request->session()->get('issue_suggestion'),
             'draft' => $request->session()->get('issue_draft'),
             'verificationReport' => $verificationReport,
+            'fixtureObservationAvailable' => is_array($context) && (bool) $request->session()->get('issue_is_dedicated_test_repo')
+                && $this->isPrivateDedicatedContext($request, $context),
+            'fixtureObservation' => is_array($fixtureObservation) ? $fixtureObservation : null,
             'isOwnedFixture' => (bool) $request->session()->get('issue_is_owned_fixture'),
             'isDedicatedTestRepo' => (bool) $request->session()->get('issue_is_dedicated_test_repo'),
             'publishedPr' => $publishedPr,
@@ -530,7 +539,7 @@ final class IssueWorkbenchController
         }
         $digest = $request->input('digest');
         // Clear previous suggestion and report for fresh generation; preserve active context
-        $request->session()->forget(['issue_suggestion', 'issue_verification_report', 'issue_publication_token']);
+        $request->session()->forget(['issue_suggestion', 'issue_verification_report', 'issue_publication_token', 'issue_fixture_observation', 'issue_observed_draft_token']);
         // Persist while the session lock is held, even if the worker dies during the provider call.
         $request->session()->save();
         try {
@@ -594,6 +603,114 @@ final class IssueWorkbenchController
             return redirect('/issues')->with('error', $concurrencyError->getMessage());
         } catch (\Throwable $error) {
             return redirect('/issues')->with('error', $error->getMessage());
+        }
+    }
+
+    /** Run the included fixture separately from the candidate; this is not a verified-run receipt. */
+    public function observeFixture(Request $request): RedirectResponse
+    {
+        $request->session()->forget(['issue_fixture_observation', 'issue_observed_draft_token']);
+        $context = $request->session()->get('issue_context');
+        $suggestion = $request->session()->get('issue_suggestion');
+        $access = $request->attributes->get('proofpatch_github_access');
+        try {
+            if (!is_array($context) || !is_array($suggestion) || !is_int($access['userId'] ?? null)
+                || !(bool) $request->session()->get('issue_is_dedicated_test_repo')
+                || !$this->isPrivateDedicatedContext($request, $context) || !$this->canSendModelContext($request, $context)
+                || $this->resolveGitHubToken($request) === null) {
+                throw new \RuntimeException('Connect the dedicated private test repository before running these checks.');
+            }
+            $source = $suggestion['candidate']['source'] ?? null;
+            if (!is_string($source) || ($suggestion['path'] ?? null) !== \ProofPatch\GitHub\DedicatedTestRepoFetcher::SOURCE_PATH) {
+                throw new \RuntimeException('A proposal for the dedicated issue is required.');
+            }
+            $sha = hash('sha256', $source);
+            $task = $this->resolveAndValidateTask($request, $context, expectedCandidateSha: $sha);
+            if ((int) $task->github_user_id !== $access['userId']) throw new \RuntimeException('The task belongs to another account.');
+            $version = (int) $task->version;
+            $observation = ($this->fixtureRunner ?? new \ProofPatch\Verifier\FixtureObservationRunner())->observe($source);
+            $observation['canPublish'] = false;
+            if (($observation['status'] ?? null) === 'passed' && ($observation['provider'] ?? null) === 'modal') {
+                $runId = 'fixture-'.bin2hex(random_bytes(12));
+                $task->recordFixtureObservation($observation, $runId, $version, $sha);
+                $observation['runId'] = $runId;
+                try {
+                    $token = \ProofPatch\GitHub\ObservedDraftApproval::forRuntime()->issue($access['userId'], $context, $suggestion, $observation);
+                    $request->session()->put('issue_observed_draft_token', $token);
+                    $observation['canPublish'] = true;
+                } catch (\InvalidArgumentException) {
+                    // Older proposals without owner-bound provenance can be observed but cannot publish.
+                }
+            }
+            $request->session()->put('issue_fixture_observation', $observation);
+            return redirect('/issues');
+        } catch (\Throwable $error) {
+            return redirect('/issues')->with('error', 'Checks did not complete: '.$error->getMessage());
+        }
+    }
+
+    /** Publish only a user-approved draft bound to the observed candidate and current task. */
+    public function publishObserved(Request $request): RedirectResponse
+    {
+        $context = $request->session()->get('issue_context');
+        $suggestion = $request->session()->get('issue_suggestion');
+        $observation = $request->session()->get('issue_fixture_observation');
+        $token = $request->session()->get('issue_observed_draft_token');
+        $access = $request->attributes->get('proofpatch_github_access');
+        try {
+            if ($request->input('approved') !== true || !is_array($context) || !is_array($suggestion)
+                || !is_array($observation) || !is_string($token) || !is_int($access['userId'] ?? null)
+                || !$this->isPrivateDedicatedContext($request, $context) || !$this->canSendModelContext($request, $context)) {
+                throw new \RuntimeException('Approve the observed draft with a connected owner account first.');
+            }
+            $githubToken = $this->resolveGitHubToken($request);
+            $source = $suggestion['candidate']['source'] ?? null;
+            $runId = $observation['runId'] ?? null;
+            if (!is_string($githubToken) || !is_string($source) || !is_string($runId)) throw new \RuntimeException('The draft context is incomplete.');
+            $sha = hash('sha256', $source);
+            $task = $this->resolveAndValidateTask($request, $context, expectedCandidateSha: $sha, expectedRunId: $runId);
+            if ((int) $task->github_user_id !== $access['userId'] || $task->verification_decision !== 'OBSERVED_PASS') {
+                throw new \RuntimeException('The observation does not match this account and task.');
+            }
+            $task->claimPublication((int) $task->version, $sha, $runId);
+            $claimedVersion = (int) $task->version;
+            $publisher = new \ProofPatch\GitHub\DedicatedTestRepoPublisher(
+                new \ProofPatch\GitHub\ServerHeldPublicationApproval(storage_path('app/publication_approvals')),
+                $this->getHttpClient(), disconnected: false
+            );
+            try {
+                $pr = $publisher->publishObservedDraft($context, $suggestion, $access['userId'], $token, $githubToken,
+                    \ProofPatch\GitHub\ObservedDraftApproval::forRuntime());
+            } catch (\ProofPatch\Exceptions\AmbiguousPublicationException $error) {
+                $request->session()->forget('issue_observed_draft_token');
+                try {
+                    $task->recordOutcomeUnknown($error->branch, $runId, 'Check GitHub before retrying.', $claimedVersion);
+                } catch (\Throwable $stateError) {
+                    $this->storeDurableRecoveryEvidence($task, $claimedVersion, $runId,
+                        ['branch' => $error->branch, 'repository' => $error->repository, 'status' => 'outcome_unknown'], $stateError->getMessage());
+                }
+                $request->session()->put('issue_publication_reconciliation', [
+                    'status' => 'outcome_unknown', 'repository' => $error->repository,
+                    'branch' => $error->branch, 'runId' => $runId, 'error' => 'Check GitHub before retrying.',
+                ]);
+                return redirect('/issues')->with('error', 'GitHub may have received the draft. Check the repository before trying again.');
+            } catch (\Throwable $error) {
+                $request->session()->forget('issue_observed_draft_token');
+                $task->releasePublicationClaim($claimedVersion);
+                throw $error;
+            }
+            $pr['verificationRunId'] = $runId;
+            $request->session()->forget('issue_observed_draft_token');
+            $request->session()->put('issue_published_pr', $pr);
+            try {
+                $task->recordPublication($pr, $claimedVersion, $runId, $sha);
+            } catch (\Throwable $stateError) {
+                $this->storeDurableRecoveryEvidence($task, $claimedVersion, $runId, $pr, $stateError->getMessage());
+                return redirect('/issues')->with('error', 'Draft found or created on GitHub, but saving its local state failed. Do not retry; open the draft to check it.');
+            }
+            return redirect('/issues');
+        } catch (\Throwable $error) {
+            return redirect('/issues')->with('error', 'Draft was not created: '.$error->getMessage());
         }
     }
 

@@ -6,7 +6,7 @@ A patch can look right and still be wrong. Maintainers need to understand the ch
 
 ProofPatcher brings Meta Muse reviews, focused repair proposals, verification evidence and controlled GitHub actions into one local workspace. Its strongest demonstration is a checkout repair that Muse proposes and the browser-based verifier checks, including a damaging shortcut that the checks reject.
 
-Built for the **Meta Global AI Developer Hackathon 2026**, Indie Developer track.
+Built for the **Meta Global AI Developer Hackathon 2026** (26 October – 4 November 2026), Indie Developer track.
 
 ## See it work
 
@@ -25,7 +25,7 @@ Built for the **Meta Global AI Developer Hackathon 2026**, Indie Developer track
 - **Triage issues.** On enabled public repositories, the local worker can flag missing details, possible duplicates and related pull requests. A dedicated demo issue can be marked eligible for the separate fix workflow; that flag does not start a repair. See [Maintainer autopilot](docs/MAINTAINER_AUTOPILOT.md).
 - **Control merges.** Manual merge and close require confirmation. An owner can opt in to automatic merging for a public repository with strict GitHub branch protection; automatic ready and close are unavailable.
 - **Work with issues and tasks.** Save local task cards, inspect supported issue content, and request suggestions in the available workflows. Attached screenshots are stored locally; they are not interpreted by Muse in this workflow.
-- **Check a supported patch.** A visual verifier exercises included checkout examples. A separate, configured test-repository workflow can verify pinned candidates and create a draft pull request after the required checks and authorization.
+- **Check a supported patch.** A visual verifier exercises included checkout examples. On the dedicated test repository, a Muse proposal can run isolated fixture checks and then become a draft pull request; an identical existing draft is linked instead of duplicated. See [Isolated fixture checks](docs/FIXTURE_ORACLE.md).
 - **Use the terminal.** The interactive menu and direct Artisan commands share connection state with the web app. The read-only local MCP server exposes usage, saved review results and receipt checks.
 - **Reuse engineering skills.** Hari resolves a declared `engineering.workflow` skill for PR reviews, issue suggestions and task proposals. It guides Muse toward concrete evidence, relevant edge cases and focused fixes; the existing verifier supplies test results.
 

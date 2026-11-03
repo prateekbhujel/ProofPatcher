@@ -241,6 +241,25 @@ final class WorkbenchTask extends Model
         $this->refresh();
     }
 
+    /** Save finite fixture observations without treating them as a verified run. */
+    public function recordFixtureObservation(array $observation, string $runId, int $expectedVersion, string $candidateSha): void
+    {
+        if (($observation['status'] ?? null) !== 'passed' || ($observation['scope'] ?? null) !== 'finite_local_fixture'
+            || ($observation['provider'] ?? null) !== 'modal' || ($observation['candidateSha256'] ?? null) !== $candidateSha
+            || !preg_match('/\Afixture-[a-f0-9]{24}\z/', $runId)) {
+            throw new \InvalidArgumentException('A matching completed fixture observation is required.');
+        }
+        $metadata = $this->metadata ?? [];
+        $metadata['fixture_observation'] = $observation + ['runId' => $runId];
+        $updated = self::where('id', $this->id)->where('version', $expectedVersion)
+            ->where('candidate_sha256', $candidateSha)->whereNotIn('status', ['publishing', 'outcome_unknown'])
+            ->update(['verification_report_id' => $runId, 'verification_decision' => 'OBSERVED_PASS',
+                'is_simulated' => false, 'status' => 'needs_review', 'metadata' => $metadata,
+                'version' => \Illuminate\Support\Facades\DB::raw('version + 1'), 'updated_at' => now()]);
+        if ($updated !== 1) throw new \ProofPatch\Exceptions\StaleTaskConcurrencyException('The candidate changed while checks were running.');
+        $this->refresh();
+    }
+
     public function recordVerification(
         array $report,
         ?int $expectedVersion = null,

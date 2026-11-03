@@ -83,6 +83,15 @@ final class TaskWorkflowHelper
             $session->put('issue_suggestion', $suggestion);
         }
 
+        $observation = ($task->metadata ?? [])['fixture_observation'] ?? null;
+        if (is_array($observation) && ($observation['scope'] ?? null) === 'finite_local_fixture'
+            && ($observation['runId'] ?? null) === $task->verification_report_id
+            && is_string($task->candidate_sha256) && ($observation['candidateSha256'] ?? null) === $task->candidate_sha256) {
+            // A session-only publication token is not recovered from task metadata.
+            $observation['canPublish'] = false;
+            $session->put('issue_fixture_observation', $observation);
+        }
+
         if ($task->verification_report_id !== null) {
             $evidenceDir = RuntimePaths::runs(base_path()).'/'.$task->verification_report_id;
             if (is_dir($evidenceDir) && file_exists($evidenceDir . '/result.json')) {
