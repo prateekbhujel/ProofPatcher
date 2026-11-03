@@ -37,7 +37,7 @@ final class MaintainerAutopilotFlowTest extends TestCase
     public function testMaintainerFlagsDefaultOffAndCanBeSetPerRepository(): void
     {
         self::assertSame(
-            ['fixIssues' => false, 'autoReady' => false, 'autoMerge' => false],
+            ['fixIssues' => false, 'autoReady' => false, 'autoMerge' => false, 'autoClose' => false],
             MaintainerAutopilotSetting::flagsFor(self::REPO)
         );
         MaintainerAutopilotSetting::setFlag(self::REPO, 'auto_merge', true);

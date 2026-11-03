@@ -244,7 +244,7 @@ final class MentionReviewListenerTest extends TestCase
         self::assertSame('https://github.com/acme/repo/pull/42#pullrequestreview-456', $result[0]['url']);
         self::assertSame('/repos/acme/repo/pulls/42/reviews', $this->postPath);
         self::assertSame('COMMENT', $this->posted['event']);
-        self::assertStringContainsString('No inline comments were posted in this review.', $this->posted['body']);
+        self::assertStringContainsString('Nothing needed flagging inline this round.', $this->posted['body']);
         self::assertSame('review_summary', \ProofPatch\Models\AutoReviewResult::first()->published_status);
         self::assertSame('review_summary', \ProofPatch\Models\AutoReviewResult::first()->getRawOriginal('published_status'));
     }

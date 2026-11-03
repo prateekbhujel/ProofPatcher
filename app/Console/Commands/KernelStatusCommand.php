@@ -77,6 +77,11 @@ final class KernelStatusCommand extends Command
         $this->line('  Autopilot   ' . $this->workerLine($worker));
         $this->line('  Auto-review ' . $stats['total'] . ' total · ' . $stats['completed'] . ' completed · ' . $stats['failed'] . ' failed · ' . $stats['skippedPrivate'] . ' skipped (private) · ' . $stats['skippedBudget'] . ' skipped (budget)');
         $this->line('  Reviews on  ' . ($enabled === [] ? 'none — enable one to let autopilot work' : implode(', ', array_values($enabled))));
+        if (is_string($selected) && $selected !== '') {
+            $flags = \ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($selected);
+            $on = static fn (bool $v): string => $v ? 'on' : 'off';
+            $this->line('  Maintainer  fix '.$on($flags['fixIssues']).' · ready '.$on($flags['autoReady']).' · merge '.$on($flags['autoMerge']).' · close '.$on($flags['autoClose'])." (autopilot extension for {$selected})");
+        }
         $this->line('');
         $this->line('  Next: ' . $next['title']);
         $this->line('  ' . $next['command']);

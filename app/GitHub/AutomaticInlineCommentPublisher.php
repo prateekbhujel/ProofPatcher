@@ -165,7 +165,7 @@ final readonly class AutomaticInlineCommentPublisher
         try {
             $body = $general
                 ? self::requestedReviewSummary($findings, $head)
-                : "Automated ProofPatcher suggestion (please review):\n\n".ReviewCommentFormatter::format(
+                : "ProofPatcher here \u2014 spotted something worth a look:\n\n".ReviewCommentFormatter::format(
                     ['status' => $eligible['status'], 'comment' => $eligible['comment']],
                     is_string($verdict) ? $verdict : null,
                     $eligible['suggestion']);
@@ -213,9 +213,9 @@ final readonly class AutomaticInlineCommentPublisher
             $lines[] = '- '.preg_replace('/\s+/', ' ', $comment);
             if (count($lines) === 3) break;
         }
-        $body = 'Reviewed commit `'.substr($head, 0, 12).'`. No inline comments were posted in this review.';
+        $body = 'Gave commit `'.substr($head, 0, 12).'` a proper once-over. Nothing needed flagging inline this round.';
         if ($lines !== []) $body .= "\n\n".implode("\n", $lines);
-        return $body."\n\nSee ProofPatcher for the complete review.";
+        return $body."\n\nFull breakdown lives in ProofPatcher, as always.";
     }
 
     /** Preserve code examples while preventing raw HTML, mentions, links and control bytes. */

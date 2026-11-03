@@ -979,6 +979,24 @@ final class IssueWorkbenchController
         try {
             file_put_contents($inputPath, file_get_contents($file->getRealPath()));
 
+            // Provider first: when the operator has named a speech model on
+            // the configured Muse provider (Baseten or Meta Model API), the
+            // clip goes there. Local Whisper is only the offline fallback;
+            // no other transcription service is used.
+            $transcriber = new \ProofPatch\Agent\VoiceTranscriber($this->getHttpClient());
+            if ($transcriber->providerAvailable()) {
+                try {
+                    $result = $transcriber->transcribe($inputPath, Credentials::activeKey(), Credentials::activeTarget());
+                    return response()->json([
+                        'status' => 'ok',
+                        'transcript' => $result['transcript'],
+                        'engine' => $result['engine'],
+                    ]);
+                } catch (\Throwable) {
+                    // Provider unavailable or rejected the clip: fall back locally.
+                }
+            }
+
             $ffmpeg = new \Symfony\Component\Process\Process([
                 $ffmpegBin, '-y', '-i', $inputPath, '-ar', '16000', '-ac', '1', $wavPath,
             ]);

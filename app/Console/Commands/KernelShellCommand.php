@@ -29,6 +29,7 @@ final class KernelShellCommand extends Command
             ['key' => 'select', 'label' => 'Select repository', 'detail' => 'Choose a repository in your GitHub grant'],
             ['key' => 'review', 'label' => 'Review a pull request', 'detail' => 'Request an advisory review'],
             ['key' => 'autopilot', 'label' => 'Run autopilot', 'detail' => 'Poll for public PR reviews for a limited time'],
+            ['key' => 'maintainer', 'label' => 'Maintainer autopilot', 'detail' => 'Fix, auto-ready, auto-merge and auto-close switches for the selected repository'],
             ['key' => 'findings', 'label' => 'Recent findings', 'detail' => 'See locally saved review results'],
             ['key' => 'telemetry', 'label' => 'Usage', 'detail' => 'View local usage estimates'],
             ['key' => 'verify', 'label' => 'Verify a patch', 'detail' => 'Run verification for a supported patch'],
@@ -101,6 +102,7 @@ final class KernelShellCommand extends Command
                 'select' => $this->call('kernel:select-repo'),
                 'review' => $this->reviewOnce(),
                 'autopilot' => $this->autopilotOnce(),
+                'maintainer' => $this->maintainerOnce(),
                 'findings' => $this->call('kernel:reviews'),
                 'telemetry' => $this->call('kernel:telemetry'),
                 'verify' => $this->verifyOnce(),
@@ -292,6 +294,48 @@ final class KernelShellCommand extends Command
             return;
         }
         $this->call('kernel:autopilot', ['--repo' => $repo, '--minutes' => (int) $minutes]);
+    }
+
+    private function maintainerOnce(): void
+    {
+        $repo = KernelCli::getSelectedRepo();
+        if ($repo === null) {
+            $this->warn('No repository selected. Select one first.');
+            return;
+        }
+        try {
+            $flags = \ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($repo);
+        } catch (\Throwable $e) {
+            $this->error(KernelCli::report('kernel shell · maintainer autopilot', $e->getMessage(), 'php artisan migrate'));
+            return;
+        }
+        $map = [
+            'fix' => ['fix_issues', 'Fix demo issue', $flags['fixIssues']],
+            'ready' => ['auto_ready', 'Auto-ready', $flags['autoReady']],
+            'merge' => ['auto_merge', 'Auto-merge (gated)', $flags['autoMerge']],
+            'close' => ['auto_close', 'Auto-close slop (gated)', $flags['autoClose']],
+        ];
+        $this->line("Maintainer extension for {$repo} (part of autopilot, not a separate system):");
+        foreach ($map as $key => [, $label, $on]) {
+            $this->line('  '.str_pad($key, 6).str_pad($label, 26).($on ? 'on' : 'off'));
+        }
+        $choice = strtolower(trim($this->promptLine('Toggle one: fix / ready / merge / close (blank keeps current)', '')));
+        if ($choice === '' || !isset($map[$choice])) {
+            return;
+        }
+        [$flag, $label, $on] = $map[$choice];
+        try {
+            \ProofPatch\Models\MaintainerAutopilotSetting::setFlag($repo, $flag, !$on);
+            $this->info($label.' for '.$repo.' is now '.(!$on ? 'on' : 'off').'.');
+            if ($flag === 'auto_merge' && !$on) {
+                $this->line('Merges still need: review says approve, checks green, no unresolved threads, same commit as reviewed.');
+            }
+            if ($flag === 'auto_close' && !$on) {
+                $this->line('Closes still need: review asked for changes, checks red, a real blocker, and the explanation comment lands first.');
+            }
+        } catch (\Throwable $e) {
+            $this->error(KernelCli::report('kernel shell · maintainer autopilot', $e->getMessage(), 'check the repository name and run php artisan migrate'));
+        }
     }
 
     private function reviewEnabled(string $repo): bool

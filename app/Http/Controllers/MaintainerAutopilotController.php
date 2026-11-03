@@ -18,7 +18,7 @@ use ProofPatch\Models\MaintainerAutopilotSetting;
  */
 final class MaintainerAutopilotController
 {
-    private const FLAGS = ['fix_issues', 'auto_ready', 'auto_merge'];
+    private const FLAGS = ['fix_issues', 'auto_ready', 'auto_merge', 'auto_close'];
 
     private function identity(Request $request): ?array
     {
@@ -41,6 +41,7 @@ final class MaintainerAutopilotController
         $settings = [];
         $issueActions = [];
         $mergeActions = [];
+        $closeActions = [];
         try {
             if (Schema::hasTable('maintainer_autopilot_settings')) {
                 foreach (DB::table('maintainer_autopilot_settings')->get() as $row) {
@@ -50,6 +51,7 @@ final class MaintainerAutopilotController
                         'fix_issues' => (bool) $row->fix_issues,
                         'auto_ready' => (bool) $row->auto_ready,
                         'auto_merge' => (bool) $row->auto_merge,
+                        'auto_close' => (bool) ($row->auto_close ?? false),
                     ];
                 }
             }
@@ -73,7 +75,15 @@ final class MaintainerAutopilotController
         } catch (\Throwable) {
             return response()->json(['error' => 'Maintainer autopilot settings are unavailable. Run php artisan migrate.'], 500);
         }
-        return response()->json(['settings' => $settings, 'issueActions' => $issueActions, 'mergeActions' => $mergeActions]);
+            if (Schema::hasTable('autopilot_close_actions')) {
+                $closeActions = DB::table('autopilot_close_actions')->orderByDesc('id')->limit(10)->get()
+                    ->filter(static fn ($row): bool => isset($identity['grants'][strtolower((string) $row->repository)]))
+                    ->map(static fn ($row): array => [
+                        'repository' => $row->repository, 'pull_number' => (int) $row->pull_number,
+                        'outcome' => $row->outcome, 'detail' => $row->detail, 'created_at' => $row->created_at,
+                    ])->values()->all();
+            }
+        return response()->json(['settings' => $settings, 'issueActions' => $issueActions, 'mergeActions' => $mergeActions, 'closeActions' => $closeActions]);
     }
 
     public function toggle(Request $request): JsonResponse

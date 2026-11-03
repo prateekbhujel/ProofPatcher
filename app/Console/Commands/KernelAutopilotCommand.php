@@ -101,7 +101,7 @@ final class KernelAutopilotCommand extends Command
 
         $deadline = time() + $minutes * 60;
         $cycles = 0;
-        $totals = ['pulls' => 0, 'completed' => 0, 'skipped' => 0, 'failed' => 0];
+        $totals = ['pulls' => 0, 'completed' => 0, 'skipped' => 0, 'failed' => 0, 'issues' => 0, 'issueActions' => 0];
         $stopReason = 'interrupted';
 
         $this->line("Autopilot for {$repo} — up to {$minutes} min" . ($maxCycles !== null ? ", {$maxCycles} cycles" : '') . '. Ctrl+C stops cleanly.');
@@ -128,6 +128,8 @@ final class KernelAutopilotCommand extends Command
                 $totals['completed'] += (int) ($summary['reviewsCompleted'] ?? 0);
                 $totals['skipped'] += (int) ($summary['reviewsSkipped'] ?? 0);
                 $totals['failed'] += (int) ($summary['reviewsFailed'] ?? 0);
+                $totals['issues'] += (int) ($summary['issuesInspected'] ?? 0);
+                $totals['issueActions'] += is_array($summary['issueActions'] ?? null) ? count($summary['issueActions']) : 0;
 
                 $this->line(sprintf(
                     'cycle %d: %d pulls inspected · %d completed · %d skipped · %d failed',
@@ -137,6 +139,17 @@ final class KernelAutopilotCommand extends Command
                     (int) ($summary['reviewsSkipped'] ?? 0),
                     (int) ($summary['reviewsFailed'] ?? 0)
                 ));
+                foreach ((array) ($summary['issueActions'] ?? []) as $action) {
+                    if (is_array($action)) $this->line('Issue '.($action['repository'] ?? '').'#'.($action['number'] ?? '').': '.($action['action'] ?? '').(($action['published'] ?? false) ? ' (comment posted)' : ' (recorded locally)'));
+                }
+                foreach ((array) ($summary['details'] ?? []) as $detail) {
+                    if (!is_array($detail)) continue;
+                    foreach (['autoMerge', 'autoClose'] as $kind) {
+                        if (is_array($detail[$kind] ?? null)) {
+                            $this->line('PR '.($detail['repository'] ?? '').'#'.($detail['number'] ?? '')." {$kind}: ".($detail[$kind]['status'] ?? '').' '.($detail[$kind]['detail'] ?? ''));
+                        }
+                    }
+                }
                 foreach ((array) ($summary['followups'] ?? []) as $link) {
                     if (is_string($link)) $this->line('Review reply needs attention: '.$link);
                 }
@@ -178,14 +191,16 @@ final class KernelAutopilotCommand extends Command
         }
 
         $this->line(sprintf(
-            'autopilot done (%d %s, %s): %d pulls · %d completed · %d skipped · %d failed',
+            'autopilot done (%d %s, %s): %d pulls · %d completed · %d skipped · %d failed · %d issues · %d issue actions',
             $cycles,
             $cycles === 1 ? 'cycle' : 'cycles',
             $stopReason,
             $totals['pulls'],
             $totals['completed'],
             $totals['skipped'],
-            $totals['failed']
+            $totals['failed'],
+            $totals['issues'],
+            $totals['issueActions']
         ));
 
         return self::SUCCESS;

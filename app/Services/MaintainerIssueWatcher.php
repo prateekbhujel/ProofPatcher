@@ -123,16 +123,24 @@ final class MaintainerIssueWatcher
     /** @param array{action: string, reason: string, questions: list<string>, duplicateOf: ?int, pullNumber: ?int} $decision */
     private static function commentBody(array $decision): string
     {
-        $lines = ['**ProofPatcher maintainer check**', '', $decision['reason']];
+        $lines = ['ProofPatcher here \u2014 I triage issues so maintainers don\'t have to chase the basics.', '', $decision['reason']];
         if ($decision['action'] === 'needs_info' && $decision['questions'] !== []) {
             $lines[] = '';
-            $lines[] = 'Could you add:';
+            $lines[] = 'Before anyone can sensibly fix this, I need:';
             foreach ($decision['questions'] as $question) {
                 $lines[] = '- '.$question;
             }
+            $lines[] = '';
+            $lines[] = 'Add that and I\'ll take another look straight away.';
+        } elseif ($decision['action'] === 'already_fixed') {
+            $lines[] = '';
+            $lines[] = 'Maintainer: this one looks closable.';
+        } elseif ($decision['action'] === 'duplicate') {
+            $lines[] = '';
+            $lines[] = 'Better to keep the conversation in one place.';
         }
         $lines[] = '';
-        $lines[] = 'This is an automated suggestion from a local ProofPatcher autopilot. A maintainer makes the final call.';
+        $lines[] = 'A human maintainer makes the final call \u2014 I just clear the path.';
         return implode("\n", $lines);
     }
 

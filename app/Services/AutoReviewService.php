@@ -278,9 +278,14 @@ final class AutoReviewService
                     if ($publication !== null) {
                         $outcome['automaticComment'] = $publication;
                     }
-                    $merge = $this->maybeAutoMerge($token, (int) $user['id'], $authorizedRepos, $repoName, $pull, $outcome);
-                    if ($merge !== null) {
-                        $outcome['autoMerge'] = $merge;
+                    $close = $this->maybeAutoClose($token, (int) $user['id'], $authorizedRepos, $repoName, $pull, $outcome);
+                    if ($close !== null) {
+                        $outcome['autoClose'] = $close;
+                    } else {
+                        $merge = $this->maybeAutoMerge($token, (int) $user['id'], $authorizedRepos, $repoName, $pull, $outcome);
+                        if ($merge !== null) {
+                            $outcome['autoMerge'] = $merge;
+                        }
                     }
                 } elseif ($outcome['status'] === 'skipped_budget') {
                     $summary['reviewsSkipped']++;
@@ -321,6 +326,126 @@ final class AutoReviewService
         }
 
         return $summary;
+    }
+
+    /**
+     * Gated auto-close for revisions that are red and rejected. An
+     * explanation comment must land first; without it the PR stays open.
+     * The attempt is recorded before closing and never retried.
+     *
+     * @param array<string, mixed> $authorizedRepos
+     * @param array<string, mixed> $pull
+     * @param array<string, mixed> $outcome
+     * @return array{status: string, detail?: string}|null
+     */
+    private function maybeAutoClose(string $token, int $userId, array $authorizedRepos, string $repoName, array $pull, array $outcome): ?array
+    {
+        $flags = \ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($repoName);
+        if (!$flags['autoClose']) {
+            return null;
+        }
+        $number = (int) ($pull['number'] ?? 0);
+        $head = (string) ($pull['headSha'] ?? '');
+        $base = (string) ($pull['baseSha'] ?? '');
+        if ($number < 1 || !preg_match('/\A[a-f0-9]{40}\z/', $head)) {
+            return ['status' => 'blocked', 'detail' => 'Pull request revision is invalid.'];
+        }
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('autopilot_close_actions')
+                || \Illuminate\Support\Facades\DB::table('autopilot_close_actions')
+                    ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
+                    ->where('pull_number', $number)->where('head_sha', $head)->exists()) {
+                return ['status' => 'already_attempted', 'detail' => 'Auto-close was already attempted for this revision and is never retried automatically.'];
+            }
+        } catch (\Throwable) {
+            return ['status' => 'blocked', 'detail' => 'Auto-close attempt history could not be checked.'];
+        }
+
+        $concerns = 0;
+        $record = AutoReviewResult::findForRevision($repoName, $number, $head, $base);
+        if ($record !== null && is_array($record->file_findings)) {
+            foreach ($record->file_findings as $finding) {
+                if (is_array($finding) && ($finding['status'] ?? null) === 'concern') {
+                    $concerns++;
+                }
+            }
+        }
+        try {
+            $readiness = $this->github->getMergeReadiness($token, $repoName, $number, $head);
+        } catch (\Throwable $e) {
+            return ['status' => 'blocked', 'detail' => 'Close readiness could not be read: '.$e->getMessage()];
+        }
+        $gate = \ProofPatch\Application\Repository\AutoCloseGate::evaluate([
+            'autoCloseEnabled' => true,
+            'reviewStatus' => 'completed',
+            'recommendation' => $outcome['recommendation'] ?? null,
+            'checksState' => $readiness['checksState'],
+            'concernCount' => $concerns,
+            'state' => $readiness['state'],
+            'isMerged' => $readiness['isMerged'],
+            'reviewedHead' => $head,
+            'currentHead' => $readiness['currentHead'],
+        ]);
+        if (!$gate['allowed']) {
+            return ['status' => 'blocked', 'detail' => implode(' ', $gate['reasons'])];
+        }
+
+        $explanation = "Closing this one — plainly, so nobody wastes time on it:\n\n"
+            ."- The review asked for changes, and there is at least one real blocker in it.\n"
+            ."- The checks are red on the exact commit reviewed (`".substr($head, 0, 12)."`).\n\n"
+            ."Red and rejected shouldn't sit in the queue pretending to be nearly there. Push a fixed branch or reopen with the blockers addressed and I'll happily look again.\n\n"
+            ."— ProofPatcher autopilot. A maintainer can reopen this anytime; the final call is always human.";
+        if (!$this->postPullComment($token, $repoName, $number, $explanation)) {
+            return ['status' => 'blocked', 'detail' => 'Explanation comment could not be posted, so the pull request was left open.'];
+        }
+
+        $access = ['userId' => $userId, 'repositories' => []];
+        foreach (array_keys($authorizedRepos) as $lower) {
+            $access['repositories'][$lower] = true;
+        }
+        $actions = new \ProofPatch\GitHub\PullRequestActions(HttpClient::create());
+        try {
+            \Illuminate\Support\Facades\DB::table('autopilot_close_actions')->insert([
+                'repository' => $repoName, 'pull_number' => $number, 'head_sha' => $head,
+                'outcome' => 'attempting', 'detail' => 'Gate passed; explanation posted; close in progress.',
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $actions->close($token, $access, ['repository' => $repoName, 'number' => $number, 'headSha' => $head], $head);
+            \Illuminate\Support\Facades\DB::table('autopilot_close_actions')
+                ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
+                ->where('pull_number', $number)->where('head_sha', $head)
+                ->update(['outcome' => 'closed', 'detail' => 'Closed after explanation comment.', 'updated_at' => now()]);
+            return ['status' => 'closed', 'detail' => 'Closed after explanation comment.'];
+        } catch (\Throwable $e) {
+            try {
+                \Illuminate\Support\Facades\DB::table('autopilot_close_actions')
+                    ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
+                    ->where('pull_number', $number)->where('head_sha', $head)
+                    ->update(['outcome' => 'unknown', 'detail' => 'Close outcome is unknown; check GitHub before any manual retry.', 'updated_at' => now()]);
+            } catch (\Throwable) {}
+            return ['status' => 'unknown', 'detail' => 'Close outcome is unknown; check GitHub before any manual retry.'];
+        }
+    }
+
+    private function postPullComment(string $userToken, string $repository, int $number, string $body): bool
+    {
+        try {
+            $botToken = (new \ProofPatch\GitHub\BotInstallationTokenProvider(HttpClient::create()))->forRepository($userToken, $repository);
+            $response = HttpClient::create()->request('POST', "https://api.github.com/repos/{$repository}/issues/{$number}/comments", [
+                'headers' => [
+                    'Accept' => 'application/vnd.github+json',
+                    'Authorization' => 'Bearer '.$botToken,
+                    'User-Agent' => 'ProofPatcher',
+                    'X-GitHub-Api-Version' => '2022-11-28',
+                ],
+                'json' => ['body' => $body],
+                'timeout' => 15,
+                'max_redirects' => 0,
+            ]);
+            return $response->getStatusCode() === 201;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**

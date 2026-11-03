@@ -163,7 +163,7 @@ final class AutomaticInlineCommentPublisherTest extends TestCase
             catch (RuntimeException) { $this->assertSame(1, $this->posts); }
         }
         $this->assertSame('uncertain', $this->db->query('SELECT status FROM automatic_inline_attempts')->fetchColumn());
-        $this->assertStringContainsString('Automated ProofPatcher', $this->posted['body']);
+        $this->assertStringContainsString('ProofPatcher here', $this->posted['body']);
     }
 
     public function testSafeSuggestionIsPostedInsideFencedBlock(): void
