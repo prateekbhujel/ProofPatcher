@@ -26,6 +26,8 @@ final class AutoReviewService
         private ?string $basetenKey = null,
         private ?AutomaticInlineCommentPublisher $automaticCommentPublisher = null,
         private ?MaintainerIssueWatcher $issueWatcher = null,
+        private ?\ProofPatch\GitHub\PullRequestActions $pullActions = null,
+        private bool $autoMergeReady = false,
     ) {
         $this->github ??= new GitHubAppClient(HttpClient::create());
         $this->patchPreviewer ??= new PublicPatchPreview(HttpClient::create());
@@ -218,13 +220,17 @@ final class AutoReviewService
                 if ($existing !== null) {
                     if ($existing->status === 'completed') {
                         $summary['reviewsSkipped']++;
-                        $summary['details'][] = [
+                        $detail = [
                             'repository' => $repoName,
                             'number' => $prNumber,
                             'headSha' => $headSha,
                             'baseSha' => $baseSha,
                             'action' => 'skipped_already_reviewed',
                         ];
+                        $merge = $this->autoMergeReady ? $this->maybeAutoMerge($token, (int) $user['id'], (string) ($user['login'] ?? ''), $authorizedRepos, $repoName, $pull,
+                            ['recommendation' => $existing->recommendation]) : null;
+                        if ($merge !== null) $detail['autoMerge'] = $merge;
+                        $summary['details'][] = $detail;
                         continue;
                     }
 
@@ -278,8 +284,8 @@ final class AutoReviewService
                     if ($publication !== null) {
                         $outcome['automaticComment'] = $publication;
                     }
-                    // Automatic merge and close remain suspended until complete GitHub
-                    // status/thread coverage and revision races are independently verified.
+                    $merge = $this->autoMergeReady ? $this->maybeAutoMerge($token, (int) $user['id'], (string) ($user['login'] ?? ''), $authorizedRepos, $repoName, $pull, $outcome) : null;
+                    if ($merge !== null) $outcome['autoMerge'] = $merge;
                 } elseif ($outcome['status'] === 'skipped_budget') {
                     $summary['reviewsSkipped']++;
                     $summary['budgetExhausted'] = true;
@@ -451,16 +457,31 @@ final class AutoReviewService
      * @param array<string, mixed> $outcome
      * @return array{status: string, detail?: string}|null
      */
-    private function maybeAutoMerge(string $token, int $userId, array $authorizedRepos, string $repoName, array $pull, array $outcome): ?array
+    private function maybeAutoMerge(string $token, int $userId, string $login, array $authorizedRepos, string $repoName, array $pull, array $outcome): ?array
     {
         $flags = \ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($repoName);
         if (!$flags['autoMerge']) {
             return null;
         }
+        $owner = explode('/', $repoName, 2)[0];
+        if ($login === '' || strcasecmp($owner, $login) !== 0
+            || ($authorizedRepos[strtolower($repoName)]['isPrivate'] ?? null) !== false) {
+            return ['status' => 'blocked', 'detail' => 'The signed-in owner must have access to this public repository.'];
+        }
         $number = (int) ($pull['number'] ?? 0);
         $head = (string) ($pull['headSha'] ?? '');
+        $base = (string) ($pull['baseSha'] ?? '');
         if ($number < 1 || !preg_match('/\A[a-f0-9]{40}\z/', $head)) {
             return ['status' => 'blocked', 'detail' => 'Pull request revision is invalid.'];
+        }
+        try {
+            $review = AutoReviewResult::findForRevision($repoName, $number, $head, $base);
+            if ($review === null || $review->status !== 'completed' || $review->is_public !== true
+                || $review->recommendation !== 'approve' || ($outcome['recommendation'] ?? null) !== 'approve') {
+                return ['status' => 'blocked', 'detail' => 'No completed public approval matches this revision.'];
+            }
+        } catch (\Throwable) {
+            return ['status' => 'blocked', 'detail' => 'The completed review could not be checked.'];
         }
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('autopilot_merge_actions')
@@ -480,7 +501,8 @@ final class AutoReviewService
         }
         $gate = \ProofPatch\Application\Repository\AutoMergeGate::evaluate([
             'autoMergeEnabled' => true,
-            'autoReadyEnabled' => $flags['autoReady'],
+            // GitHub's ready mutation has no atomic expected-head condition.
+            'autoReadyEnabled' => false,
             'reviewStatus' => 'completed',
             'recommendation' => $outcome['recommendation'] ?? null,
             'checksState' => $readiness['checksState'],
@@ -490,9 +512,16 @@ final class AutoReviewService
             'isMerged' => $readiness['isMerged'],
             'reviewedHead' => $head,
             'currentHead' => $readiness['currentHead'],
+            'reviewedBase' => $base,
+            'currentBase' => $readiness['currentBase'],
         ]);
         if (!$gate['allowed']) {
             return ['status' => 'blocked', 'detail' => implode(' ', $gate['reasons'])];
+        }
+        // Respect an opt-out made while GitHub readiness was being fetched.
+        if (!\ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($repoName)['autoMerge']
+            || !RepositoryAutoReviewSetting::isRepoEnabled($repoName)) {
+            return ['status' => 'blocked', 'detail' => 'Auto-merge was turned off.'];
         }
 
         $access = ['userId' => $userId, 'repositories' => []];
@@ -500,17 +529,19 @@ final class AutoReviewService
             $access['repositories'][$lower] = true;
         }
         $pullDescriptor = ['repository' => $repoName, 'number' => $number, 'headSha' => $head];
-        $actions = new \ProofPatch\GitHub\PullRequestActions(HttpClient::create());
+        $actions = $this->pullActions ?? new \ProofPatch\GitHub\PullRequestActions(HttpClient::create());
+        $claimed = 0;
         try {
-            \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')->insert([
-                'repository' => $repoName, 'pull_number' => $number, 'head_sha' => $head,
+            $claimed = \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')->insertOrIgnore([
+                'repository' => strtolower($repoName), 'pull_number' => $number, 'head_sha' => $head,
                 'outcome' => 'attempting', 'detail' => 'Gate passed; merge in progress.',
                 'created_at' => now(), 'updated_at' => now(),
             ]);
+            if ($claimed !== 1) return ['status' => 'already_attempted', 'detail' => 'Another worker claimed this revision.'];
             if ($gate['needsReady']) {
                 $actions->markReady($token, $access, $pullDescriptor, $head);
             }
-            $result = $actions->merge($token, $access, $pullDescriptor, $head);
+            $result = $actions->merge($token, $access, $pullDescriptor, $head, expectedBase: $base);
             \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')
                 ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
                 ->where('pull_number', $number)->where('head_sha', $head)
@@ -518,6 +549,7 @@ final class AutoReviewService
             return ['status' => 'merged', 'detail' => 'Merged as '.substr($result['sha'], 0, 12).'.'];
         } catch (\Throwable $e) {
             try {
+                if ($claimed !== 1) throw new \RuntimeException('Merge claim was not acquired.');
                 \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')
                     ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
                     ->where('pull_number', $number)->where('head_sha', $head)

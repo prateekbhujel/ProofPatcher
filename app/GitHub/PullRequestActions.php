@@ -22,11 +22,15 @@ final readonly class PullRequestActions
     public function __construct(private HttpClientInterface $http) {}
 
     /** @return array{merged: true, sha: string} */
-    public function merge(string $token, array $access, array $pull, string $expectedHead, string $method = 'squash'): array
+    public function merge(string $token, array $access, array $pull, string $expectedHead, string $method = 'squash', ?string $expectedBase = null): array
     {
         [$repository, $number] = $this->authorize($token, $access, $pull, $expectedHead);
         $current = $this->read($token, $repository, $number);
         $this->assertOpen($current, $expectedHead);
+        if ($expectedBase !== null && (!preg_match('/\A[a-f0-9]{40}\z/', $expectedBase)
+            || !is_string($current['base']['sha'] ?? null) || !hash_equals($expectedBase, $current['base']['sha']))) {
+            throw new \RuntimeException('The base changed after review. Reload and review the new revision.');
+        }
         if (($current['draft'] ?? false) === true) {
             throw new \RuntimeException('This pull request is still a draft. Mark it ready for review on GitHub before merging.');
         }
