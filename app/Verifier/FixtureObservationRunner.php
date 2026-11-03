@@ -73,7 +73,7 @@ final class FixtureObservationRunner
 
     private function resolvePython(): ?string
     {
-        $path = $this->pythonPath ?? getenv('MODAL_PYTHON_PATH') ?: null;
+        $path = $this->pythonPath ?? (getenv('MODAL_PYTHON_PATH') ?: ($_ENV['MODAL_PYTHON_PATH'] ?? $_SERVER['MODAL_PYTHON_PATH'] ?? null));
         if ($path === null) {
             $home = getenv('HOME');
             $path = $home ? $home.'/.local/share/proofpatch/venv/bin/python' : null;
