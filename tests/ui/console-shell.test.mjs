@@ -97,9 +97,9 @@ const homeProps = {
     abilities: [{ name: 'proofpatch-verify', version: 1, provides: ['verify.gate'], borrows: {}, needs: ['model'] }],
     skills: [{ id: 'verify.gate', versions: [1], capabilities: ['model'], describe: 'Runs the gates.' }],
   },
-  autopilotCaps: { remaining: 22, maxAttempts: 25 },
+  autopilotCaps: { maxAttempts: 25, maxReservedDollars: 2.5 },
   worker: { isLive: false, status: 'offline' },
-  autoStats: { total: 1, completed: 1, failed: 0, skippedPrivate: 0, skippedBudget: 0, enabledRepositories: [] },
+  autoStats: { totalReviews: 1, completed: 1, failed: 0, skippedPrivate: 0, skippedBudget: 0 },
   recentFindings: [{ id: 1, repository: 'acme/repo', pull_number: 7, status: 'completed', summary: 'ok', risk_level: 'low', recommendation: null, reviewed_at: null }],
   stages: [{ key: 'intake', title: 'Intake', detail: 'Repo ready.', href: '/issues', state: 'done' }],
   nextStep: { key: 'target', title: 'Open an issue or pull request', detail: 'Pick a target from the workbench.', href: '/issues', cta: 'Open the workbench' },
@@ -144,4 +144,31 @@ test('the sign-in button links to the web flow with its return page', () => {
   assert.match(html, /href="\/github\/authorize\?redirect_to=%2Fsettings"/);
   assert.match(html, /Sign in with GitHub/);
   assert.doesNotMatch(html, /client_secret|access_token/);
+});
+
+
+test('console displays actual backend PR fields and an honest verification status', () => {
+  const html = renderToStaticMarkup(React.createElement(kernelPage.default, {
+    ...homeProps,
+    publishedPr: { repository: 'acme/repo', prNumber: 23, prUrl: 'https://github.com/acme/repo/pull/23' },
+    lastVerification: { id: 'run-23', decision: 'VERIFIED', isSimulated: false, receiptSha256: 'd'.repeat(64), repository: 'acme/repo' },
+  }));
+  assert.match(html, /draft PR #23/);
+  assert.match(html, /href="https:\/\/github\.com\/acme\/repo\/pull\/23"/);
+  assert.match(html, /acme\/repo#23/);
+  assert.match(html, /text-emerald-700 dark:text-emerald-400">VERIFIED<\/span>/);
+  assert.match(html, /not simulated/);
+  assert.doesNotMatch(html, /#undefined|href="undefined"/);
+});
+
+test('console does not invent PR details or verification outcomes from incomplete data', () => {
+  const html = renderToStaticMarkup(React.createElement(kernelPage.default, {
+    ...homeProps,
+    publishedPr: { repository: 'acme/repo', prNumber: null, prUrl: null },
+    lastVerification: { id: 'run-24', decision: 'INCONCLUSIVE', isSimulated: null, receiptSha256: null, repository: 'acme/repo' },
+  }));
+  assert.doesNotMatch(html, /draft PR #|#undefined|href="undefined"/);
+  assert.match(html, /INCONCLUSIVE/);
+  assert.match(html, /unknown/);
+  assert.doesNotMatch(html, /text-emerald-700 dark:text-emerald-400">INCONCLUSIVE<\/span>/);
 });
