@@ -312,7 +312,7 @@ final class KernelShellCommand extends Command
         $map = [
             'fix' => ['fix_issues', 'Fix demo issue', $flags['fixIssues']],
             'ready' => ['auto_ready', 'Auto-ready (unavailable)', $flags['autoReady']],
-            'merge' => ['auto_merge', 'Auto-merge (unavailable)', $flags['autoMerge']],
+            'merge' => ['auto_merge', 'Auto-merge', $flags['autoMerge']],
             'close' => ['auto_close', 'Auto-close (unavailable)', $flags['autoClose']],
         ];
         $this->line("Maintainer extension for {$repo} (part of autopilot, not a separate system):");
@@ -324,7 +324,7 @@ final class KernelShellCommand extends Command
             return;
         }
         [$flag, $label, $on] = $map[$choice];
-        if (in_array($flag, ['auto_ready', 'auto_merge', 'auto_close'], true) && !$on) {
+        if (in_array($flag, ['auto_ready', 'auto_close'], true) && !$on) {
             $this->line('This action is unavailable while its safeguards are verified.');
             return;
         }
@@ -332,7 +332,7 @@ final class KernelShellCommand extends Command
             \ProofPatch\Models\MaintainerAutopilotSetting::setFlag($repo, $flag, !$on);
             $this->info($label.' for '.$repo.' is now '.(!$on ? 'on' : 'off').'.');
             if ($flag === 'auto_merge' && !$on) {
-                $this->line('Merges still need: review says approve, checks green, no unresolved threads, same commit as reviewed.');
+                $this->line('Merges need an approved review, green checks, no unresolved threads, and enforced strict GitHub branch protection.');
             }
             if ($flag === 'auto_close' && !$on) {
                 $this->line('Closes still need: review asked for changes, checks red, a real blocker, and the explanation comment lands first.');

@@ -27,7 +27,7 @@ final class AutoReviewService
         private ?AutomaticInlineCommentPublisher $automaticCommentPublisher = null,
         private ?MaintainerIssueWatcher $issueWatcher = null,
         private ?\ProofPatch\GitHub\PullRequestActions $pullActions = null,
-        private bool $autoMergeReady = false,
+        private bool $autoMergeReady = true,
     ) {
         $this->github ??= new GitHubAppClient(HttpClient::create());
         $this->patchPreviewer ??= new PublicPatchPreview(HttpClient::create());
@@ -517,6 +517,9 @@ final class AutoReviewService
         ]);
         if (!$gate['allowed']) {
             return ['status' => 'blocked', 'detail' => implode(' ', $gate['reasons'])];
+        }
+        if (!$this->github->hasStrictMergeProtection($token, $repoName, $readiness['baseBranch'] ?? null)) {
+            return ['status' => 'blocked', 'detail' => 'GitHub must enforce strict required checks, resolved conversations, and administrator protection on the base branch.'];
         }
         // Respect an opt-out made while GitHub readiness was being fetched.
         if (!\ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($repoName)['autoMerge']

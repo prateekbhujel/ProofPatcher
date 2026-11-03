@@ -9,7 +9,7 @@ interface Props { connected: boolean; login: string | null; repositories: GitHub
 const FLAG_LABELS: { key: keyof Flags; label: string; hint: string }[] = [
   { key: 'fix_issues', label: 'Fix demo issue', hint: 'Complete issues in the dedicated demo scope are marked fix-ready; draft PR publication still needs its server-held approval.' },
   { key: 'auto_ready', label: 'Auto-ready', hint: 'Unavailable while automatic merge is under review.' },
-  { key: 'auto_merge', label: 'Auto-merge', hint: 'Unavailable while GitHub check and review safeguards are being verified.' },
+  { key: 'auto_merge', label: 'Auto-merge', hint: 'Requires an approved review, passing checks, resolved threads, and strict GitHub branch protection.' },
   { key: 'auto_close', label: 'Auto-close', hint: 'Unavailable while revision safeguards are being verified.' },
 ];
 
@@ -61,7 +61,7 @@ export function MaintainerAutopilotPanel({ connected, login, repositories, csrf 
   return (
     <section className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 text-xs" aria-labelledby="maintainer-autopilot-title">
       <h2 id="maintainer-autopilot-title" className="text-sm font-semibold">Autopilot — maintainer extension</h2>
-      <p>Review issues in public repositories you own. Automatic merge, ready and close are unavailable while their safeguards are verified.</p>
+      <p>Choose actions for public repositories you own. Auto-ready and auto-close are unavailable.</p>
       {!connected ? <p>Connect GitHub to choose repositories.</p> : settings === null ? <p>Settings unavailable or loading.</p> : owned.length === 0 ? <p>No eligible public repositories.</p> : (
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
           {owned.map((repo) => {
@@ -76,8 +76,8 @@ export function MaintainerAutopilotPanel({ connected, login, repositories, csrf 
                       <div className="text-slate-500 dark:text-slate-400">{hint}</div>
                     </div>
                     <label className="flex shrink-0 items-center gap-2 text-slate-700 dark:text-slate-300">
-                      <span>{key !== 'fix_issues' ? 'Unavailable' : flags[key] ? 'On' : 'Off'}</span>
-                      <input type="checkbox" checked={flags[key]} disabled={pending !== null || (key !== 'fix_issues' && !flags[key])}
+                      <span>{key === 'auto_ready' || key === 'auto_close' ? 'Unavailable' : flags[key] ? 'On' : 'Off'}</span>
+                      <input type="checkbox" checked={flags[key]} disabled={pending !== null || ((key === 'auto_ready' || key === 'auto_close') && !flags[key])}
                         aria-label={`${label} for ${repo.fullName}`}
                         onChange={(event) => void toggle(repo.fullName, key, event.currentTarget.checked)} />
                     </label>

@@ -583,9 +583,37 @@ final readonly class GitHubAppClient
             'isDraft' => is_bool($pull['draft'] ?? null) ? $pull['draft'] : null,
             'currentHead' => is_string($pull['head']['sha'] ?? null) ? $pull['head']['sha'] : null,
             'currentBase' => is_string($pull['base']['sha'] ?? null) ? $pull['base']['sha'] : null,
+            'baseBranch' => is_string($pull['base']['ref'] ?? null) ? $pull['base']['ref'] : null,
             'checksState' => $checksState,
             'unresolvedThreads' => $unresolved,
         ];
+    }
+
+    /** Fail closed unless GitHub enforces up-to-date required checks for administrators. */
+    public function hasStrictMergeProtection(string $token, string $repository, ?string $branch): bool
+    {
+        $this->validateRepositoryName($repository);
+        if (!is_string($branch) || $branch === '' || strlen($branch) > 255 || str_contains($branch, "\0")) return false;
+        try {
+            $p = $this->get('/repos/'.$repository.'/branches/'.rawurlencode($branch).'/protection', $token);
+            $checks = $p['required_status_checks'] ?? null;
+            if (!is_array($checks) || ($checks['strict'] ?? null) !== true
+                || ($p['enforce_admins']['enabled'] ?? null) !== true
+                || ($p['required_conversation_resolution']['enabled'] ?? null) !== true) return false;
+            $contexts = $checks['contexts'] ?? null;
+            if (!is_array($contexts) || !array_is_list($contexts) || $contexts === []) return false;
+            foreach ($contexts as $context) if (!is_string($context) || trim($context) === '') return false;
+            $bypass = $p['required_pull_request_reviews']['bypass_pull_request_allowances'] ?? null;
+            if ($bypass !== null) {
+                if (!is_array($bypass)) return false;
+                foreach (['users', 'teams', 'apps'] as $type) {
+                    if (!is_array($bypass[$type] ?? null) || $bypass[$type] !== []) return false;
+                }
+            }
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /** Check runs and legacy commit statuses must both be complete and healthy. */

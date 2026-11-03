@@ -50,7 +50,7 @@ final class MaintainerAutopilotController
                     $settings[$repo] = [
                         'fix_issues' => (bool) $row->fix_issues,
                         'auto_ready' => (bool) $row->auto_ready,
-                        'auto_merge' => (bool) $row->auto_merge,
+                        'auto_merge' => MaintainerAutopilotSetting::flagsFor($repo)['autoMerge'],
                         'auto_close' => (bool) ($row->auto_close ?? false),
                     ];
                 }
@@ -97,7 +97,7 @@ final class MaintainerAutopilotController
             || in_array($parts[2], ['.', '..'], true) || !in_array($flag, self::FLAGS, true) || !is_bool($enabled)) {
             return response()->json(['error' => 'Invalid repository or setting.'], 422);
         }
-        if ($enabled && in_array($flag, ['auto_ready', 'auto_merge', 'auto_close'], true)) {
+        if ($enabled && in_array($flag, ['auto_ready', 'auto_close'], true)) {
             return response()->json(['error' => 'This action is unavailable while its safeguards are verified.'], 422);
         }
         if (strcasecmp($parts[1], $identity['login']) !== 0 || !isset($identity['grants'][strtolower($repo)])) {
@@ -111,6 +111,9 @@ final class MaintainerAutopilotController
         if (!$public) return response()->json(['error' => 'Only public repositories are supported.'], 422);
         if (!Schema::hasTable('maintainer_autopilot_settings')) {
             return response()->json(['error' => 'Maintainer autopilot settings are unavailable. Run php artisan migrate.'], 500);
+        }
+        if ($flag === 'auto_merge' && !Schema::hasColumn('maintainer_autopilot_settings', 'auto_merge_armed_at')) {
+            return response()->json(['error' => 'Run php artisan migrate before changing auto-merge.'], 422);
         }
         MaintainerAutopilotSetting::setFlag($repo, $flag, $enabled);
         return response()->json(['success' => true, 'repository' => strtolower($repo), 'flag' => $flag, 'enabled' => $enabled]);

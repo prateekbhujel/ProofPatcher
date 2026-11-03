@@ -93,16 +93,18 @@ final class AutopilotMergeExecutionTest extends TestCase
             ['recommendation' => 'approve']);
     }
 
-    private function service(array &$writes, string $conclusion = 'success'): AutoReviewService
+    private function service(array &$writes, string $conclusion = 'success', ?array $protection = null): AutoReviewService
     {
-        $github = new GitHubAppClient(new MockHttpClient(static function (string $method, string $url) use ($conclusion) {
+        $protection ??= self::strictProtection();
+        $github = new GitHubAppClient(new MockHttpClient(static function (string $method, string $url) use ($conclusion, $protection) {
+            if (str_contains($url, '/branches/main/protection')) return new MockResponse(json_encode($protection));
             if (str_contains($url, '/check-runs?')) return new MockResponse(json_encode(['total_count' => 1,
                 'check_runs' => [['id' => 1, 'status' => 'completed', 'conclusion' => $conclusion]]]));
             if (str_contains($url, '/status?')) return new MockResponse(json_encode(['total_count' => 0, 'state' => 'pending']));
             if (str_ends_with($url, '/graphql')) return new MockResponse(json_encode(['data' => ['repository' =>
                 ['pullRequest' => ['reviewThreads' => ['pageInfo' => ['hasNextPage' => false], 'nodes' => []]]]]]));
             return new MockResponse(json_encode(['state' => 'open', 'merged' => false, 'draft' => false,
-                'head' => ['sha' => self::HEAD], 'base' => ['sha' => self::BASE]]));
+                'head' => ['sha' => self::HEAD], 'base' => ['sha' => self::BASE, 'ref' => 'main']]));
         }));
         $actions = new PullRequestActions(new MockHttpClient(static function (string $method, string $url, array $options) use (&$writes) {
             if ($method === 'PUT') {
@@ -113,5 +115,31 @@ final class AutopilotMergeExecutionTest extends TestCase
                 'mergeable' => true, 'head' => ['sha' => self::HEAD], 'base' => ['sha' => self::BASE]]));
         }));
         return new AutoReviewService(github: $github, pullActions: $actions);
+    }
+
+    private static function strictProtection(): array
+    {
+        return ['required_status_checks' => ['strict' => true, 'contexts' => ['ci']],
+            'enforce_admins' => ['enabled' => true], 'required_conversation_resolution' => ['enabled' => true]];
+    }
+
+    public function testUnprotectedBranchOrAdminBypassStopsMerge(): void
+    {
+        MaintainerAutopilotSetting::setFlag(self::REPO, 'auto_merge', true);
+        $protection = self::strictProtection();
+        $protection['enforce_admins']['enabled'] = false;
+        $writes = [];
+        self::assertSame('blocked', $this->attempt($this->service($writes, protection: $protection))['status']);
+        self::assertSame([], $writes);
+    }
+
+    public function testOldMergeSettingDoesNotReactivateWithoutANewOptIn(): void
+    {
+        MaintainerAutopilotSetting::create(['repository' => self::REPO, 'auto_merge' => true]);
+        self::assertFalse(MaintainerAutopilotSetting::flagsFor(self::REPO)['autoMerge']);
+        MaintainerAutopilotSetting::setFlag(self::REPO, 'auto_merge', true);
+        self::assertTrue(MaintainerAutopilotSetting::flagsFor(self::REPO)['autoMerge']);
+        MaintainerAutopilotSetting::setFlag(self::REPO, 'auto_merge', false);
+        self::assertFalse(MaintainerAutopilotSetting::flagsFor(self::REPO)['autoMerge']);
     }
 }

@@ -15,7 +15,7 @@ final class MaintainerAutopilotSetting extends Model
 {
     protected $table = 'maintainer_autopilot_settings';
 
-    protected $fillable = ['repository', 'fix_issues', 'auto_ready', 'auto_merge', 'auto_close'];
+    protected $fillable = ['repository', 'fix_issues', 'auto_ready', 'auto_merge', 'auto_close', 'auto_merge_armed_at'];
 
     protected $casts = [
         'fix_issues' => 'boolean',
@@ -39,7 +39,8 @@ final class MaintainerAutopilotSetting extends Model
             return [
                 'fixIssues' => $row->fix_issues === true,
                 'autoReady' => $row->auto_ready === true,
-                'autoMerge' => $row->auto_merge === true,
+                'autoMerge' => Schema::hasColumn('maintainer_autopilot_settings', 'auto_merge_armed_at')
+                    && $row->auto_merge === true && $row->auto_merge_armed_at !== null,
                 'autoClose' => $row->auto_close === true,
             ];
         } catch (\Throwable) {
@@ -54,6 +55,13 @@ final class MaintainerAutopilotSetting extends Model
             || !in_array($flag, ['fix_issues', 'auto_ready', 'auto_merge', 'auto_close'], true)) {
             throw new \InvalidArgumentException('A valid repository and maintainer setting are required.');
         }
-        return self::updateOrCreate(['repository' => $repository], [$flag => $enabled]);
+        $values = [$flag => $enabled];
+        if ($flag === 'auto_merge') {
+            if (!Schema::hasColumn('maintainer_autopilot_settings', 'auto_merge_armed_at')) {
+                throw new \RuntimeException('Run migrations before enabling automatic merge.');
+            }
+            $values['auto_merge_armed_at'] = $enabled ? now() : null;
+        }
+        return self::updateOrCreate(['repository' => $repository], $values);
     }
 }

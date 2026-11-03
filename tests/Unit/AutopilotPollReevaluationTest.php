@@ -126,6 +126,10 @@ final class AutopilotPollReevaluationTest extends TestCase
                 'private' => false, 'visibility' => 'public',
             ]] : []]));
             if ($path === '/repos/'.self::REPO.'/issues') return new MockResponse('[]');
+            if ($path === '/repos/'.self::REPO.'/branches/main/protection') return new MockResponse(json_encode([
+                'required_status_checks' => ['strict' => true, 'contexts' => ['ci']],
+                'enforce_admins' => ['enabled' => true], 'required_conversation_resolution' => ['enabled' => true],
+            ]));
             if ($path === '/repos/'.self::REPO.'/pulls') {
                 parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
                 if (($query['state'] ?? '') === 'closed') return new MockResponse('[]');
@@ -168,6 +172,6 @@ final class AutopilotPollReevaluationTest extends TestCase
     private function pull(): array
     {
         return ['state' => 'open', 'merged' => false, 'draft' => false, 'mergeable' => true,
-            'head' => ['sha' => self::HEAD], 'base' => ['sha' => self::BASE]];
+            'head' => ['sha' => self::HEAD], 'base' => ['sha' => self::BASE, 'ref' => 'main']];
     }
 }
