@@ -57,6 +57,7 @@ final class IssueMaintainerTriageTest extends TestCase
     {
         $on = IssueMaintainerTriage::decide($this->completeIssue(), [], [], true, 'example-owner/proofpatch-test');
         self::assertSame('fix_eligible', $on['action']);
+        self::assertStringContainsString('No fix has been verified or published', $on['reason']);
 
         $off = IssueMaintainerTriage::decide($this->completeIssue(), [], [], false, 'example-owner/proofpatch-test');
         self::assertSame('no_fix_scope', $off['action']);

@@ -73,7 +73,7 @@ final class IssueMaintainerTriage
         if ($fixEnabled && $demoRepository !== null && strcasecmp($repository, $demoRepository) === 0
             && $number === DedicatedTestRepoPublisher::AUTHORIZED_ISSUE_NUMBER) {
             return array_merge($base, ['action' => 'fix_eligible',
-                'reason' => 'Complete issue on the dedicated demo repository; the verified propose-and-check workflow can prepare a draft PR. Publication still requires its server-held approval.']);
+                'reason' => 'This issue is eligible for the manual fix workflow. No fix has been verified or published yet.']);
         }
 
         return array_merge($base, ['action' => 'no_fix_scope',
