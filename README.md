@@ -13,6 +13,7 @@ Built for the **Meta Global AI Developer Hackathon 2026** (26 October – 4 Nove
 1. **Inspect a public pull request.** Read the diff and Muse's findings, then edit an inline draft. Opt-in automatic review can handle new revisions while its local worker runs.
 2. **Check a checkout repair.** In **Visual demo**, generate a patch with Muse, run verification and inspect the recorded model and check results. The bundled damaging shortcut demonstrates rejection. The included checkout is a controlled example, separate from arbitrary GitHub PRs.
 3. **Inspect the evidence.** The receipt records the tested candidate and results. Its digest lets you check that the saved evidence has not changed.
+4. **Issue repair to isolated draft PR.** On the dedicated test repository, inspect the test issue (`OrderTotal` calculation error). Muse proposes a focused fix. *Run checks* executes three isolated sandbox runs against the pinned fixture (reproducing baseline, rejecting negative control, and matching candidate). After maintainer confirmation, *Create draft PR* links to an existing identical draft (or creates one); the observation covers only the included fixture cases.
 
 ![Four passing checks and the saved integrity receipt in the light-mode checkout workspace](docs/assets/checkout-evidence-light.jpg)
 
@@ -25,7 +26,7 @@ Built for the **Meta Global AI Developer Hackathon 2026** (26 October – 4 Nove
 - **Triage issues.** On enabled public repositories, the local worker can flag missing details, possible duplicates and related pull requests. A dedicated demo issue can be marked eligible for the separate fix workflow; that flag does not start a repair. See [Maintainer autopilot](docs/MAINTAINER_AUTOPILOT.md).
 - **Control merges.** Manual merge and close require confirmation. An owner can opt in to automatic merging for a public repository with strict GitHub branch protection; automatic ready and close are unavailable.
 - **Work with issues and tasks.** Save local task cards, inspect supported issue content, and request suggestions in the available workflows. Attached screenshots are stored locally; they are not interpreted by Muse in this workflow.
-- **Check a supported patch.** A visual verifier exercises included checkout examples. On the dedicated test repository, a Muse proposal can run isolated fixture checks and then become a draft pull request; an identical existing draft is linked instead of duplicated. See [Isolated fixture checks](docs/FIXTURE_ORACLE.md).
+- **Check a supported patch.** A visual verifier exercises included checkout examples. On the dedicated test repository, a dedicated issue → Muse proposal → isolated fixture checks → approved draft PR flow is supported. Candidate code runs in separate network-blocked sandboxes against the pinned order-total fixture. The observation covers only the included fixture cases. With maintainer approval, a draft PR is published, or an identical existing draft PR is reused and linked rather than duplicated. See [Isolated fixture checks](docs/FIXTURE_ORACLE.md).
 - **Use the terminal.** The interactive menu and direct Artisan commands share connection state with the web app. The read-only local MCP server exposes usage, saved review results and receipt checks.
 - **Reuse engineering skills.** Hari resolves a declared `engineering.workflow` skill for PR reviews, issue suggestions and task proposals. It guides Muse toward concrete evidence, relevant edge cases and focused fixes; the existing verifier supplies test results.
 
@@ -147,6 +148,19 @@ After the listener reports that it is ready, a maintainer can post `@proofpatche
 - A Git worktree is not a security sandbox. Do not run untrusted repository code on the host merely because it is in a worktree.
 - Local task cards and images are not autonomous jobs. The app does not understand attached screenshots in the task-card workflow or automatically solve issues. The dedicated demo issue can be marked eligible for a separate manual fix flow; draft publication requires server-held approval. Automatic merge requires explicit opt-in and strict branch protection; ready and close remain unavailable.
 - A snapshot digest or receipt supports integrity checking; it does not independently prove the origin, correctness, or safety of a change.
+
+### Tested vs. untested
+
+- **Tested in live checks**:
+  - The dedicated test repository workflow was tested on `prateekbhujel/proofpatch-workflow-test` Issue #1. Isolated fixture checks passed (`OBSERVED_PASS`), and the draft publication step detected and linked to the **existing draft PR #14** without redundant GitHub writes (reusing the open draft with identical bytes; PR #14 was not newly created in this run).
+  - Public PR review, multi-issue triage, and inline comments were demonstrated on `prateekbhujel/proofpatch-review-demo` across PRs #1, #5, #6, #7, #8 and Issues #2, #3, #4.
+  - Browser-based visual verification of controlled checkout fixtures with damaging shortcut rejection.
+  - Full local test suite passing (1,056 PHPUnit tests, 65 Python unit tests, 78 UI unit tests).
+- **Untested / unverified**:
+  - Arbitrary-code verification and general repository automation are not complete or claimed. The isolated runner supports only the pinned, stateless `src/OrderTotal.php` fixture.
+  - Automatic merge has unit tests against simulated branch protection rules, but has not been demonstrated with a live automatic merge against protected branches.
+  - Automatic ready and close remain disabled.
+  - Local task card screenshots are stored locally only; model interpretation of attached images is not active in this workflow.
 
 ## Tests
 

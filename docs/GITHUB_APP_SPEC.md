@@ -16,7 +16,7 @@ GitHub user authorization and installation scope are separate. Being able to see
 - Opt in separately to GitHub bot comments. Bot posting uses a GitHub App installation token and does not silently fall back to the user's token.
 - Ask for a public PR review with `@proofpatcher review` while the local mention listener is running.
 - Use manual merge and close controls when authorized; those actions require confirmation and recheck the pull request.
-- Prepare a draft pull request for the configured, pinned test-repository workflow after its supported verification and server-held publication approval.
+- Prepare a draft pull request for the configured, pinned test-repository workflow after isolated fixture checks and single-use approval; an identical open draft PR is reused and linked rather than duplicated.
 
 Automatic merge is opt-in for owned public repositories with strict branch protection and passing review gates. Automatic ready and close are unavailable. General private pull-request review, arbitrary issue repair and automatic issue-to-PR publication are not supported. A saved repository opt-in does not bypass these limits.
 

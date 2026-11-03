@@ -23,14 +23,19 @@ shares a process with the test harness that judges it.
    If an open draft already contains identical bytes, the app links to that
    draft instead of opening a duplicate. Concurrent attempts are claimed
    against the task record, so a double submit cannot create two drafts.
+   In live checks on the dedicated repository, the flow confirmed this
+   behavior by linking to the existing draft PR #14 rather than opening a
+   duplicate.
 
 ## Boundaries
 
 - Only the configured dedicated repository, its first issue, and
   `src/OrderTotal.php` are eligible. Anything else fails closed.
 - A passing observation means the proposal matched the finite fixture cases.
-  It does not prove the patch is generally correct or safe, and it never
-  replaces the repository's own tests or maintainer review.
+  It covers the included cases only, does not prove the patch is generally
+  correct or safe, and never replaces the repository's own tests or maintainer
+  review. Arbitrary-code verification and general repository automation are
+  not supported.
 - Publication requires a single-use approval bound to the signed-in owner,
   the exact candidate bytes, and the recorded proposal. A stale, changed, or
   simulated result cannot publish.
