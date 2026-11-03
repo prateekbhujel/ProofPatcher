@@ -85,7 +85,7 @@ After the listener reports that it is ready, a maintainer can post `@proofpatche
 
 ### Demonstrated workflows
 
-- A fresh Muse proposal for the dedicated private test issue passed the isolated fixture checks. The live publication flow found and linked an identical existing draft; creating a new draft through that flow has not yet been demonstrated.
+- A fresh Muse proposal for a dedicated private test issue passed the isolated fixture checks and the live publication flow created a draft PR. A separate run found and linked an identical existing draft instead of creating a duplicate.
 - Public PR review, multi-issue triage and inline comments were demonstrated using a separate test repository. The checkout example also demonstrates visual checks and rejection of a damaging shortcut.
 - Automatic merge is covered by tests using simulated branch protection, but has not been demonstrated against a live protected branch. Automatic ready and close remain disabled. Task-card screenshots stay local and are not interpreted by Muse.
 

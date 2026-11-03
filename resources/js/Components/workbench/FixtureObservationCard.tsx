@@ -47,6 +47,6 @@ export function FixtureObservationCard({ suggestion, observation, observing, pub
       {canPublish && !publishedUrl && <p className="text-xs text-slate-500 dark:text-slate-400">You will be asked to confirm before anything is sent to GitHub.</p>}
     </div>}
     {observation && !current && <p className="text-xs text-slate-500 dark:text-slate-400">The proposal changed. Run checks again before creating a draft.</p>}
-    {publishedUrl && <a href={publishedUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-300"><GitPullRequest className="h-4 w-4" /> Open existing draft on GitHub</a>}
+    {publishedUrl && <a href={publishedUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-300"><GitPullRequest className="h-4 w-4" /> Open draft on GitHub</a>}
   </section>;
 }

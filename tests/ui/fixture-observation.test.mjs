@@ -40,7 +40,7 @@ test('stale, failed, or unauthorized observations cannot show a publish action',
 
 test('a completed publication is linked rather than offered again', () => {
   const rendered = html({ observation: passed, publishedUrl: 'https://github.com/owner/repo/pull/1' });
-  assert.match(rendered, /Open existing draft on GitHub/);
+  assert.match(rendered, /Open draft on GitHub/);
   assert.doesNotMatch(rendered, /Create draft PR/);
-  assert.match(html({ publishedUrl: 'https://github.com/owner/repo/pull/1' }), /Open existing draft on GitHub/);
+  assert.match(html({ publishedUrl: 'https://github.com/owner/repo/pull/1' }), /Open draft on GitHub/);
 });
