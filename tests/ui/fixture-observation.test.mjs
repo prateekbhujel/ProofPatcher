@@ -34,6 +34,7 @@ test('stale, failed, or unauthorized observations cannot show a publish action',
   assert.doesNotMatch(html({ observation: { ...passed, status: 'failed' } }), /Create draft PR/);
   assert.doesNotMatch(html({ observation: { ...passed, canPublish: false } }), /Create draft PR/);
   assert.doesNotMatch(html({ observation: { ...passed, negative: 'fixture_passed' } }), /Create draft PR/);
+  assert.doesNotMatch(html({ observation: { ...passed, negative: 'fixture_passed' } }), /Fixture checks passed/);
   assert.doesNotMatch(html({ observation: { ...passed, calls: { baseline: 3, negative: 0, candidate: 3 } } }), /Create draft PR/);
 });
 

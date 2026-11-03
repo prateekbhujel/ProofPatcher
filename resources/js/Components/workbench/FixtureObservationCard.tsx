@@ -17,12 +17,13 @@ export function FixtureObservationCard({ suggestion, observation, observing, pub
   const current = observation?.scope === 'finite_local_fixture'
     && !!suggestion.candidate?.sha256
     && observation.candidateSha256 === suggestion.candidate.sha256;
-  const canPublish = current && observation?.status === 'passed' && observation.canPublish === true
+  const observationsPassed = current && observation?.status === 'passed'
     && observation.baseline === 'fixture_failed' && observation.negative === 'fixture_failed'
     && observation.candidate === 'fixture_passed'
     && observation.calls && typeof observation.calls === 'object'
     && Object.values(observation.calls).length === 3
     && Object.values(observation.calls).every((calls) => Number.isInteger(calls) && calls > 0);
+  const canPublish = observationsPassed && observation?.canPublish === true;
 
   return <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 dark:border-slate-800 dark:bg-[#141821]">
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -35,7 +36,7 @@ export function FixtureObservationCard({ suggestion, observation, observing, pub
       </button>
     </div>
     {current && observation && <div className="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-700" role="status">
-      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{observation.status === 'passed' ? 'Fixture checks passed' : observation.status === 'failed' ? 'Fixture checks failed' : 'Checks did not finish'}</h4>
+      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{observationsPassed ? 'Fixture checks passed' : observation.status === 'failed' ? 'Fixture checks failed' : 'Checks could not be confirmed'}</h4>
       <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
         <li>Original: {observation.baseline === 'fixture_failed' ? 'issue reproduced' : 'not confirmed'}</li>
         <li>Negative control: {observation.negative === 'fixture_failed' ? 'rejected' : 'not confirmed'}</li>
