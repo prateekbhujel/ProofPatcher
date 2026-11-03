@@ -63,6 +63,101 @@ final readonly class DedicatedTestRepoPublisher
         return $this->disconnected;
     }
 
+    /** Publish an explicitly approved draft after finite fixture observations.
+     * This separate path never creates or accepts a verified-publication token.
+     */
+    public function publishObservedDraft(array $context, array $suggestion, int $userId, string $approvalToken,
+        string $githubToken, ObservedDraftApproval $observedApprovals): array
+    {
+        if ($this->disconnected || trim($githubToken) === '') throw new \RuntimeException('A connected GitHub session is required.');
+        $client = $this->getHttpClient();
+        $repo = DedicatedTestRepo::requireName();
+        $user = $this->apiCall($client, 'GET', 'https://api.github.com/user', $githubToken);
+        $repository = $this->apiCall($client, 'GET', 'https://api.github.com/repos/'.$repo, $githubToken);
+        $issue = $this->apiCall($client, 'GET', 'https://api.github.com/repos/'.$repo.'/issues/1', $githubToken);
+        [$owner] = explode('/', $repo, 2);
+        if (($user['id'] ?? null) !== $userId || !is_string($user['login'] ?? null)
+            || strcasecmp($user['login'], $owner) !== 0 || ($repository['private'] ?? null) !== true
+            || !is_string($repository['full_name'] ?? null) || strcasecmp($repository['full_name'], $repo) !== 0
+            || ($repository['default_branch'] ?? null) !== 'main'
+            || ($issue['number'] ?? null) !== 1 || ($issue['state'] ?? null) !== 'open'
+            || !is_string($issue['title'] ?? null) || !is_string($issue['body'] ?? null)
+            || ($issue['title'] ?? null) !== ($context['title'] ?? null) || ($issue['body'] ?? null) !== ($context['body'] ?? null)) {
+            throw new \RuntimeException('The signed-in owner and open private test issue could not be verified.');
+        }
+        $candidate = $suggestion['candidate']['source'] ?? null;
+        if (!is_string($candidate)) throw new \InvalidArgumentException('Candidate is missing.');
+        $candidateSha = hash('sha256', $candidate);
+        // Confirm the server-held private proposal is still bound to this GitHub identity and grant.
+        $this->verifyPrivateProvenance(array_merge($context, [
+            'privateProvenanceId' => $suggestion['privateProvenanceId'] ?? null,
+            'model' => $suggestion['model'] ?? null, 'requestDigest' => $suggestion['requestDigest'] ?? null,
+        ]), $candidateSha, DedicatedTestRepoFetcher::EXPECTED_SOURCE_SHA256, $githubToken);
+        $this->performSecretAudit($candidate, 'candidateSource', $githubToken);
+        // Check for an identical existing draft before any new GitHub write.
+        // An incomplete listing fails closed rather than creating a duplicate.
+        $existing = $this->findObservedDraft($githubToken, $candidateSha);
+        $observedApprovals->consume($approvalToken, $userId, $context, $suggestion);
+        if ($existing !== null) return $existing;
+        $runId = substr(hash('sha256', $approvalToken), 0, 24);
+        $branch = self::branchName((string) ($context['title'] ?? 'order total'), 1, $runId);
+        $body = "Fixes #1.\n\nMuse proposed this change. It matched the included local order-total fixture in isolated test runs; the baseline and negative control did not. These are finite observations, not proof of correctness. Please review the patch and run the repository's own tests before merging.";
+        $this->performSecretAudit($body, 'prBody', $githubToken);
+        try {
+            $result = $this->executePublish($githubToken, $branch, 'fix: correct order total', $body,
+                DedicatedTestRepoFetcher::SOURCE_PATH, $candidate, ['id' => $runId]);
+            $result['verificationRunId'] = '';
+            $result['receiptSha256'] = '';
+            $result['observationScope'] = 'finite_local_fixture';
+            return $result;
+        } catch (\Throwable $error) {
+            throw new \ProofPatch\Exceptions\AmbiguousPublicationException(
+                'The draft publication may have started. Check the branch and reconcile before trying again.', $repo, $branch, $runId, $error
+            );
+        }
+    }
+
+    private function findObservedDraft(string $token, string $candidateSha): ?array
+    {
+        $client = $this->getHttpClient();
+        $repo = DedicatedTestRepo::requireName();
+        $root = 'https://api.github.com/repos/'.$repo;
+        $found = null;
+        for ($page = 1; $page <= 5; $page++) {
+            $pulls = $this->apiCall($client, 'GET', $root.'/pulls?state=open&per_page=100&page='.$page, $token);
+            if (!array_is_list($pulls) || count($pulls) > 100) throw new \RuntimeException('Cannot confirm existing drafts.');
+            foreach ($pulls as $pull) {
+                if (!is_array($pull)) throw new \RuntimeException('Cannot confirm existing drafts.');
+                if (($pull['draft'] ?? null) !== true || ($pull['base']['ref'] ?? null) !== 'main'
+                    || ($pull['base']['sha'] ?? null) !== DedicatedTestRepo::requireBaseCommit()
+                    || ($pull['head']['repo']['full_name'] ?? null) !== $repo) continue;
+                $number = $pull['number'] ?? null;
+                $head = $pull['head']['sha'] ?? null;
+                $branch = $pull['head']['ref'] ?? null;
+                $url = $pull['html_url'] ?? null;
+                if (!is_int($number) || $number < 1 || !is_string($head) || !preg_match('/\A[a-f0-9]{40}\z/', $head)
+                    || !is_string($branch) || $branch === '' || $url !== 'https://github.com/'.$repo.'/pull/'.$number) {
+                    throw new \RuntimeException('Cannot confirm existing drafts.');
+                }
+                $files = $this->apiCall($client, 'GET', $root.'/pulls/'.$number.'/files?per_page=100&page=1', $token);
+                if (!array_is_list($files) || count($files) >= 100) throw new \RuntimeException('Cannot confirm existing draft files.');
+                if (count($files) !== 1 || ($files[0]['filename'] ?? null) !== DedicatedTestRepoFetcher::SOURCE_PATH
+                    || ($files[0]['status'] ?? null) !== 'modified') continue;
+                $file = $this->apiCall($client, 'GET', $root.'/contents/'.DedicatedTestRepoFetcher::SOURCE_PATH.'?ref='.$head, $token);
+                $content = is_string($file['content'] ?? null) ? base64_decode(preg_replace('/\s+/', '', $file['content']), true) : false;
+                if (($file['encoding'] ?? null) !== 'base64' || !is_string($content) || strlen($content) > 65536) {
+                    throw new \RuntimeException('Cannot inspect existing draft content.');
+                }
+                if (hash_equals($candidateSha, hash('sha256', $content))) {
+                    $found = ['status' => 'existing', 'prNumber' => $number, 'prUrl' => $url, 'branch' => $branch,
+                        'commitSha' => $head, 'draft' => true, 'repository' => $repo, 'observationScope' => 'finite_local_fixture'];
+                }
+            }
+            if (count($pulls) < 100) return $found;
+        }
+        throw new \RuntimeException('Too many open pull requests to check for duplicate drafts.');
+    }
+
     /**
      * Publishes a verified candidate proposal as a draft PR in the dedicated test repository.
      *
@@ -738,6 +833,10 @@ MARKDOWN;
         }
 
         $content = $res->getContent(false);
+        if ((str_contains($url, '/pulls?') || preg_match('~/pulls/[0-9]+/files\?~', $url))
+            && !str_starts_with(ltrim($content), '[')) {
+            throw new \RuntimeException('GitHub returned an invalid pull request list.');
+        }
         $data = json_decode($content, true, 32, JSON_THROW_ON_ERROR);
         if (!is_array($data)) {
             throw new \RuntimeException("GitHub API returned non-JSON response for {$url}.");
