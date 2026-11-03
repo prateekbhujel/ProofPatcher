@@ -90,4 +90,17 @@ final class GitHubMergeReadinessTest extends TestCase
         self::assertSame('unknown', $this->readiness([1 => ['total_count' => 1, 'check_runs' => [['id' => 1, 'status' => 'completed', 'conclusion' => 'success']]]],
             [], $this->noThreads())['checksState']);
     }
+
+    public function testSkippedAndNeutralChecksAloneDoNotEstablishSuccess(): void
+    {
+        $neutral = ['id' => 1, 'status' => 'completed', 'conclusion' => 'neutral'];
+        $skipped = ['id' => 2, 'status' => 'completed', 'conclusion' => 'skipped'];
+        $success = ['id' => 3, 'status' => 'completed', 'conclusion' => 'success'];
+        $runs = static fn (array $checks): array => [1 => ['total_count' => count($checks), 'check_runs' => $checks]];
+        $empty = ['total_count' => 0, 'state' => 'pending'];
+        self::assertSame('unknown', $this->readiness($runs([$neutral, $skipped]), $empty, $this->noThreads())['checksState']);
+        self::assertSame('success', $this->readiness($runs([$neutral, $skipped, $success]), $empty, $this->noThreads())['checksState']);
+        self::assertSame('success', $this->readiness($runs([$neutral, $skipped]), ['total_count' => 1, 'state' => 'success'], $this->noThreads())['checksState']);
+        self::assertSame('failure', $this->readiness($runs([$neutral, $skipped]), ['total_count' => 1, 'state' => 'failure'], $this->noThreads())['checksState']);
+    }
 }

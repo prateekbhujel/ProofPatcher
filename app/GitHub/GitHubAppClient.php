@@ -595,6 +595,7 @@ final readonly class GitHubAppClient
             $count = 0;
             $total = null;
             $state = 'success';
+            $hasSuccessfulRun = false;
             $seenIds = [];
             for ($page = 1; $page <= 5; $page++) {
                 $runs = $this->get("/repos/{$repository}/commits/{$headSha}/check-runs?per_page=100&page={$page}", $token);
@@ -610,6 +611,7 @@ final readonly class GitHubAppClient
                     $seenIds[$run['id']] = true;
                     if ($run['status'] === 'completed') {
                         if (!is_string($run['conclusion'] ?? null)) return 'unknown';
+                        if ($run['conclusion'] === 'success') $hasSuccessfulRun = true;
                         if (!in_array($run['conclusion'], ['success', 'skipped', 'neutral'], true)) $state = 'failure';
                     } elseif (in_array($run['status'], ['queued', 'in_progress', 'waiting', 'requested', 'pending'], true)) {
                         if ($state !== 'failure') $state = 'pending';
@@ -631,7 +633,10 @@ final readonly class GitHubAppClient
                 || !is_string($statuses['state'] ?? null)
                 || !in_array($statuses['state'], ['success', 'pending', 'failure', 'error'], true)) return 'unknown';
             if ($statuses['total_count'] === 0) {
-                return $count > 0 && $statuses['state'] === 'pending' ? $state : 'unknown';
+                if ($count === 0 || $statuses['state'] !== 'pending') return 'unknown';
+                // Skipped/neutral checks may be acceptable alongside an actual
+                // success, but alone do not establish that anything passed.
+                return $state === 'success' && !$hasSuccessfulRun ? 'unknown' : $state;
             }
             if (in_array($statuses['state'], ['failure', 'error'], true)) return 'failure';
             if ($statuses['state'] === 'pending' && $state !== 'failure') return 'pending';
