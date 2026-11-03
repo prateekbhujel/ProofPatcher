@@ -23,7 +23,7 @@ claim at all (neither decoration).
 ## Posted format (GitHub)
 
 ```
-Automated ProofPatcher suggestion (please review):
+ProofPatcher here — spotted something worth a look:
 
 **issue:** Subject sentence here.
 
@@ -40,6 +40,14 @@ exact replacement code
   when it applies cleanly, a code block otherwise).
 - Sanitization unchanged: 1000-char cap, no mentions/links/angle
   brackets/control bytes; a failing suggestion drops, the comment posts.
+
+## Voice
+
+Human first, robot second: short, confident, plain words, a little edge —
+never corporate filler ("we hope this finds you well"), never hype, never
+over-polished. Say what happens next and who decides. Issue, close, and
+summary comments end by making clear a human maintainer has the final
+call; the bot does the legwork, not the deciding.
 
 ## In-app cards
 

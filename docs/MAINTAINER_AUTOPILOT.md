@@ -1,6 +1,9 @@
 # Maintainer autopilot
 
-ProofPatcher's maintainer autopilot extends the existing review autopilot.
+This is an **extension of the existing autopilot**, not a new feature or a
+second system: same worker, same reviews, same budget. It gives autopilot
+maintainer hands — issue triage, a gated merge, and a gated close —
+behind separate switches.
 It is a set of independent, per-repository opt-ins. Everything is off by
 default, public repositories only, and every action fails closed.
 
@@ -16,6 +19,7 @@ signed-in user owns and has installed:
 | Fix demo issue | Settings → Maintainer autopilot | Complete issues in the dedicated demo scope are marked fix-ready |
 | Auto-ready | Settings → Maintainer autopilot | A gated draft PR is marked ready for review before merging |
 | Auto-merge | Settings → Maintainer autopilot | Merges a PR only when the merge gate passes |
+| Auto-close slop | Settings → Maintainer autopilot | Closes a red, rejected PR only after an explanation comment lands |
 | Spend caps | Settings → Autopilot budget | Optional request/spend limits for all autopilot model calls |
 
 Manual mode uses the same flows: a maintainer click with its existing
@@ -76,6 +80,44 @@ whose merge outcome is merged, blocked after an attempt, or unknown is
 never retried automatically; an unknown outcome must be checked on GitHub
 before any manual retry. Manual merge keeps its existing confirmation and
 exact-head check.
+
+## Auto-close gate
+
+Closing is deliberately harder to trigger than merging is to block. All
+must hold for the exact reviewed revision: auto-close is on; the review
+completed and recommended **request changes**; the checks are **failing**;
+at least one blocking concern was found; the PR is open and on the
+reviewed commit. The explanation comment is posted first — if it cannot
+be posted, the PR stays open. A maintainer can reopen at any time.
+
+## Terminal (TUI) parity
+
+The same switches live in the terminal: `php artisan kernel` → **Maintainer
+autopilot** toggles fix / ready / merge / close for the selected
+repository, `kernel:status` shows their state, and `kernel:autopilot`
+prints issue actions plus merge/close outcomes per cycle. Manual merge
+and close stay where they already were: the pull request page's Merge /
+Close buttons with their confirmation step.
+
+## Voice dictation
+
+Dictation prefers the configured Muse provider (Baseten or Meta Model
+API): set `PROOFPATCH_TRANSCRIBE_MODEL` to a speech model your provider
+serves and clips are transcribed through that provider's audio endpoint
+with your existing provider key. No speech model is guessed and no other
+transcription service is used; without one, the local Whisper fallback
+handles clips offline.
+
+## Large-repository demo
+
+To exercise this against a big codebase, enable autopilot reviews plus a
+maintainer switch on a large public repository you own (a busy fork
+works), set an autopilot spend cap, and run
+`php artisan kernel:autopilot --repo=owner/big-repo --minutes=10`.
+Reviews skip already-reviewed revisions, issue actions are recorded once
+per revision, and oversized diffs keep the existing bounded/truncated
+handling — the merge gate treats unreadable checks or threads as a block,
+never as a pass.
 
 ## Running it
 
