@@ -102,7 +102,7 @@ export function VoiceDictationButton({
         }
 
         setState('transcribing');
-        setStatusMessage('Transcribing locally with Whisper…');
+        setStatusMessage('Transcribing…');
 
         try {
           const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);

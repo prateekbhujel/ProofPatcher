@@ -21,7 +21,7 @@ test('automatic comment settings disclose scope and never assume enabled before 
   assert.match(html, /Without them, comments are not posted/);
   assert.doesNotMatch(html, /as @maintainer/);
   assert.match(html, /Suggestions can be wrong/);
-  assert.match(html, /will not merge or close PRs/);
+  assert.match(html, /never merges or closes anything/);
   assert.match(html, /Settings unavailable or loading/);
   assert.doesNotMatch(html, /checked=""/);
 });

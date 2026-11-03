@@ -44,7 +44,7 @@ export function AutomaticCommentsPanel({ connected, login, repositories, csrf }:
   return (
     <section className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 text-xs" aria-labelledby="auto-comments-title">
       <h2 id="auto-comments-title" className="text-sm font-semibold">Automatic GitHub comments</h2>
-      <p>Opt in per public repository you own. With the GitHub App bot configured, autopilot may post one automated suggestion per reviewed revision. Suggestions can be wrong; it will not merge or close PRs.</p>
+      <p>Opt in per public repository you own. With the GitHub App bot configured, autopilot may post one automated suggestion per reviewed revision. Suggestions can be wrong. This switch alone never merges or closes anything — those have their own switches in the maintainer extension below.</p>
       <p>Bot posting requires the app ID and a private key configured on this machine. Without them, comments are not posted.</p>
       {!connected ? <p>Connect GitHub to choose repositories.</p> : enabled === null ? <p>Settings unavailable or loading.</p> : owned.length === 0 ? <p>No eligible public repositories.</p> : (
         <div className="space-y-2">
