@@ -14,7 +14,7 @@ Built with Meta Muse for the **Meta Global AI Developer Hackathon 2026**.
 - **Check a fix.** Try a checkout repair in the visual demo and see whether the checks catch a damaging shortcut.
 - **Follow the evidence.** Inspect results and a receipt for the tested change. The included fixture also supports a focused issue-to-draft workflow on a configured test repository.
 
-![The ProofPatcher checkout demo showing its checks and receipt](docs/assets/checkout-evidence-light.jpg)
+![The ProofPatcher checkout demo showing its checks and receipt](docs/assets/checkout-evidence-updated.jpg)
 
 *The screenshot shows a manual repair of the included checkout example.*
 
