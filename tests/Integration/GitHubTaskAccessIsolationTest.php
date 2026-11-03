@@ -171,6 +171,29 @@ final class GitHubTaskAccessIsolationTest extends TestCase
         }
     }
 
+    public function testSyntheticBackendReportIsNotPresentedAsCheckoutEvidence(): void
+    {
+        $root = sys_get_temp_dir().'/proofpatch-checks-kind-'.bin2hex(random_bytes(6));
+        $id = '20261103T153037Z-5712bc7f0c8c';
+        mkdir($root.'/'.$id, 0700, true);
+        file_put_contents($root.'/'.$id.'/result.json', json_encode([
+            'id' => $id, 'decision' => 'VERIFIED', 'kind' => 'owned_backend', 'isSynthetic' => true,
+            'gates' => ['baselineReproduced' => true, 'candidatePassed' => true],
+        ], JSON_THROW_ON_ERROR));
+        try {
+            $controller = new DashboardController();
+            (new \ReflectionProperty($controller, 'runsDir'))->setValue($controller, $root);
+            $request = $this->request('GET', '/checks', ['run' => $id]);
+            $props = $controller->checks($request)->toResponse($request)->getOriginalContent()->getData()['page']['props'];
+            self::assertArrayNotHasKey($id, $props['history']);
+            self::assertNull($props['report']);
+        } finally {
+            unlink($root.'/'.$id.'/result.json');
+            rmdir($root.'/'.$id);
+            rmdir($root);
+        }
+    }
+
     public function testUnauthorizedSessionsCannotRunAnyTaskAction(): void
     {
         $task = WorkbenchTask::recordIntake($this->context(), false, githubUserId: 1);

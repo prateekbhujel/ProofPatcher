@@ -13,6 +13,12 @@ use ProofPatch\Patch\CssPatch;
  */
 final class CheckRunSelection
 {
+    /** The visual checkout page must not present a backend report as a checkout run. */
+    public static function isCheckoutReport(array $report): bool
+    {
+        return ($report['kind'] ?? 'checkout') === 'checkout' && !array_key_exists('context', $report);
+    }
+
     /** @param array<string, mixed> $history */
     public static function latestVisualRunId(array $history): mixed
     {

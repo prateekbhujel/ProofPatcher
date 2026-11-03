@@ -65,6 +65,8 @@ const sidebarRequire = (id) => {
 };
 const shellLoader = createLoader();
 const layout = shellLoader.load(shellLoader.resolveFile(fileURLToPath(import.meta.url), '../../resources/js/Components/AppLayout.tsx'));
+const settingsPage = shellLoader.load(shellLoader.resolveFile(fileURLToPath(import.meta.url), '../../resources/js/Pages/Settings.tsx'));
+const checksPage = shellLoader.load(shellLoader.resolveFile(fileURLToPath(import.meta.url), '../../resources/js/Pages/Checks.tsx'));
 const onboarding = loadTsx('../../resources/js/Components/workbench/DisconnectedOnboardingView.tsx', (id) => {
   if (id === '@inertiajs/react') return inertia;
   if (id === '../AppLayout') return layout;
@@ -74,6 +76,27 @@ const onboarding = loadTsx('../../resources/js/Components/workbench/Disconnected
 });
 
 const baseProps = {};
+
+test('settings resolve deep links and show one section initially', () => {
+  assert.equal(settingsPage.sectionFromHash('#settings-provider'), 'provider');
+  assert.equal(settingsPage.sectionFromHash('#settings-maintainer'), 'autopilot');
+  assert.equal(settingsPage.sectionFromHash('#unknown'), 'github');
+  const html = renderToStaticMarkup(React.createElement(settingsPage.default, {
+    githubConnection: { isConnected: false, isConfigured: true, clientId: '', repositories: [], user: null },
+    budget: null, providerConfig: null,
+  }));
+  assert.match(html, /id="settings-github"(?![^>]*hidden)/);
+  for (const id of ['review', 'autopilot', 'comments', 'usage', 'general']) {
+    assert.match(html, new RegExp(`id="settings-${id}"[^>]*hidden`));
+  }
+});
+
+test('checkout verification cannot display a pass without every checkout gate', () => {
+  assert.equal(checksPage.checkoutDecision(null), 'READY');
+  assert.equal(checksPage.checkoutDecision({ decision: 'VERIFIED', gates: { baselineReproduced: true } }), 'INCONCLUSIVE');
+  assert.equal(checksPage.checkoutDecision({ decision: 'VERIFIED', gates: { baselineReproduced: true, protectedTestsPassed: true, outsideMaskPreserved: true, authorityIntact: true } }), 'VERIFIED');
+  assert.equal(checksPage.checkoutDecision({ decision: 'FAILED', gates: {} }), 'FAILED');
+});
 
 test('mascot welcome is once per tab and safe when storage is unavailable', () => {
   const values = new Map();

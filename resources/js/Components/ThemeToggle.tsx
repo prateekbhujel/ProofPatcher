@@ -127,8 +127,8 @@ export function ThemeToggle({ compact = true }: ThemeToggleProps) {
     <div
       role="radiogroup"
       aria-label="Color theme"
-      className={`items-center rounded-lg border border-slate-300 dark:border-slate-700 bg-[#f2f0e8] dark:bg-slate-800 p-0.5 gap-0.5 ${
-        compact ? 'inline-flex' : 'flex w-full'
+      className={`items-center gap-0.5 ${
+        compact ? 'inline-flex' : 'flex w-full rounded-lg border border-slate-300 bg-[#f2f0e8] p-0.5 dark:border-slate-700 dark:bg-slate-800'
       }`}
     >
       {options.map((opt, idx) => {
@@ -148,12 +148,12 @@ export function ThemeToggle({ compact = true }: ThemeToggleProps) {
             tabIndex={isChecked ? 0 : -1}
             onClick={() => selectPreference(opt.value)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 ${
-              compact ? '' : 'flex-1'
+            className={`inline-flex items-center justify-center gap-1.5 rounded text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 ${
+              compact ? 'p-1.5' : 'flex-1 rounded-md px-2 py-1.5'
             } ${
               isChecked
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xs border border-slate-200/80 dark:border-slate-700'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                ? compact ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]' : 'border border-slate-200/80 bg-white text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
+                : compact ? 'text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg)]' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             <Icon className="w-3.5 h-3.5 shrink-0" />

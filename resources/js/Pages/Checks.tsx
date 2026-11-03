@@ -23,6 +23,15 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
+export function checkoutDecision(report: ReportData | null): string {
+  if (!report) return 'READY';
+  const gates = ['baselineReproduced', 'protectedTestsPassed', 'outsideMaskPreserved', 'authorityIntact'];
+  if (report.decision === 'VERIFIED' && !gates.every((key) => (report.gates as Record<string, unknown> | undefined)?.[key] === true)) {
+    return 'INCONCLUSIVE';
+  }
+  return report.decision;
+}
+
 export default function Checks({
   runId,
   fixture = 'public/fixtures/checkout.html',
@@ -96,7 +105,8 @@ export default function Checks({
   const safeHistoryPage = Math.min(historyPage, historyTotalPages);
   const paginatedHistory = filteredHistory.slice((safeHistoryPage - 1) * historyPageSize, safeHistoryPage * historyPageSize);
 
-  const decision = report?.decision || 'READY';
+  const decision = checkoutDecision(report);
+  const displayedReport = report && decision !== report.decision ? { ...report, decision } : report;
 
   return (
     <AppLayout activeNav="checks">
@@ -289,7 +299,7 @@ export default function Checks({
         {/* TAB PANE 3: 4-GATE EVIDENCE & RECEIPT */}
         {activeTab === 'evidence' && (
           <ChecksEvidenceTab
-            report={report}
+            report={displayedReport}
             receipt={receipt}
             receiptError={receiptError}
             runId={runId}

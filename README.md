@@ -59,6 +59,8 @@ The extension is for the interactive terminal; the web app does not need it. See
 
 ProofPatcher is the workspace. **Hari** is its reusable coordination core: it brings the available abilities and skills together. Muse supplies reviews and suggestions; GitHub provides repository context and permitted actions; the configured verifier runs supported checks.
 
+The checkout demo uses Symfony Panther for its browser checks. A local, read-only Laravel MCP server exposes saved review results, usage counters and receipt integrity checks. Both are installed by Composer. [MCP guide](docs/MCP.md)
+
 The kernel and OS names describe the design: Hari is an in-process PHP registry, and ProofPatcher is the application built on it. [Explore Hari](docs/HARI_KERNEL.md) · [Autopilot](docs/MAINTAINER_AUTOPILOT.md) · [Fixture checks](docs/FIXTURE_ORACLE.md)
 
 ## What to know

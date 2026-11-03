@@ -499,7 +499,8 @@ final class DashboardController
             }
             try {
                 $run = (new RunEvidence())->read(dirname($file));
-                if (!\ProofPatch\Application\Evidence\PublicCheckRunPolicy::isPublic($run['report'])) {
+                if (!\ProofPatch\Application\Evidence\PublicCheckRunPolicy::isPublic($run['report'])
+                    || !\ProofPatch\Application\Evidence\CheckRunSelection::isCheckoutReport($run['report'])) {
                     continue;
                 }
                 $runPath = dirname($file);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
-import { GitBranch, LogOut } from 'lucide-react';
+import { GitBranch, LogOut, Minus, Plus } from 'lucide-react';
 import { BrandMark } from '../ui/BrandMark';
 import { ThemeToggle } from '../ThemeToggle';
 import { CONSOLE_NAV, ConsoleNavKey, isNavActive } from './primitives';
@@ -21,6 +21,7 @@ export function ConsoleLayout({ activeNav = 'kernel', title, children }: Console
   const { embed } = usePage().props as { embed?: boolean };
   const status = useOsStatus();
   const [framed, setFramed] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   useEffect(() => {
     try {
       setFramed(window.self !== window.top);
@@ -52,9 +53,12 @@ export function ConsoleLayout({ activeNav = 'kernel', title, children }: Console
 
         <nav className="flex-1 overflow-y-auto px-2 py-2" aria-label="Primary">
           {CONSOLE_NAV.map((group) => (
-            <div key={group.section} className="mb-3">
-              <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--fg-subtle)]">{group.section}</p>
-              <ul className="space-y-px">
+            <section key={group.section} aria-label={group.section} className="mb-3">
+              <button type="button" aria-expanded={!collapsed[group.section]} aria-controls={`nav-${group.section}`} onClick={() => setCollapsed((state) => ({ ...state, [group.section]: !state[group.section] }))} className="flex w-full items-center justify-between rounded px-1.5 pb-1 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--fg-subtle)] hover:text-[var(--fg)] focus-visible:outline focus-visible:outline-2">
+                {group.section}
+                {collapsed[group.section] ? <Plus className="h-3 w-3" aria-hidden="true" /> : <Minus className="h-3 w-3" aria-hidden="true" />}
+              </button>
+              <ul id={`nav-${group.section}`} hidden={!!collapsed[group.section]} className="ml-2 space-y-px border-l border-[var(--border)] pl-2">
                 {group.items.map((item) => {
                   const active = isNavActive(item.key, activeNav);
                   return (
@@ -70,7 +74,7 @@ export function ConsoleLayout({ activeNav = 'kernel', title, children }: Console
                   );
                 })}
               </ul>
-            </div>
+            </section>
           ))}
         </nav>
 

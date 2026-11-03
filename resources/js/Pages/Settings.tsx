@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { AppLayout } from '../Components/AppLayout';
 import { SignInWithGitHubButton } from '../Components/ui/SignInWithGitHubButton';
@@ -23,6 +23,15 @@ import { AutomaticCommentsPanel } from '../Components/settings/AutomaticComments
 import { MaintainerAutopilotPanel } from '../Components/settings/MaintainerAutopilotPanel';
 import { AutopilotBudgetCard } from '../Components/settings/AutopilotBudgetCard';
 
+const SETTINGS_SECTIONS = ['github', 'review', 'provider', 'autopilot', 'comments', 'usage', 'general'] as const;
+type SettingsSection = typeof SETTINGS_SECTIONS[number];
+
+export function sectionFromHash(hash: string): SettingsSection {
+  const name = hash.replace(/^#settings-/, '');
+  if (name === 'maintainer') return 'autopilot';
+  return SETTINGS_SECTIONS.includes(name as SettingsSection) ? name as SettingsSection : 'github';
+}
+
 export default function Settings({
   githubConnection,
   budget,
@@ -34,6 +43,14 @@ export default function Settings({
 }: SettingsProps) {
   const { props } = usePage();
 
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() =>
+    typeof window === 'undefined' ? 'github' : sectionFromHash(window.location.hash)
+  );
+  useEffect(() => {
+    const syncSection = () => setActiveSection(sectionFromHash(window.location.hash));
+    window.addEventListener('hashchange', syncSection);
+    return () => window.removeEventListener('hashchange', syncSection);
+  }, []);
 
   const [clientIdInput, setClientIdInput] = useState(githubConnection.clientId || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,6 +67,10 @@ export default function Settings({
   const [basetenKeyInput, setBasetenKeyInput] = useState('');
   const [metaKeyInput, setMetaKeyInput] = useState('');
   const [savingProvider, setSavingProvider] = useState(false);
+  const restoreSection = (section: SettingsSection) => {
+    setActiveSection(section);
+    window.location.hash = `settings-${section}`;
+  };
 
   const handleSelectProviderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +78,7 @@ export default function Settings({
     router.post(
       '/settings/providers/select',
       { provider: selectedProvider, model: selectedModel },
-      { onFinish: () => setSavingProvider(false) }
+      { onFinish: () => { setSavingProvider(false); restoreSection('provider'); } }
     );
   };
 
@@ -68,7 +89,7 @@ export default function Settings({
       { provider, api_key: rawKey },
       {
         onSuccess: () => clearFn(),
-        onFinish: () => setSavingProvider(false),
+        onFinish: () => { setSavingProvider(false); restoreSection('provider'); },
       }
     );
   };
@@ -78,7 +99,7 @@ export default function Settings({
     router.post(
       '/settings/providers/key/remove',
       { provider },
-      { onFinish: () => setSavingProvider(false) }
+      { onFinish: () => { setSavingProvider(false); restoreSection('provider'); } }
     );
   };
 
@@ -99,7 +120,7 @@ export default function Settings({
   const handleSaveAutopilotBudget = (maxAttempts: string, maxDollars: string) => {
     setSavingBudget(true);
     router.post('/settings/autopilot-budget', { maxAttempts, maxDollars }, {
-      onFinish: () => setSavingBudget(false),
+      onFinish: () => { setSavingBudget(false); restoreSection('usage'); },
     });
   };
 
@@ -161,18 +182,16 @@ export default function Settings({
           </div>
         )}
 
-        {/* Section nav: one short scroll, anchors instead of hidden tabs. */}
+        {/* Keep hash links so saved links and browser navigation select the same section. */}
         <nav aria-label="Settings sections" className="sticky top-0 z-10 -mx-1 flex gap-4 overflow-x-auto border-b border-[var(--border)] bg-[var(--bg)] px-1 py-2 text-xs font-semibold">
-          <a href="#settings-github" className="shrink-0 hover:underline">GitHub</a>
-          <a href="#settings-review" className="shrink-0 hover:underline">Code review</a>
-          <a href="#settings-provider" className="shrink-0 hover:underline">Provider</a>
-          <a href="#settings-autopilot" className="shrink-0 hover:underline">Autopilot</a>
-          <a href="#settings-comments" className="shrink-0 hover:underline">Inline comments</a>
-          <a href="#settings-usage" className="shrink-0 hover:underline">Usage</a>
-          <a href="#settings-general" className="shrink-0 hover:underline">General</a>
+          {SETTINGS_SECTIONS.map((section) => (
+            <a key={section} href={`#settings-${section}`} aria-current={activeSection === section ? 'page' : undefined} className={`shrink-0 hover:underline ${activeSection === section ? 'text-[var(--accent-text)] underline underline-offset-4' : 'text-[var(--fg-muted)]'}`}>
+              {{ github: 'GitHub', review: 'Code review', provider: 'Provider', autopilot: 'Autopilot', comments: 'Inline comments', usage: 'Usage', general: 'General' }[section]}
+            </a>
+          ))}
         </nav>
 
-        <section id="settings-review" className="scroll-mt-16 space-y-6">
+        <section id="settings-review" hidden={activeSection !== 'review'} className="scroll-mt-16 space-y-6">
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
@@ -236,24 +255,28 @@ export default function Settings({
               )}
             </div>
 
-            <div id="settings-autopilot" className="scroll-mt-16">
+        </section>
+
+        <section id="settings-autopilot" hidden={activeSection !== 'autopilot'} className="scroll-mt-16 space-y-6">
             <AutoReviewPanel connected={githubConnection.isConnected} repositories={repositories} autoReview={autoReview}
               pendingRepo={pendingReviewRepo} error={autoReviewError} onToggle={handleAutoReview}
               onRefresh={() => router.reload({ only: ['autoReview'] })} />
 
-            </div>
-            <div id="settings-comments" className="scroll-mt-16">
-            <AutomaticCommentsPanel connected={githubConnection.isConnected} login={githubConnection.user?.login ?? null}
-              repositories={repositories} csrf={String(props.csrf_token || '')} />
-            </div>
             <div id="settings-maintainer" className="scroll-mt-16">
             <MaintainerAutopilotPanel connected={githubConnection.isConnected} login={githubConnection.user?.login ?? null}
               repositories={repositories} csrf={String(props.csrf_token || '')} />
             </div>
+        </section>
+
+        <section id="settings-comments" hidden={activeSection !== 'comments'} className="scroll-mt-16">
+          <AutomaticCommentsPanel connected={githubConnection.isConnected} login={githubConnection.user?.login ?? null}
+            repositories={repositories} csrf={String(props.csrf_token || '')} />
+        </section>
 
             {providerConfig && (
               <section
                 id="settings-provider"
+                hidden={activeSection !== 'provider'}
                 aria-labelledby="muse-provider-config-heading"
                 className="scroll-mt-16 bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-5 shadow-xs"
               >
@@ -408,9 +431,7 @@ export default function Settings({
                 </div>
               </section>
             )}
-        </section>
-
-        <section id="settings-usage" className="scroll-mt-16 space-y-6">
+        <section id="settings-usage" hidden={activeSection !== 'usage'} className="scroll-mt-16 space-y-6">
           <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#141821]">
             <h2 className="text-sm font-semibold">Usage</h2>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Model usage on this machine. There is no local spending cap; your provider quota is the limit. Full history is on the Telemetry page.</p>
@@ -432,7 +453,7 @@ export default function Settings({
           </div>
         </section>
 
-        <section id="settings-github" className="scroll-mt-16 space-y-6">
+        <section id="settings-github" hidden={activeSection !== 'github'} className="scroll-mt-16 space-y-6">
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
@@ -506,7 +527,7 @@ export default function Settings({
             </div>
         </section>
 
-        <section id="settings-general" className="scroll-mt-16 space-y-6">
+        <section id="settings-general" hidden={activeSection !== 'general'} className="scroll-mt-16 space-y-6">
             <div className="bg-white dark:bg-[#141821] rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>

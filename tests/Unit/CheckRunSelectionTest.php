@@ -10,6 +10,15 @@ use ProofPatch\Patch\CssPatch;
 
 final class CheckRunSelectionTest extends TestCase
 {
+    public function testOnlyCheckoutReportsAppearInCheckoutHistory(): void
+    {
+        self::assertTrue(CheckRunSelection::isCheckoutReport(['decision' => 'VERIFIED']));
+        self::assertTrue(CheckRunSelection::isCheckoutReport(['kind' => 'checkout']));
+        self::assertFalse(CheckRunSelection::isCheckoutReport(['kind' => 'owned_backend', 'isSynthetic' => true]));
+        self::assertFalse(CheckRunSelection::isCheckoutReport(['context' => [], 'isSynthetic' => true]));
+        self::assertFalse(CheckRunSelection::isCheckoutReport(['kind' => 'unknown']));
+    }
+
     public function testLatestVisualPrefersVerified(): void
     {
         $history = [
