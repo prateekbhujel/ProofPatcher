@@ -56,7 +56,7 @@ locally and marked as not posted. Autopilot never posts as the user.
 
 ## Automatic actions
 
-Automatic merge requires a fresh per-repository opt-in, a completed approval for the same head and base, passing checks and no unresolved review threads. GitHub must enforce strict required checks, resolved conversations and administrator protection on the base branch. If protection cannot be read or does not meet those requirements, the merge is blocked. The worker rechecks the opt-in and pins the pull request head; GitHub does not atomically pin the base when the merge is requested. This path has automated tests but has not been demonstrated by a live automatic merge. Automatic ready and close remain unavailable. Manual actions retain their confirmation.
+Automatic merge requires a fresh per-repository opt-in, a completed approval for the same head and base, passing checks and no unresolved review threads. GitHub must enforce strict required checks, resolved conversations and administrator protection on the base branch. If protection cannot be read or does not meet those requirements, the merge is blocked. The worker rechecks the opt-in and pins the pull request head; GitHub does not atomically pin the base when the merge is requested. This path has automated tests and was exercised on a [protected test PR](https://github.com/prateekbhujel/proofpatch-automerge-sandbox/pull/1). Automatic ready and close remain unavailable. Manual actions retain their confirmation.
 
 ## Terminal (TUI) parity
 

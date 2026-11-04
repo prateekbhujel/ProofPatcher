@@ -67,7 +67,7 @@ The kernel and OS names describe the design: Hari is an in-process PHP registry,
 
 ProofPatcher is an early local prototype. Automatic PR reviews are opt-in, run only while the local worker is active, and currently cover eligible public repositories. Model findings need review.
 
-The visual demo uses included examples. In a dedicated test repository, a fresh Muse proposal passed isolated fixture checks and became a draft PR. Passing those cases does not prove a change is correct or safe in general. Automatic merging requires explicit opt-in and strict branch protection; a live protected-branch merge has not been demonstrated. [See the scope and safeguards](docs/LOCAL_GUIDE.md#scope-and-safeguards).
+The visual demo uses included examples. In a dedicated test repository, a fresh Muse proposal passed isolated fixture checks and became a draft PR. Passing those cases does not prove a change is correct or safe in general. An opted-in automatic review and protected-branch merge were also demonstrated on a separate [test PR](https://github.com/prateekbhujel/proofpatch-automerge-sandbox/pull/1). [See the scope and safeguards](docs/LOCAL_GUIDE.md#scope-and-safeguards).
 
 ## License
 
