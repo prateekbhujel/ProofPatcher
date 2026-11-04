@@ -17,7 +17,7 @@ export function GuidedStepBar({ context, suggestion, verificationReport, hasPubl
   const complete = [Boolean(context), Boolean(suggestion), checksPassed || fixtureChecksPassed, hasPublishedPr];
   const firstIncomplete = complete.findIndex((done) => !done);
   const current = firstIncomplete < 0 ? -1 : firstIncomplete;
-  const labels = ['Issue', 'Change', 'Checks', 'PR & Merge'];
+  const labels = ['Issue', 'Change', 'Checks', 'Draft PR'];
 
   return (
     <nav aria-label="Issue progress" className="border-b border-slate-200/80 px-5 py-3 dark:border-slate-800 sm:px-7">

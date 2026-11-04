@@ -14,6 +14,7 @@ use ProofPatch\Models\MaintainerAutopilotSetting;
 use ProofPatch\Models\RepositoryAutoReviewSetting;
 use ProofPatch\Services\AutoReviewService;
 use ProofPatch\Tests\Support\InteractsWithIsolatedDatabase;
+use ProofPatch\Tests\Support\SyntheticBotProvider;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -31,11 +32,13 @@ final class AutopilotPollReevaluationTest extends TestCase
     private bool $reviewOffDuringReadiness = false;
     private int $modelCalls = 0;
     private array $mergeRequests = [];
+    private SyntheticBotProvider $bot;
 
     protected function setUp(): void
     {
         $this->setupIsolatedDatabase();
         $this->bootstrapAndMigrateIsolatedDatabase();
+        $this->bot = new SyntheticBotProvider(self::REPO);
         RepositoryAutoReviewSetting::setRepoEnabled(self::REPO, true);
         MaintainerAutopilotSetting::setFlag(self::REPO, 'auto_merge', true);
         AutoReviewResult::create([
@@ -166,7 +169,8 @@ final class AutopilotPollReevaluationTest extends TestCase
         $budget = new RequestBudget(sys_get_temp_dir().'/proofpatch-poll-test-'.bin2hex(random_bytes(6)), 500000, 10);
         return new AutoReviewService(github: new GitHubAppClient($githubHttp),
             reviewAgent: new PullRequestReview($modelHttp, $budget), budget: $budget,
-            basetenKey: 'synthetic-not-a-secret', pullActions: new PullRequestActions($actionsHttp), autoMergeReady: true);
+            basetenKey: 'synthetic-not-a-secret', pullActions: new PullRequestActions($actionsHttp), autoMergeReady: true,
+            mergeBotTokens: $this->bot->provider());
     }
 
     private function pull(): array

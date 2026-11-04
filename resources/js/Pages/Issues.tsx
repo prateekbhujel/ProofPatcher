@@ -462,7 +462,10 @@ export default function Issues({
   const fixtureChecksPassed = !!(showFixtureObservations && fixtureObservation?.scope === 'finite_local_fixture'
     && fixtureObservation.status === 'passed' && fixtureObservation.candidateSha256 === suggestion?.candidate?.sha256
     && fixtureObservation.baseline === 'fixture_failed' && fixtureObservation.negative === 'fixture_failed'
-    && fixtureObservation.candidate === 'fixture_passed');
+    && fixtureObservation.candidate === 'fixture_passed'
+    && fixtureObservation.calls && typeof fixtureObservation.calls === 'object'
+    && Object.values(fixtureObservation.calls).length === 3
+    && Object.values(fixtureObservation.calls).every((calls) => Number.isInteger(calls) && calls > 0));
   const displayedSuggestion = showFixtureObservations && suggestion?.candidate
     ? { ...suggestion, candidate: { ...suggestion.candidate, verified: false } }
     : suggestion;
@@ -624,6 +627,7 @@ export default function Issues({
                     isOwnedFixture={isOwnedFixture}
                     budget={budget}
                     verificationReport={showFixtureObservations ? null : verificationReport}
+                    fixtureChecksPassed={fixtureChecksPassed}
                     passedGateCount={showFixtureObservations ? 0 : passedGateCount}
                     copiedCandidateSha={copiedCandidateSha}
                     copyCandidateHash={copyCandidateHash}

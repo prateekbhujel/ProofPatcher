@@ -97,14 +97,22 @@ final readonly class DedicatedTestRepoPublisher
         // Check for an identical existing draft before any new GitHub write.
         // An incomplete listing fails closed rather than creating a duplicate.
         $existing = $this->findObservedDraft($githubToken, $candidateSha);
+        if ($existing !== null) {
+            $observedApprovals->consume($approvalToken, $userId, $context, $suggestion);
+            return $existing;
+        }
+        // Keep user identity for authorization, but use a single-repository app
+        // installation token for all GitHub writes. Never fall back to the user.
+        $botToken = (new BotInstallationTokenProvider($client))->forDedicatedFixture($githubToken, $repo);
+        $this->performSecretAudit($candidate, 'candidateSource', $botToken);
         $observedApprovals->consume($approvalToken, $userId, $context, $suggestion);
-        if ($existing !== null) return $existing;
         $runId = substr(hash('sha256', $approvalToken), 0, 24);
         $branch = self::branchName((string) ($context['title'] ?? 'order total'), 1, $runId);
         $body = "Fixes #1.\n\nMuse proposed this change. It matched the included local order-total fixture in isolated test runs; the baseline and negative control did not. These are finite observations, not proof of correctness. Please review the patch and run the repository's own tests before merging.";
         $this->performSecretAudit($body, 'prBody', $githubToken);
+        $this->performSecretAudit($body, 'prBody', $botToken);
         try {
-            $result = $this->executePublish($githubToken, $branch, 'fix: correct order total', $body,
+            $result = $this->executePublish($botToken, $branch, 'fix: correct order total', $body,
                 DedicatedTestRepoFetcher::SOURCE_PATH, $candidate, ['id' => $runId]);
             $result['verificationRunId'] = '';
             $result['receiptSha256'] = '';

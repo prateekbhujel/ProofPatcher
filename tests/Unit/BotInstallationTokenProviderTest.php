@@ -13,6 +13,8 @@ final class BotInstallationTokenProviderTest extends TestCase
     private string $keyPath;
     private string $publicKey;
     private string $scenario = '';
+    private bool $fixture = false;
+    private bool $merge = false;
     private array $calls = [];
 
     protected function setUp(): void
@@ -44,12 +46,13 @@ final class BotInstallationTokenProviderTest extends TestCase
                 '/repos/owner/repo/installation' => ['id' => 30, 'app_id' => $this->scenario === 'wrong_installation' ? 11 : 10],
                 '/user/installations/30/repositories' => ['total_count' => 1, 'repositories' => [[
                     'id' => 40, 'full_name' => $this->scenario === 'no_user_grant' ? 'owner/other' : 'owner/repo',
-                    'private' => $this->scenario === 'private_repo',
+                    'private' => ($this->fixture && $this->scenario !== 'public_fixture') || $this->scenario === 'private_repo',
                 ]]],
                 '/app/installations/30/access_tokens' => ['token' => $this->scenario === 'same_token' ? 'user-token' : 'bot-token',
                     'expires_at' => gmdate('c', time() + 3600),
-                    'permissions' => $this->scenario === 'broad_permissions'
-                        ? ['pull_requests' => 'write', 'contents' => 'write'] : ['pull_requests' => 'write', 'metadata' => 'read']],
+                    'permissions' => $this->scenario === 'extra_contents' ? ['pull_requests' => 'write', 'contents' => 'write'] : ($this->scenario === 'broad_permissions'
+                        ? ['pull_requests' => 'write', 'contents' => 'write', 'administration' => 'write']
+                        : (($this->fixture || $this->merge) ? ['pull_requests' => 'write', 'contents' => 'write', 'metadata' => 'read'] : ['pull_requests' => 'write', 'metadata' => 'read']))],
                 '/installation/repositories' => ['total_count' => $this->scenario === 'broad_repo' ? 2 : 1,
                     'repositories' => [['id' => 40, 'full_name' => 'owner/repo']]],
                 default => throw new RuntimeException('Unexpected request'),
@@ -78,10 +81,30 @@ final class BotInstallationTokenProviderTest extends TestCase
 
     public function testRejectsMismatchedAppsGrantsAndOverbroadTokens(): void
     {
-        foreach (['wrong_app', 'wrong_client', 'wrong_installation', 'no_user_grant', 'private_repo', 'same_token', 'broad_permissions', 'broad_repo'] as $case) {
+        foreach (['wrong_app', 'wrong_client', 'wrong_installation', 'no_user_grant', 'private_repo', 'same_token', 'extra_contents', 'broad_permissions', 'broad_repo'] as $case) {
             $this->scenario = $case;
             try { $this->provider()->forRepository('user-token', 'owner/repo'); self::fail($case.' should fail'); }
             catch (RuntimeException) { self::assertTrue(true, $case); }
+        }
+    }
+
+    public function testFixtureTokenIsPrivateAndLimitedToTheConfiguredRepository(): void
+    {
+        putenv('PROOFPATCHER_TEST_REPO=owner/repo');
+        $this->fixture = true;
+        try {
+            self::assertSame('bot-token', $this->provider()->forDedicatedFixture('user-token', 'owner/repo'));
+            $body = json_decode($this->calls[3][2]['body'], true, 32, JSON_THROW_ON_ERROR);
+            self::assertSame(['repository_ids' => [40], 'permissions' => ['pull_requests' => 'write', 'contents' => 'write']], $body);
+            foreach (['broad_permissions', 'public_fixture', 'no_user_grant', 'broad_repo'] as $case) {
+                $this->scenario = $case;
+                try { $this->provider()->forDedicatedFixture('user-token', 'owner/repo'); self::fail($case.' should fail'); }
+                catch (RuntimeException) { self::assertTrue(true); }
+            }
+            try { $this->provider()->forDedicatedFixture('user-token', 'owner/other'); self::fail('Other repo should fail'); }
+            catch (RuntimeException) { self::assertTrue(true); }
+        } finally {
+            putenv('PROOFPATCHER_TEST_REPO');
         }
     }
 
@@ -90,6 +113,17 @@ final class BotInstallationTokenProviderTest extends TestCase
         chmod($this->keyPath, 0644);
         try { $this->provider()->forRepository('user-token', 'owner/repo'); self::fail('Expected invalid key permissions'); }
         catch (BotIdentityConfigurationException) { self::assertSame([], $this->calls); }
+    }
+
+    public function testPublicMergeTokenHasOnlyTheRequestedWritePermissions(): void
+    {
+        $this->merge = true;
+        self::assertSame('bot-token', $this->provider()->forPublicMerge('user-token', 'owner/repo'));
+        $body = json_decode($this->calls[3][2]['body'], true, 32, JSON_THROW_ON_ERROR);
+        self::assertSame(['repository_ids' => [40], 'permissions' => ['pull_requests' => 'write', 'contents' => 'write']], $body);
+        $this->scenario = 'private_repo';
+        $this->expectException(RuntimeException::class);
+        $this->provider()->forPublicMerge('user-token', 'owner/repo');
     }
 
     public function testTransportErrorsDoNotLeakCredentialDetails(): void

@@ -18,7 +18,7 @@ use ProofPatch\Verifier\OwnedCaseVerifier;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
-/** Covers the isolated-observation handoff Codex wired but left untested. */
+/** Covers the isolated-observation handoff and publication authorization. */
 final class ObservedDraftHandoffIntegrationTest extends TestCase
 {
     use InteractsWithIsolatedDatabase;
@@ -96,7 +96,7 @@ final class ObservedDraftHandoffIntegrationTest extends TestCase
         $task->recordFixtureObservation($observation, 'fixture-'.str_repeat('c', 24), (int) $task->version, hash('sha256', $this->candidateSource));
     }
 
-    public function testIdenticalExistingDraftIsReusedWithoutAnyGitHubWrite(): void
+    private function recordPrivateProposal(): void
     {
         PrivateProposalStore::forRuntime()->record(
             ['githubUserId' => 7, 'repository' => DedicatedTestRepo::name(), 'issueNumber' => 1,
@@ -107,11 +107,21 @@ final class ObservedDraftHandoffIntegrationTest extends TestCase
             ['candidateSource' => $this->candidateSource, 'model' => 'muse',
                 'requestDigest' => str_repeat('b', 64), 'usage' => ['prompt_tokens' => 1, 'completion_tokens' => 1]],
             str_repeat('a', 32));
+    }
 
+    private function issueObservedApproval(): array
+    {
         $approvals = new ObservedDraftApproval($this->tempDir.'/observed', str_repeat('s', 32));
         $observation = $this->passingObservation() + ['harnessSha256' => OwnedCaseVerifier::KNOWN_TEST_SHA256,
             'baselineSha256' => DedicatedTestRepoFetcher::EXPECTED_SOURCE_SHA256];
-        $token = $approvals->issue(7, $this->context, $this->suggestion, $observation);
+        return [$approvals, $approvals->issue(7, $this->context, $this->suggestion, $observation)];
+    }
+
+    public function testIdenticalExistingDraftIsReusedWithoutAnyGitHubWrite(): void
+    {
+        $this->recordPrivateProposal();
+
+        [$approvals, $token] = $this->issueObservedApproval();
 
         $writes = 0;
         $repo = DedicatedTestRepo::requireName();
@@ -152,5 +162,99 @@ final class ObservedDraftHandoffIntegrationTest extends TestCase
             new MockHttpClient(), disconnected: true);
         $this->expectException(\RuntimeException::class);
         $publisher->publishObservedDraft($this->context, $this->suggestion, 7, 'x', 'gh-token', $approvals);
+    }
+
+    private function publicationClient(array &$writes, bool $denyGrant = false): MockHttpClient
+    {
+        $repo = DedicatedTestRepo::requireName();
+        return new MockHttpClient(function (string $method, string $url, array $options) use (&$writes, $repo, $denyGrant): MockResponse {
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            $authorization = implode(' ', $options['normalized_headers']['authorization'] ?? []);
+            if ($method === 'POST' && !str_contains($path, '/access_tokens')) {
+                $writes[] = ['path' => $path, 'authorization' => $authorization];
+            }
+            $data = match (true) {
+                $path === '/user' => ['id' => 7, 'login' => explode('/', $repo)[0]],
+                $path === '/app' => ['id' => 10, 'client_id' => 'client'],
+                $path === '/repos/'.$repo.'/installation' => ['id' => 30, 'app_id' => 10],
+                $path === '/user/installations/30/repositories' => ['total_count' => 1, 'repositories' => [[
+                    'id' => 40, 'full_name' => $denyGrant ? 'other/repo' : $repo, 'private' => true,
+                ]]],
+                $path === '/app/installations/30/access_tokens' => ['token' => 'bot-token',
+                    'expires_at' => gmdate('c', time() + 3600),
+                    'permissions' => ['contents' => 'write', 'pull_requests' => 'write', 'metadata' => 'read']],
+                $path === '/installation/repositories' => ['total_count' => 1, 'repositories' => [['id' => 40, 'full_name' => $repo]]],
+                $path === '/repos/'.$repo.'/issues/1' => ['number' => 1, 'state' => 'open',
+                    'title' => $this->context['title'], 'body' => $this->context['body']],
+                $path === '/repos/'.$repo.'/pulls' && $method === 'GET' => [],
+                $path === '/repos/'.$repo.'/pulls' && $method === 'POST' => ['number' => 42, 'draft' => true,
+                    'html_url' => 'https://github.com/'.$repo.'/pull/42'],
+                $path === '/repos/'.$repo.'/git/ref/heads/main' => ['object' => ['sha' => DedicatedTestRepo::requireBaseCommit()]],
+                $path === '/repos/'.$repo.'/git/commits/'.DedicatedTestRepo::requireBaseCommit() => ['tree' => ['sha' => str_repeat('c', 40)]],
+                in_array($path, ['/repos/'.$repo.'/git/blobs', '/repos/'.$repo.'/git/trees', '/repos/'.$repo.'/git/commits'], true)
+                    && $method === 'POST' => ['sha' => str_repeat('d', 40)],
+                $path === '/repos/'.$repo.'/git/refs' && $method === 'POST' => ['ref' => 'refs/heads/test'],
+                $path === '/repos/'.$repo => ['private' => true, 'full_name' => $repo, 'default_branch' => 'main'],
+                default => throw new \RuntimeException('Unexpected GitHub request: '.$method.' '.$path),
+            };
+            return new MockResponse(json_encode($data, JSON_THROW_ON_ERROR), [
+                'http_code' => str_contains($path, '/access_tokens') ? 201 : 200,
+            ]);
+        });
+    }
+
+    public function testNewObservedDraftUsesBotTokenForEveryRepositoryWrite(): void
+    {
+        $this->recordPrivateProposal();
+        [$approvals, $token] = $this->issueObservedApproval();
+        $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        self::assertNotFalse($key);
+        openssl_pkey_export($key, $pem);
+        $keyPath = $this->tempDir.'/key.pem';
+        file_put_contents($keyPath, $pem);
+        chmod($keyPath, 0600);
+        $env = ['PROOFPATCH_GITHUB_APP_ID' => '10', 'PROOFPATCH_GITHUB_CLIENT_ID' => 'client',
+            'PROOFPATCH_GITHUB_APP_PRIVATE_KEY_PATH' => $keyPath];
+        $previous = [];
+        foreach ($env as $name => $value) { $previous[$name] = getenv($name); putenv($name.'='.$value); }
+        try {
+            $writes = [];
+            $client = $this->publicationClient($writes);
+            $publisher = new DedicatedTestRepoPublisher(
+                new ServerHeldPublicationApproval($this->tempDir.'/pub', 'test-secret-key-32-bytes-minimum!!'),
+                $client, disconnected: false);
+            $result = $publisher->publishObservedDraft($this->context, $this->suggestion, 7, $token, 'gh-token', $approvals);
+            self::assertSame('published', $result['status']);
+            self::assertSame(42, $result['prNumber']);
+            self::assertCount(5, $writes);
+            foreach ($writes as $write) self::assertSame('Authorization: Bearer bot-token', $write['authorization'], $write['path']);
+        } finally {
+            foreach ($previous as $name => $value) putenv($value === false ? $name : $name.'='.$value);
+            @unlink($keyPath);
+        }
+    }
+
+    public function testMissingBotConfigurationDoesNotWriteOrConsumeApproval(): void
+    {
+        $this->recordPrivateProposal();
+        [$approvals, $token] = $this->issueObservedApproval();
+        $previous = getenv('PROOFPATCH_GITHUB_APP_ID');
+        putenv('PROOFPATCH_GITHUB_APP_ID=');
+        try {
+            $writes = [];
+            $client = $this->publicationClient($writes);
+            $publisher = new DedicatedTestRepoPublisher(
+                new ServerHeldPublicationApproval($this->tempDir.'/pub', 'test-secret-key-32-bytes-minimum!!'),
+                $client, disconnected: false);
+            try {
+                $publisher->publishObservedDraft($this->context, $this->suggestion, 7, $token, 'gh-token', $approvals);
+                self::fail('Missing bot configuration must fail closed.');
+            } catch (\ProofPatch\GitHub\BotIdentityConfigurationException) {
+                self::assertSame([], $writes);
+            }
+            self::assertSame(7, $approvals->consume($token, 7, $this->context, $this->suggestion)['userId']);
+        } finally {
+            putenv($previous === false ? 'PROOFPATCH_GITHUB_APP_ID' : 'PROOFPATCH_GITHUB_APP_ID='.$previous);
+        }
     }
 }

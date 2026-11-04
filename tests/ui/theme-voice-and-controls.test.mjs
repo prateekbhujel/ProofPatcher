@@ -238,6 +238,26 @@ test('private test case requires a separate provider consent before asking Muse'
   assert.match(html, /test harness stays local/);
 });
 
+test('the proposal shows fixture results without claiming an unchecked change passed', () => {
+  const { exports: proposal } = loadTsxModule('../../resources/js/Components/workbench/ProposalDiffCard.tsx', (id) => {
+    if (id === '../ui/ThinkingAnimation') return thinkingModule;
+    return require(id);
+  });
+  const props = {
+    context: { path: 'src/OrderTotal.php' }, preview: null,
+    suggestion: { path: 'src/OrderTotal.php', find: 'before', replace: 'after', candidate: { verified: false } },
+    sending: false, modelContextAllowed: true, modelKeyAvailable: true,
+    isDedicatedTestRepo: true, isOwnedFixture: false, budget: { canRequest: true },
+    verificationReport: null, passedGateCount: 0, copiedCandidateSha: false, copyCandidateHash() {}, onRequestSuggestion() {},
+  };
+  const before = renderToStaticMarkup(React.createElement(proposal.ProposalDiffCard, props));
+  const after = renderToStaticMarkup(React.createElement(proposal.ProposalDiffCard, { ...props, fixtureChecksPassed: true }));
+  assert.match(before, /Not checked yet/);
+  assert.doesNotMatch(before, /Fixture checks passed/);
+  assert.match(after, /Fixture checks passed/);
+  assert.doesNotMatch(after, /Not checked yet/);
+});
+
 test('public Muse review is enabled only when approved, funded and configured', () => {
   const { exports: review } = loadTsxModule('../../resources/js/Components/repositories/PrReviewTab.tsx',
     (id) => {

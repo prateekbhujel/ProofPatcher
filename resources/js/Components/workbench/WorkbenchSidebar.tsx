@@ -298,7 +298,7 @@ export function WorkbenchSidebar({
                       )}
                       {isDedicatedIssue && (
                         <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          Verified PR ready
+                          Test fixture
                         </span>
                       )}
                       {isContradictedIssue && (

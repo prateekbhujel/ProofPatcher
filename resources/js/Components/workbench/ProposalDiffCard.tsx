@@ -28,6 +28,7 @@ interface ProposalDiffCardProps {
   isOwnedFixture: boolean;
   budget: BudgetData | null;
   verificationReport: VerificationReport | null;
+  fixtureChecksPassed?: boolean;
   passedGateCount: number;
   copiedCandidateSha: boolean;
   copyCandidateHash: (sha: string) => void;
@@ -46,6 +47,7 @@ export function ProposalDiffCard({
   isOwnedFixture,
   budget,
   verificationReport,
+  fixtureChecksPassed = false,
   passedGateCount,
   copiedCandidateSha,
   copyCandidateHash,
@@ -150,12 +152,12 @@ export function ProposalDiffCard({
             <div className="flex items-center gap-2">
               <span
                 className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                  suggestion.candidate?.verified
+                  suggestion.candidate?.verified || fixtureChecksPassed
                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                     : 'bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
                 }`}
               >
-                {suggestion.candidate?.verified
+                {suggestion.candidate?.verified || fixtureChecksPassed
                   ? 'Fixture checks passed'
                   : 'Not checked yet'}
               </span>

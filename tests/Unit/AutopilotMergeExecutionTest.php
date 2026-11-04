@@ -12,6 +12,7 @@ use ProofPatch\Models\AutoReviewResult;
 use ProofPatch\Models\RepositoryAutoReviewSetting;
 use ProofPatch\Services\AutoReviewService;
 use ProofPatch\Tests\Support\InteractsWithIsolatedDatabase;
+use ProofPatch\Tests\Support\SyntheticBotProvider;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -22,11 +23,13 @@ final class AutopilotMergeExecutionTest extends TestCase
     private const HEAD = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     private const BASE = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
     private const REPO = 'example-owner/demo';
+    private SyntheticBotProvider $bot;
 
     protected function setUp(): void
     {
         $this->setupIsolatedDatabase();
         $this->bootstrapAndMigrateIsolatedDatabase();
+        $this->bot = new SyntheticBotProvider(self::REPO);
         RepositoryAutoReviewSetting::setRepoEnabled(self::REPO, true);
         AutoReviewResult::create(['repository' => self::REPO, 'pull_number' => 1,
             'head_sha' => self::HEAD, 'base_sha' => self::BASE, 'status' => 'completed',
@@ -51,6 +54,7 @@ final class AutopilotMergeExecutionTest extends TestCase
         self::assertSame('already_attempted', $second['status']);
         self::assertCount(1, $writes);
         self::assertSame(self::HEAD, $writes[0]['sha']);
+        self::assertSame('Authorization: Bearer synthetic-bot-token', $writes[0]['authorization']);
     }
 
     public function testFailedChecksBlockAnyMergeWrite(): void
@@ -59,6 +63,28 @@ final class AutopilotMergeExecutionTest extends TestCase
         $writes = [];
         $service = $this->service($writes, 'failure');
         self::assertSame('blocked', $this->attempt($service)['status']);
+        self::assertSame([], $writes);
+    }
+
+    public function testMissingBotGrantNeverFallsBackToUserAndDoesNotClaimAttempt(): void
+    {
+        MaintainerAutopilotSetting::setFlag(self::REPO, 'auto_merge', true);
+        $this->bot->denyGrant = true;
+        $writes = [];
+        $service = $this->service($writes);
+        self::assertSame('blocked', $this->attempt($service)['status']);
+        self::assertSame([], $writes);
+        $this->bot->denyGrant = false;
+        self::assertSame('merged', $this->attempt($service)['status']);
+        self::assertCount(1, $writes);
+    }
+
+    public function testOptOutDuringBotAuthorizationStopsMerge(): void
+    {
+        MaintainerAutopilotSetting::setFlag(self::REPO, 'auto_merge', true);
+        $this->bot->onIssue = static fn () => MaintainerAutopilotSetting::setFlag(self::REPO, 'auto_merge', false);
+        $writes = [];
+        self::assertSame('blocked', $this->attempt($this->service($writes))['status']);
         self::assertSame([], $writes);
     }
 
@@ -108,13 +134,14 @@ final class AutopilotMergeExecutionTest extends TestCase
         }));
         $actions = new PullRequestActions(new MockHttpClient(static function (string $method, string $url, array $options) use (&$writes) {
             if ($method === 'PUT') {
-                $writes[] = json_decode((string) $options['body'], true, 16, JSON_THROW_ON_ERROR);
+                $writes[] = json_decode((string) $options['body'], true, 16, JSON_THROW_ON_ERROR)
+                    + ['authorization' => implode(' ', $options['normalized_headers']['authorization'])];
                 return new MockResponse(json_encode(['merged' => true, 'sha' => str_repeat('c', 40)]));
             }
             return new MockResponse(json_encode(['state' => 'open', 'merged' => false, 'draft' => false,
                 'mergeable' => true, 'head' => ['sha' => self::HEAD], 'base' => ['sha' => self::BASE]]));
         }));
-        return new AutoReviewService(github: $github, pullActions: $actions);
+        return new AutoReviewService(github: $github, pullActions: $actions, mergeBotTokens: $this->bot->provider());
     }
 
     private static function strictProtection(): array

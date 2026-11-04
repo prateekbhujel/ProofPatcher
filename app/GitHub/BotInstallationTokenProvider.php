@@ -20,6 +20,27 @@ final readonly class BotInstallationTokenProvider
 
     public function forRepository(string $userToken, string $repository): string
     {
+        return $this->issueForRepository($userToken, $repository, false, false);
+    }
+
+    /** Mint a token for a public repository after all merge checks pass. */
+    public function forPublicMerge(string $userToken, string $repository): string
+    {
+        return $this->issueForRepository($userToken, $repository, false, true);
+    }
+
+    /** Mint a write token only for the configured private fixture repository. */
+    public function forDedicatedFixture(string $userToken, string $repository): string
+    {
+        $dedicated = DedicatedTestRepo::requireName();
+        if (strcasecmp($dedicated, $repository) !== 0) {
+            throw new \RuntimeException('GitHub bot access is limited to the dedicated test repository.');
+        }
+        return $this->issueForRepository($userToken, $repository, true, true);
+    }
+
+    private function issueForRepository(string $userToken, string $repository, bool $fixture, bool $contents): string
+    {
         if ($userToken === '' || !preg_match('~\A([A-Za-z0-9-]{1,39})/([A-Za-z0-9._-]{1,100})\z~', $repository, $parts)
             || in_array($parts[2], ['.', '..'], true)) {
             throw new \InvalidArgumentException('Invalid GitHub repository or user authorization.');
@@ -74,7 +95,7 @@ final readonly class BotInstallationTokenProvider
             }
             foreach ($repos as $repo) {
                 if (is_array($repo) && is_string($repo['full_name'] ?? null) && strcasecmp($repo['full_name'], $repository) === 0
-                    && is_int($repo['id'] ?? null) && $repo['id'] > 0 && ($repo['private'] ?? null) === false) {
+                    && is_int($repo['id'] ?? null) && $repo['id'] > 0 && ($repo['private'] ?? null) === $fixture) {
                     $repositoryId = $repo['id'];
                     break 2;
                 }
@@ -83,19 +104,22 @@ final readonly class BotInstallationTokenProvider
         }
         if ($repositoryId === null) throw new \RuntimeException('GitHub user access to the app installation could not be verified.');
 
+        $requested = $contents ? ['pull_requests' => 'write', 'contents' => 'write'] : ['pull_requests' => 'write'];
         $issued = $this->request('POST', '/app/installations/'.$installationId.'/access_tokens', $jwt, [
-            'repository_ids' => [$repositoryId], 'permissions' => ['pull_requests' => 'write'],
+            'repository_ids' => [$repositoryId], 'permissions' => $requested,
         ], 201);
         $token = $issued['token'] ?? null;
         $expires = is_string($issued['expires_at'] ?? null) ? strtotime($issued['expires_at']) : false;
         $permissions = $issued['permissions'] ?? null;
         if (!is_string($token) || $token === '' || hash_equals($userToken, $token) || $expires === false
             || $expires <= $now || $expires > $now + 3700 || !is_array($permissions)
-            || ($permissions['pull_requests'] ?? null) !== 'write') {
+            || ($permissions['pull_requests'] ?? null) !== 'write'
+            || ($contents && ($permissions['contents'] ?? null) !== 'write')) {
             throw new \RuntimeException('GitHub did not issue a valid scoped bot token.');
         }
         foreach ($permissions as $permission => $level) {
-            if (!in_array($permission, ['pull_requests', 'metadata'], true)
+            if (!in_array($permission, $contents ? ['pull_requests', 'contents', 'metadata'] : ['pull_requests', 'metadata'], true)
+                || ($permission === 'contents' && $level !== 'write')
                 || ($permission === 'metadata' && $level !== 'read')) {
                 throw new \RuntimeException('GitHub bot token has unexpected permissions.');
             }

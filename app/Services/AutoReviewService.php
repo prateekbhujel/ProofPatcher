@@ -28,6 +28,7 @@ final class AutoReviewService
         private ?MaintainerIssueWatcher $issueWatcher = null,
         private ?\ProofPatch\GitHub\PullRequestActions $pullActions = null,
         private bool $autoMergeReady = true,
+        private ?\ProofPatch\GitHub\BotInstallationTokenProvider $mergeBotTokens = null,
     ) {
         $this->github ??= new GitHubAppClient(HttpClient::create());
         $this->patchPreviewer ??= new PublicPatchPreview(HttpClient::create());
@@ -521,6 +522,14 @@ final class AutoReviewService
         if (!$this->github->hasStrictMergeProtection($token, $repoName, $readiness['baseBranch'] ?? null)) {
             return ['status' => 'blocked', 'detail' => 'GitHub must enforce strict required checks, resolved conversations, and administrator protection on the base branch.'];
         }
+        try {
+            // The signed-in user still establishes authorization and readiness;
+            // the installation token is scoped to this public repository for the write.
+            $botToken = ($this->mergeBotTokens ?? new \ProofPatch\GitHub\BotInstallationTokenProvider(HttpClient::create()))
+                ->forPublicMerge($token, $repoName);
+        } catch (\Throwable) {
+            return ['status' => 'blocked', 'detail' => 'ProofPatcher bot access could not be verified.'];
+        }
         // Respect an opt-out made while GitHub readiness was being fetched.
         if (!\ProofPatch\Models\MaintainerAutopilotSetting::flagsFor($repoName)['autoMerge']
             || !RepositoryAutoReviewSetting::isRepoEnabled($repoName)) {
@@ -542,9 +551,9 @@ final class AutoReviewService
             ]);
             if ($claimed !== 1) return ['status' => 'already_attempted', 'detail' => 'Another worker claimed this revision.'];
             if ($gate['needsReady']) {
-                $actions->markReady($token, $access, $pullDescriptor, $head);
+                $actions->markReady($botToken, $access, $pullDescriptor, $head);
             }
-            $result = $actions->merge($token, $access, $pullDescriptor, $head, expectedBase: $base);
+            $result = $actions->merge($botToken, $access, $pullDescriptor, $head, expectedBase: $base);
             \Illuminate\Support\Facades\DB::table('autopilot_merge_actions')
                 ->whereRaw('LOWER(repository) = ?', [strtolower($repoName)])
                 ->where('pull_number', $number)->where('head_sha', $head)
