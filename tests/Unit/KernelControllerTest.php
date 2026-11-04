@@ -160,6 +160,11 @@ final class KernelControllerTest extends TestCase
         $this->assertSame('done', $done['nextStep']['key']);
         $this->assertSame('https://github.com/acme/repo/pull/7', $done['nextStep']['href']);
         $this->assertSame('done', $done['stages'][3]['state']);
+        $this->assertSame([
+            'prNumber' => 7,
+            'prUrl' => 'https://github.com/acme/repo/pull/7',
+            'repository' => 'acme/repo',
+        ], $done['publishedPr']);
     }
 
     public function testActiveWorkOutranksConnectWhenDisconnected(): void
